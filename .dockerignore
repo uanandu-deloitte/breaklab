@@ -1,0 +1,11 @@
+progress/
+postmortems/
+.breaklab/
+frontend/node_modules/
+frontend/dist/
+breaklab-design/
+dist/
+.git/
+*.tfstate
+*.tfstate.*
+.terraform/

@@ -54,6 +54,9 @@ func actionErrorStatus(err error) int {
 // true}) that passes through as --yes does on the CLI.
 func labStartAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
 		id := r.PathValue("id")
 		rn, err := newActionRunner(cfg)
 		if err != nil {
@@ -77,6 +80,9 @@ func labStartAPIHandler(cfg webcore.Config) http.HandlerFunc {
 // multi-check lab) directly as this response's body.
 func labCheckAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
 		rn, err := newActionRunner(cfg)
 		if err != nil {
 			webcore.WriteJSONError(w, actionErrorStatus(err), err.Error())
@@ -101,6 +107,9 @@ type hintPayload struct {
 // labHintAPIHandler reveals the active lab's next unseen hint.
 func labHintAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
 		rn, err := newActionRunner(cfg)
 		if err != nil {
 			webcore.WriteJSONError(w, actionErrorStatus(err), err.Error())
@@ -120,6 +129,9 @@ func labHintAPIHandler(cfg webcore.Config) http.HandlerFunc {
 // run the check" step), from this request's JSON body.
 func labHypothesisAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
 		rn, err := newActionRunner(cfg)
 		if err != nil {
 			webcore.WriteJSONError(w, actionErrorStatus(err), err.Error())
@@ -145,6 +157,9 @@ func labHypothesisAPIHandler(cfg webcore.Config) http.HandlerFunc {
 // confirm step.
 func labStopAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
 		rn, err := newActionRunner(cfg)
 		if err != nil {
 			webcore.WriteJSONError(w, actionErrorStatus(err), err.Error())

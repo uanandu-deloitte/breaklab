@@ -111,6 +111,38 @@ func actionTestConfig(t *testing.T, fd *fakeActionDocker) Config {
 	}
 }
 
+// writeActionLab adds a second lab fixture (id) under cfg.LabsDir,
+// identical in shape to the "alpha" lab actionTestConfig already wrote,
+// so a test can exercise lab-switch or multi-account scenarios.
+func writeActionLab(t *testing.T, cfg Config, id string) {
+	t.Helper()
+	dir := filepath.Join(cfg.LabsDir, id)
+	if err := os.MkdirAll(filepath.Join(dir, "variants"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"lab.yaml":         actionLabYAML(id),
+		"Dockerfile":       "FROM scratch\n",
+		"TICKET.md":        "# INC: " + id + " is down\n",
+		"check.sh":         "#!/usr/bin/env bash\necho PASS: fine\n",
+		"variants/only.sh": "#!/usr/bin/env bash\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// hostedActionTestConfig is actionTestConfig with a fresh AccountStore
+// attached, so action routes require a logged-in session instead of
+// running unauthenticated.
+func hostedActionTestConfig(t *testing.T, fd *fakeActionDocker) Config {
+	t.Helper()
+	cfg := actionTestConfig(t, fd)
+	cfg.AccountStore = newTestAccountStore(t)
+	return cfg
+}
+
 // apiErrorPayload mirrors webcore's unexported type of the same name —
 // the one JSON error shape every API response uses — so these
 // black-box tests can decode it without needing webcore to export it.
@@ -278,21 +310,7 @@ func TestLabStartBlockedByOtherLabRequiresConfirmAPI(t *testing.T) {
 	fd := &fakeActionDocker{checkOut: []byte("PASS: fine\n")}
 	cfg := actionTestConfig(t, fd)
 	// A second lab under the same root so Start has something real to switch to.
-	betaDir := filepath.Join(cfg.LabsDir, "beta")
-	if err := os.MkdirAll(filepath.Join(betaDir, "variants"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for name, body := range map[string]string{
-		"lab.yaml":         actionLabYAML("beta"),
-		"Dockerfile":       "FROM scratch\n",
-		"TICKET.md":        "# INC: beta is down\n",
-		"check.sh":         "#!/usr/bin/env bash\necho PASS: fine\n",
-		"variants/only.sh": "#!/usr/bin/env bash\n",
-	} {
-		if err := os.WriteFile(filepath.Join(betaDir, name), []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	writeActionLab(t, cfg, "beta")
 	t.Setenv("BREAKLAB_FORCE_VARIANT", "only-variant")
 
 	// Start alpha first.
@@ -327,5 +345,25 @@ func TestLabStartBlockedByOtherLabRequiresConfirmAPI(t *testing.T) {
 	session, _ = runner.LoadSession(cfg.SessionPath)
 	if session.Lab != "beta" {
 		t.Errorf("session after confirmed start = %q, want beta", session.Lab)
+	}
+}
+
+func TestLabActionsRequireLoginWhenHosted(t *testing.T) {
+	fd := &fakeActionDocker{checkOut: []byte("PASS: fine\n")}
+	cfg := hostedActionTestConfig(t, fd)
+	mux := Routes(cfg)
+
+	for _, path := range []string{"/api/labs/alpha/start", "/api/labs/alpha/check", "/api/labs/alpha/hint", "/api/labs/alpha/hypothesis", "/api/labs/alpha/stop"} {
+		req := httptest.NewRequest("POST", path, nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s with no session: status = %d, want 401 (body: %s)", path, rec.Code, rec.Body)
+			continue
+		}
+		if got := decodeJSONError(t, rec).Error; !strings.Contains(got, "not logged in") {
+			t.Errorf("%s: error = %q, want it to mention not being logged in", path, got)
+		}
 	}
 }

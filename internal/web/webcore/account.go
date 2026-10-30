@@ -57,6 +57,41 @@ func CurrentUser(cfg Config, r *http.Request) (account.User, bool) {
 	return u, true
 }
 
+// RequireSessionAPI resolves the current user or writes a 401 JSON
+// error; callers must return immediately when ok is false. Use this
+// only for routes that exist exclusively when cfg.AccountStore != nil
+// (e.g. internal/web/account) — for routes mounted regardless of
+// hosted mode (e.g. internal/web/actions), use RequireActionUser
+// instead, since this helper would 401 every request in local mode.
+func RequireSessionAPI(cfg Config, w http.ResponseWriter, r *http.Request) (account.User, bool) {
+	u, ok := CurrentUser(cfg, r)
+	if !ok {
+		WriteJSONError(w, http.StatusUnauthorized, "not logged in")
+	}
+	return u, ok
+}
+
+// RequireActionUser gates a route mounted regardless of hosted mode
+// (internal/web/actions). It returns ok=true in two cases: cfg.
+// AccountStore == nil (local/Pi mode — the returned User is the zero
+// value and callers must not use its ID) or a valid session is
+// present (the resolved account). It returns ok=false, after already
+// writing a 401 JSON error, only in the remaining case: hosted mode
+// with no valid session. CurrentUser alone can't express this — it
+// returns ok=false in the local-mode case too, which would 401 every
+// local request if reused here as-is.
+func RequireActionUser(cfg Config, w http.ResponseWriter, r *http.Request) (account.User, bool) {
+	if cfg.AccountStore == nil {
+		return account.User{}, true
+	}
+	u, ok := CurrentUser(cfg, r)
+	if !ok {
+		WriteJSONError(w, http.StatusUnauthorized, "not logged in")
+		return account.User{}, false
+	}
+	return u, true
+}
+
 // ProgressForRequest returns pf merged with the current request's
 // hosted account's synced attempts, if any (web-ui spec's
 // account-aware dashboard/roadmap scenarios). With no session, no

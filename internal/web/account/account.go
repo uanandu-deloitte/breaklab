@@ -9,16 +9,6 @@ import (
 	"breaklab/internal/web/webcore"
 )
 
-// requireSessionAPI resolves the current user or writes a 401 JSON
-// error; callers must return immediately when ok is false.
-func requireSessionAPI(cfg webcore.Config, w http.ResponseWriter, r *http.Request) (account.User, bool) {
-	u, ok := webcore.CurrentUser(cfg, r)
-	if !ok {
-		webcore.WriteJSONError(w, http.StatusUnauthorized, "not logged in")
-	}
-	return u, ok
-}
-
 // signupErrMessage maps a Store error to the text shown on the signup
 // form; anything else (a DB error) gets a generic message rather than
 // leaking internals.
@@ -104,7 +94,7 @@ func logoutAPIHandler(cfg webcore.Config) http.HandlerFunc {
 // accountAPIHandler returns the signed-in user's own account data.
 func accountAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, ok := requireSessionAPI(cfg, w, r)
+		u, ok := webcore.RequireSessionAPI(cfg, w, r)
 		if !ok {
 			return
 		}
@@ -121,7 +111,7 @@ type tokenPayload struct {
 // (design.md Decision 4's "shown once" pattern, same as a lab hint).
 func accountIssueTokenAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, ok := requireSessionAPI(cfg, w, r)
+		u, ok := webcore.RequireSessionAPI(cfg, w, r)
 		if !ok {
 			return
 		}
@@ -136,7 +126,7 @@ func accountIssueTokenAPIHandler(cfg webcore.Config) http.HandlerFunc {
 
 func accountRevokeTokenAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, ok := requireSessionAPI(cfg, w, r)
+		u, ok := webcore.RequireSessionAPI(cfg, w, r)
 		if !ok {
 			return
 		}
@@ -150,7 +140,7 @@ func accountRevokeTokenAPIHandler(cfg webcore.Config) http.HandlerFunc {
 
 func accountPublicProfileAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, ok := requireSessionAPI(cfg, w, r)
+		u, ok := webcore.RequireSessionAPI(cfg, w, r)
 		if !ok {
 			return
 		}
@@ -173,7 +163,7 @@ func accountPublicProfileAPIHandler(cfg webcore.Config) http.HandlerFunc {
 // matches exactly, same as the old handler's confirmation rule.
 func accountDeleteAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u, ok := requireSessionAPI(cfg, w, r)
+		u, ok := webcore.RequireSessionAPI(cfg, w, r)
 		if !ok {
 			return
 		}

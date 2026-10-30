@@ -22,6 +22,7 @@ import (
 // already know how to serve.
 func Routes(cfg Config) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", healthzHandler)
 	if cfg.FrontendDir != "" {
 		mux.Handle("GET /_astro/", frontendAssetHandler(cfg))
 		dashboard.RegisterRoutes(mux, cfg)
@@ -82,6 +83,14 @@ func Routes(cfg Config) http.Handler {
 // http.ServeFile still handles conditional requests (ETag/If-Modified-
 // Since) on top of this for anything that revalidates.
 const staticCacheControl = "private, max-age=3600"
+
+// healthzHandler is BreakLab's Kubernetes liveness/readiness probe
+// target: unconditional and dependency-free (no Docker, no
+// AccountStore, no frontend build needed), so probes never flap
+// because any of those happen to be unset or slow.
+func healthzHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 
 // staticAssetHandler serves one fixed, vendored static asset (a font or
 // vendored JS file) under cfg.TemplatesDir — always one path baked in

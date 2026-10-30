@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+STATE=/infra/state.json
+SRC=/infra/resources.yaml
+
+path=$(sed -n 's/^path: *//p' "$SRC")
+content=$(sed -n 's/^content: *//p' "$SRC")
+
+if jq -e --arg p "$path" '.managed | index($p) != null' "$STATE" >/dev/null; then
+  echo "$content" > "$path"
+  echo "applied: $path"
+else
+  echo "skipping $path: not in state, run with --import first"
+fi

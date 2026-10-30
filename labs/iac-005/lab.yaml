@@ -1,0 +1,41 @@
+id: iac-005
+title: Lockfiles and Crash Safety
+stage: iac
+difficulty: 1
+estimated_minutes: 15
+tags: [iac, scripting, linux]
+type: guided
+path: iac-fundamentals
+module: locking
+summary: infra-apply refuses to run because a lock file already exists — figure out whether that lock is protecting a real run or just leftover from one that crashed.
+objectives:
+  - recognize that a lock file only prevents concurrent runs if whatever creates it also reliably removes it
+  - distinguish a stale lock left behind by a crash from a lock legitimately held by a still-running process
+  - clear a stale lock safely and confirm the next apply actually runs and updates the real resource
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: infra-apply
+      why: Running it directly surfaces the exact refusal message, instead of guessing why nothing is happening.
+    - do: cat /var/run/infra/apply.lock
+      why: Shows the PID and timestamp the lock claims — a lock file only has teeth if that PID is actually still the one holding it.
+    - do: ps -p "$(sed -n 's/^PID=//p' /var/run/infra/apply.lock)"
+      why: Checks whether the PID recorded in the lock is a real, currently-running process — if it isn't, the lock can't be protecting anything.
+    - do: stat /var/run/infra/apply.lock
+      why: The lock's modification time shows how old it is — one left over from a run that should have finished long ago is the signature of a crash that skipped its own cleanup.
+    - do: rm /var/run/infra/apply.lock
+      why: Safe to remove only because you've already confirmed nothing is holding it — deleting a lock a live run actually depends on would reopen the exact race it exists to prevent.
+    - do: infra-apply
+      why: With the stale lock gone, this run can finally create its own lock, apply the change, and clean up after itself.
+    - do: cat /etc/release-notes.txt
+      why: Confirms the real resource now matches resources.yaml's declared content — proof the apply actually completed this time, not just that it stopped erroring.
+hints:
+  - "/var/run/infra/apply.lock holds a PID and a timestamp. A lock file is only legitimate if that PID is still actually running."
+  - "ps -p <the PID recorded in the lock> tells you, directly, whether this is a live run or a stale leftover from a crash."
+  - "Once you've confirmed the PID in the lock isn't running anything, removing the lock is safe — then infra-apply will finally succeed and write /etc/release-notes.txt."

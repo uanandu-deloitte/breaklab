@@ -1,0 +1,60 @@
+id: fake-green
+title: Deploy reports success but the old version is still live
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [cicd, git, deployment, chaos-engineering, blind-spots]
+prerequisites: [cicd-002]
+summary: The deploy hook printed "Deploy succeeded," but customers are still on the old release.
+loop:
+  learn: >
+    A deploy script that never checks its own exit codes can fail at any
+    step — clone, build, copy, activate — and keep running straight through
+    to a hardcoded success message at the end. "It printed success" is not
+    evidence of anything; the only trustworthy signal is the actual deployed
+    artifact. When a pipeline lies like this, the fix is to read what each
+    step actually did (logs, exit codes, the filesystem) rather than trust
+    its own self-report.
+  guided:
+    - do: cat /srv/app/current/VERSION
+      why: Confirms the real symptom directly — what's actually live right now, independent of what the hook claimed.
+    - do: cat /tmp/deploy.log
+      why: The hook redirects every step's real output here; this is where an actual failure shows up even though the script didn't check for it.
+    - do: cat /etc/deploy/deploy.conf
+      why: Shows where the hook is configured to build the new release — confirm this path is what you'd expect before checking whether it's usable.
+    - do: ls -ld "$RELEASES_DIR" && id deployer
+      why: The hook runs as the deployer user; if that user can't write to the releases directory, every step after that silently produces nothing while the script keeps going.
+    - do: ls -ld /srv/app
+      why: Even a correctly built release does nothing if deployer can't update the activation symlink that points /srv/app/current at it.
+    - do: Fix whichever path or permission is actually wrong (the releases directory, or the activation directory), then re-run the deploy hook and confirm VERSION updates.
+      why: The script's own success message won't reflect this — only reading VERSION after the rerun proves the fix worked.
+  practice:
+    task: >
+      Reason through each before revealing the answer.
+    questions:
+      - prompt: 'The hook printed "Deploy succeeded: v2.0.0" but v1.0.0 is still live. What does that tell you about this script?'
+        answer: It tells you the script doesn't verify its own result — the success message is unconditional text at the end, not a check against what's actually live. Trust the filesystem, not the script's own output.
+      - prompt: Why check deployer's write access to the releases directory and the activation directory separately, instead of just one?
+        answer: They're two independent failure points — a release can build correctly in the releases directory but still never go live if the symlink step to /srv/app/current fails, or vice versa. Each has to be verified on its own.
+      - prompt: Why is it safer to fix the permission or path problem and re-run the hook, rather than manually symlinking /srv/app/current to the right release?
+        answer: A manual symlink only patches this one deploy; the next real deploy hits the exact same broken permission or path and reports the same false success. Fixing the underlying access problem is what actually prevents a repeat.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - The hook printed "Deploy succeeded". Read /tmp/deploy.log inside the container for what actually happened during the deploy.
+  - This pipeline script doesn't check its own exit codes anywhere. A step can fail completely and the hook will still report success.
+variants:
+  - id: bad-releases-dir
+    script: variants/bad-releases-dir.sh
+    weight: 1
+    hints:
+      - Check /etc/deploy/deploy.conf. Can the deployer user actually write to RELEASES_DIR?
+  - id: bad-activation-perms
+    script: variants/bad-activation-perms.sh
+    weight: 1
+    hints:
+      - Look for the new release under /srv/releases — it may already be built correctly. Now check who can write to /srv/app.

@@ -1,0 +1,66 @@
+id: phantom-release
+title: It built, it shipped, it's still the old version
+stage: capstone
+difficulty: 5
+estimated_minutes: 40
+tags: [capstone, git, cicd]
+summary: A hotfix is in git, the build pipeline reported success, and the deployed artifact still behaves like the old version — there's more than one thing wrong here.
+loop:
+  learn: >
+    A commit being reachable somewhere in a repository's history only
+    proves it wasn't lost — it says nothing about whether the specific
+    branch or tag your pipeline actually builds from contains it.
+    Likewise, a build script exiting 0 and printing a cheerful log line
+    only proves the script didn't crash; if its cache-invalidation key or
+    the ref it was told to build from is wrong, it can report success
+    while shipping exactly the same stale content as before. Treat "the
+    fix is in git somewhere" and "the pipeline ran clean" as two separate
+    claims, each needing its own direct check against actual file
+    content, never two readings of the same fact.
+  guided:
+    - do: cd /srv/app-repo && git log --all --oneline --grep='HOTFIX'
+      why: Finds the hotfix commit by what it actually changed, not a memorized SHA — confirms it exists as a real, reachable commit somewhere before worrying about where.
+    - do: cat /opt/pipeline/BUILD_REF
+      why: Reveals which ref — a branch tip or a tag — the pipeline actually builds from, which isn't necessarily the branch you'd assume.
+    - do: git show $(cat /opt/pipeline/BUILD_REF):src/app.sh
+      why: Compares that ref's actual content against the hotfix commit's content directly, instead of trusting that "it's somewhere in the repo" means it's on the ref that matters.
+    - do: cat /opt/pipeline/build.sh
+      why: Shows exactly what the pipeline treats as its cache-invalidation key and which file that key is derived from — if it's not the real application source, a content change can go undetected.
+    - do: /opt/pipeline/build.sh && cat /srv/deployed/current-build.txt
+      why: Running it directly and reading its own output, plus what it actually deployed, shows whether it's genuinely rebuilding from current content or silently reusing a stale artifact.
+    - do: Fix each problem on its own terms — get the hotfix's content onto the ref the pipeline actually builds from (cherry-pick onto the right branch, or move a tag nothing else depends on yet), and separately correct whatever in the pipeline is stopping it from rebuilding from current content.
+      why: These are two unrelated failures in two different systems; fixing only one leaves check.sh still failing on the other half.
+    - do: bash check.sh
+      why: Re-verifies both halves independently against live content — the only way to confirm neither is still silently broken.
+  practice:
+    task: >
+      Think through these before revealing the answer.
+    questions:
+      - prompt: The hotfix commit shows up in `git log --all`, so it clearly exists. Does that mean it's actually going to be deployed?
+        answer: No — existing somewhere in history only proves the commit wasn't lost. What matters is whether it's reachable from the specific ref (branch tip or tag) the pipeline is actually configured to build from; a commit sitting on the wrong branch, or before a tag that was never moved, never gets built even though it's real and findable.
+      - prompt: build.sh exits 0 and prints "build complete" (or "reusing cached artifact") every time. What does that tell you about whether the deployed artifact is current?
+        answer: Nothing by itself — a clean exit only means the script didn't crash. If its cache key is derived from the wrong file, or it's building from a ref that doesn't have the fix, it can report success while shipping exactly the same stale artifact as before.
+      - prompt: After moving a tag or cherry-picking a commit onto the right branch, check.sh still fails. What should that prompt you to check, given there may be more than one cause?
+        answer: Check the build pipeline's own cache and ref logic independently, rather than re-diagnosing the git side again — a still-failing check after fixing one genuine cause doesn't mean that fix was wrong, it means the other, unrelated half is still broken.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - This incident has two independent causes — one in git history, one in the build pipeline — fixing only one won't make check.sh pass.
+  - cat /opt/pipeline/BUILD_REF to see which ref the pipeline actually builds from before assuming it's release's tip.
+variants:
+  - id: merged-wrong-branch-stale-cache
+    script: variants/merged-wrong-branch-stale-cache.sh
+    weight: 1
+    hints:
+      - git log --all --oneline --grep=HOTFIX will find the fix no matter which branch it actually landed on.
+      - Read /opt/pipeline/build.sh end to end — what file is its cache key actually derived from, and does that file ever change?
+  - id: unpushed-tag-points-old-commit
+    script: variants/unpushed-tag-points-old-commit.sh
+    weight: 1
+    hints:
+      - Compare git show v2.0.0:src/app.sh against git show release:src/app.sh — a tag doesn't move itself.
+      - Moving a tag that's already been "released" is a real tradeoff — here nothing else depends on v2.0.0 yet, so re-pointing it is safe.

@@ -1,0 +1,33 @@
+id: web-002
+title: Build a Reverse Proxy
+stage: networking
+difficulty: 1
+estimated_minutes: 15
+tags: [networking, web-servers, nginx]
+type: guided
+path: web-servers
+module: nginx
+summary: nginx is installed and a backend is already running, but nginx still only serves its own default page — wire the two together.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: ss -ltnp
+      why: Confirms the backend is really listening on its own port, independent of nginx, before touching any config.
+    - do: "edit /etc/nginx/sites-available/default to add: location / { proxy_pass http://127.0.0.1:8090; proxy_set_header Host $host; }"
+      why: proxy_pass is the single directive that forwards requests to the backend; forwarding the Host header keeps the backend's view of the request consistent with what the client sent.
+    - do: nginx -t
+      why: Validates syntax before reloading, so a typo fails safely instead of taking down a server that was working.
+    - do: nginx -s reload
+      why: Applies the new config to the already-running nginx process without restarting it.
+    - do: curl http://localhost:8080/
+      why: Confirms requests to nginx are now proxied through to the backend's content.
+hints:
+  - nginx's site config lives at /etc/nginx/sites-available/default — a location block needs a proxy_pass directive pointing at the backend's local port.
+  - "proxy_pass alone is enough to forward the request, but add proxy_set_header Host $host; too so the backend sees the original request's intent."
+  - "Useful commands: ss -ltnp (confirm the backend's real port), nginx -t (validate syntax before reloading), nginx -s reload (apply the new config without restarting)."

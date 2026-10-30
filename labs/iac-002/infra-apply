@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SRC=/infra/resources.yaml
+
+path=$(sed -n 's/^path: *//p' "$SRC")
+desired=$(sed -n 's/^content: *//p' "$SRC")
+
+current=""
+[ -f "$path" ] && current=$(cat "$path")
+
+if [ "${1:-}" = "--plan" ]; then
+  if [ "$current" = "$desired" ]; then
+    echo "no changes"
+  else
+    echo "would change $path from '$current' to '$desired'"
+  fi
+  exit 0
+fi
+
+if [ "$current" = "$desired" ]; then
+  echo "no changes: $path already matches"
+else
+  echo "$desired" > "$path"
+  echo "applied: $path"
+fi

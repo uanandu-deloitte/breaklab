@@ -1,0 +1,65 @@
+id: wrong-artifact-promoted
+title: The pipeline promoted "prod" and shipped staging
+stage: cicd
+difficulty: 3
+estimated_minutes: 25
+tags: [cicd, deployment, artifacts]
+prerequisites: [cicd-007]
+summary: The pipeline logged "promoted prod build" with no error, and production is now running a staging checkout flow.
+loop:
+  learn: >
+    A promotion step is only as trustworthy as whatever mechanism decides
+    which artifact counts as "prod" — and that mechanism can fail silently
+    in two very different ways. If it's config-driven (a variable naming the
+    exact artifact file), a copy-paste or typo in that config can point it
+    at a staging build with no error, because the tool has no way to know
+    the filename it was given is the wrong one. If it's heuristic-driven (a
+    glob plus a sort, picking "whatever was built most recently"), it has no
+    concept of prod versus staging at all — it just finds the right-looking
+    files and ships the one that sorts last, which depends entirely on
+    naming, not on intent. Either way, "no error" doesn't mean "correct" —
+    only a source of truth that actually encodes what prod is supposed to be
+    can tell you that.
+  guided:
+    - do: cat /srv/artifacts/PROD_LATEST
+      why: Find the one file that's supposed to be the actual source of truth for what prod currently is — compare everything else against this, not against assumptions.
+    - do: cat /srv/app/live/CONTENT
+      why: See what's actually live right now, so you have a concrete "before" to compare against whatever promote is about to do (or just did).
+    - do: cat /usr/local/bin/promote
+      why: Read exactly how the promotion step decides which artifact is "prod" — a config variable it sources, or a glob-and-sort heuristic with no notion of prod versus staging at all.
+    - do: cat /etc/deploy/promote.conf 2>/dev/null
+      why: If promote is config-driven, check whether the artifact name it's pointed at is actually the one PROD_LATEST says is current, not just a plausible-looking filename.
+    - do: ls -la /srv/artifacts/
+      why: See every artifact that exists and how their names sort — if promote uses a "most recent by filename" heuristic, this tells you exactly which one it would pick and whether that happens to be wrong.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: A config file names an exact artifact filename to promote, and that filename belongs to a staging build. Why does the promotion tool not catch this itself?
+        answer: The tool only checks that the named file exists, not what it semantically is — it has no independent way to know "app-staging-43.tar" isn't meant for prod, so a config error pointing at the wrong filename produces a clean, errorless run of the wrong artifact.
+      - prompt: A promote script replaced config-driven selection with `ls app-*.tar | sort | tail -n1`. Why does this silently break the moment staging and prod artifacts are built in the same release cycle?
+        answer: Alphabetical sort has no concept of "prod" versus "staging" — it only knows string order, and "staging" sorts after "prod" alphabetically, so whenever both exist for the same build number, the heuristic picks the staging artifact every time, regardless of which one is actually meant to go live.
+      - prompt: Why is PROD_LATEST — a file that just names the current prod artifact — more trustworthy here than either the config variable or the glob/sort heuristic?
+        answer: It's the one piece of state whose entire job is recording which artifact is prod, set at the point the build was tagged — unlike a config value (which can be mistyped) or a sort order (which only reflects filenames), it's the actual source of truth promote should be reading from.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - /srv/artifacts/PROD_LATEST names the artifact that's actually supposed to be live right now. Compare it against what's really in /srv/app/live.
+  - Read /usr/local/bin/promote. How does it actually decide which artifact in /srv/artifacts is "prod"?
+variants:
+  - id: config-names-wrong-artifact
+    script: variants/config-names-wrong-artifact.sh
+    weight: 1
+    hints:
+      - promote reads /etc/deploy/promote.conf for which artifact to deploy. Does PROD_ARTIFACT actually name a prod-tagged file?
+  - id: glob-latest-wins
+    script: variants/glob-latest-wins.sh
+    weight: 1
+    hints:
+      - This promote no longer reads any config at all — it's picking an artifact some other way. Look at exactly how it sorts /srv/artifacts/app-*.tar.
+      - Alphabetically, staging sorts after prod. A "most recent by filename" heuristic doesn't know that.

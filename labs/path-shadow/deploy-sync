@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Reads the released version out of release.json and records it as the
+# "active" deployed version. Relies on whatever `jq` resolves to on
+# $PATH at the time it runs.
+version=$(jq -r '.version' /etc/app/release.json)
+echo "$version" > /var/lib/app/active-version.txt

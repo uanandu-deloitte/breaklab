@@ -1,0 +1,35 @@
+id: lnx-010
+title: HTTP 500 Investigation
+stage: linux
+difficulty: 2
+estimated_minutes: 25
+tags: [linux, text-processing]
+type: practice
+path: linux-fundamentals
+module: text-processing
+summary: Operations needs the client IP generating the most server errors — build a pipeline that finds it, not a one-off manual count.
+objectives:
+  - combine grep/awk, sort, and uniq into a single reusable pipeline
+  - redirect and inspect command output without editing the source data
+  - write a script whose answer doesn't depend on input line order
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: awk '$5 == 500 {print $1}' /workspace/access.log
+      why: Pulls out just the client-IP column for 500-status lines, given this log's fixed column layout.
+    - do: awk '$5 == 500 {print $1}' /workspace/access.log | sort | uniq -c | sort -rn | head -1
+      why: sort | uniq -c counts how many times each IP repeats, and sort -rn | head -1 picks the single most frequent one, highest count first — a pipeline that re-derives the answer instead of a count typed in by eye.
+    - do: chmod +x /workspace/top-500-ip.sh
+      why: The check runs the script directly, so it needs its executable bit set once the pipeline above is written into it.
+    - do: shuf /workspace/access.log | awk '$5 == 500 {print $1}' | sort | uniq -c | sort -rn | head -1
+      why: Reshuffling the input and getting the same answer confirms the pipeline computes the result from the data itself, not from line order — exactly what the check verifies.
+hints:
+  - You need a count of 500 responses grouped by client IP — that's a job for awk, sort, and uniq -c.
+  - "awk '$5 == 500 {print $1}' access.log pulls out just the IP column for 500-status lines, given this log's columns."
+  - "sort | uniq -c | sort -rn | head -1 gives you the single most frequent value, highest count first."

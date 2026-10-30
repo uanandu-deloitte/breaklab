@@ -1,0 +1,33 @@
+id: net-002
+title: Who Owns the Port?
+stage: networking
+path: networking-fundamentals
+module: addresses-ports-transport
+difficulty: 1
+estimated_minutes: 15
+tags: [networking, web-servers, break-fix]
+type: break-fix
+summary: The web server won't start, but the process actually sitting on port 80 isn't nginx at all.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: ss -ltnp
+      why: Lists every listening TCP socket and the process that holds it, showing exactly what's sitting on port 80 right now — don't assume it's nginx.
+    - do: ps -p <pid> -o cmd=
+      why: Shows that process's full command line, making it obvious whether it's a leftover decoy or the real nginx process.
+    - do: kill <pid>
+      why: Stops precisely the process holding port 80 — not anything else — so the real web server can bind it afterward.
+    - do: nginx
+      why: nginx isn't running yet in this container; starting it is what lets it finally claim the now-free port 80.
+    - do: curl http://localhost:8080/
+      why: Confirms the real page is being served now that nginx owns port 80.
+hints:
+  - Don't assume the process on port 80 is the one you think should be there — confirm it.
+  - "ss -ltnp shows which process owns every listening port; ps aux shows the full command line."
+  - Stop only the process that's actually in the way, then start the real web server.

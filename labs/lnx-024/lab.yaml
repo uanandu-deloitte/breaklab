@@ -1,0 +1,33 @@
+id: lnx-024
+title: Write a Health Script
+stage: linux
+difficulty: 2
+estimated_minutes: 25
+tags: [linux, shell-scripting, monitoring]
+type: project
+path: linux-fundamentals
+module: shell-scripting
+summary: Write a health-check script that verifies a process, a listening port, an HTTP endpoint, and disk usage — and reports clearly either way.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: pgrep -f worker.sh
+      why: Confirms a background process matching this pattern is actually alive, independent of whether it's network-reachable yet — the first of four independent checks the script needs.
+    - do: '(exec 3<>/dev/tcp/127.0.0.1/80) 2>/dev/null && echo listening'
+      why: bash's own /dev/tcp/<host>/<port> redirection confirms a listener exists on port 80 without needing curl or ss installed.
+    - do: curl -s -o /dev/null -w '%{http_code}' http://localhost:80/healthz
+      why: Confirms the full HTTP round trip actually works, not just that something is listening.
+    - do: du -sh /var/log/app
+      why: Checks disk usage under the path the app writes to — the failure mode invisible to the process, port, and HTTP checks above until it's too late.
+    - do: 'pgrep -f worker.sh >/dev/null || { echo "FAIL: worker process not running"; exit 1; }'
+      why: Exiting non-zero the moment a single check fails, with one clear line naming what failed, is what makes the script's exit code trustworthy without reading its output.
+hints:
+  - "pgrep -f lets you check for a background process by matching its command line, not just its exact binary name."
+  - "A port is listening without a full HTTP round trip: bash's own /dev/tcp/<host>/<port> redirection, or ss -ltn, both work without curl."
+  - "Keep the script's output to one line per outcome, and make sure it actually exits non-zero on failure — a script that always exits 0 is worse than no script at all."

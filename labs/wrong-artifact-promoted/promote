@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+. /etc/deploy/promote.conf
+ARTIFACT="/srv/artifacts/$PROD_ARTIFACT"
+if [ ! -f "$ARTIFACT" ]; then
+  echo "promote: artifact $ARTIFACT not found" >&2
+  exit 1
+fi
+rm -rf /srv/app/live
+mkdir -p /srv/app/live
+tar -xf "$ARTIFACT" -C /srv/app/live
+echo "promote: deployed $PROD_ARTIFACT to /srv/app/live"

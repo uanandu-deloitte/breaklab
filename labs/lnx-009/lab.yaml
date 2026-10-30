@@ -1,0 +1,40 @@
+id: lnx-009
+title: Read the Access Log
+stage: linux
+difficulty: 1
+estimated_minutes: 20
+tags: [linux, text-processing]
+type: guided
+path: linux-fundamentals
+module: text-processing
+summary: A web access log just landed on this host — pull the basic facts out of it with the standard text-processing toolkit, not by eyeballing it.
+objectives:
+  - inspect the start and end of a file without opening the whole thing
+  - count lines and filter by column with wc, cut, and grep/awk
+  - tally occurrences with sort and uniq to find the most frequent value
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: head -1 /workspace/access.log
+      why: Prints just the first line without scrolling through the whole file — its timestamp is FIRST_TIMESTAMP.
+    - do: tail -1 /workspace/access.log
+      why: Prints just the last line — its timestamp is LAST_TIMESTAMP.
+    - do: wc -l /workspace/access.log
+      why: Counts every line in the file — that count is TOTAL_REQUESTS.
+    - do: cut -d' ' -f5 /workspace/access.log
+      why: Pulls out column 5, the status code, given this log's fixed column layout — the column you need to classify by status.
+    - do: cut -d' ' -f5 /workspace/access.log | grep -c '^2'
+      why: Filtering the extracted status column to lines starting with 2 and counting them gives COUNT_2XX — the same technique works for 4XX and 5XX.
+    - do: cut -d' ' -f4 /workspace/access.log | sort | uniq -c | sort -rn | head -1
+      why: Extracting the path column, then sort | uniq -c | sort -rn ranks values by how often they appear — the top line is MOST_FREQUENT_PATH.
+hints:
+  - "head -1 and tail -1 give you the first and last line without scrolling through the whole file."
+  - "wc -l counts lines; cut -d' ' -f5 pulls out the status-code column given this log's layout."
+  - "grep -c '^[245][0-9][0-9]$' style matching on the extracted status column counts a status class; sort | uniq -c | sort -rn finds the most frequent path."
+

@@ -1,0 +1,39 @@
+id: lnx-002
+title: Find It Yourself
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, orientation]
+type: practice
+path: linux-fundamentals
+module: linux-orientation
+summary: You're on a restricted host with no cheat sheet — use the shell's own documentation to find the options you need, then use them.
+objectives:
+  - use --help and man to discover a command's options instead of guessing
+  - create a hidden file and a nested directory tree in one operation each
+  - identify and use the flag that makes cp ask before overwriting
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: "ls --help"
+      why: Lists every option ls accepts, including the short flag that reveals hidden dotfiles — scan for anything mentioning "hidden" or "all".
+    - do: "mkdir --help"
+      why: Documents the flag that creates missing parent directories in one call, instead of making each directory level by hand.
+    - do: "cp --help"
+      why: Documents the flag that makes cp prompt for confirmation before overwriting an existing file.
+    - do: touch /workspace/.hidden-check
+      why: A leading dot is what makes a file hidden from a plain ls — this creates the hidden file the check expects.
+    - do: mkdir -p /workspace/deep/nested/tree
+      why: The -p flag you just found in mkdir --help creates all three missing parent directories in a single command.
+    - do: cp -i /opt/fixtures/readme.txt /workspace/fixture-copy.txt
+      why: The -i flag you just found in cp --help makes the copy interactive, satisfying the task's "use the option you discovered" requirement.
+hints:
+  - "ls --help and man ls both describe every option ls accepts — including the one for hidden files."
+  - "mkdir --help documents the flag that creates missing parent directories in one call."
+  - "cp --help documents the flag that prompts before overwriting an existing file."

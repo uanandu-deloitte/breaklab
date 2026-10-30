@@ -1,0 +1,40 @@
+id: git-002
+title: The Staging Area
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, staging]
+type: guided
+path: version-control
+module: staging
+summary: Two uncommitted changes are sitting in the same working tree — stage and commit only the one that belongs, and leave the other alone.
+objectives:
+  - tell unstaged changes (git diff) apart from staged changes (git diff --staged)
+  - stage one specific tracked file's changes without staging everything
+  - commit with an exact message and confirm an unrelated new file stays untracked
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git status
+      why: Shows config.yaml under "Changes not staged for commit" and scratch-notes.txt under "Untracked files" — confirming which is modified-but-tracked and which was never committed.
+    - do: git diff
+      why: Shows config.yaml's unstaged change directly, so you confirm it's the timeout edit before staging anything.
+    - do: git add config.yaml
+      why: Stages exactly that file's change — scratch-notes.txt is untouched and stays untracked.
+    - do: git diff --staged
+      why: Shows exactly what would be committed right now, confirming only the timeout change is staged.
+    - do: git commit -m "Increase API timeout to 30s"
+      why: Commits the staged change alone, with the exact message required.
+    - do: git status
+      why: Confirms scratch-notes.txt still shows as untracked (??) — it was never staged or committed.
+hints:
+  - "git status shows both the modified tracked file and the new untracked file — read it before staging anything."
+  - "git diff shows unstaged changes; git diff --staged shows what's already staged. They answer different questions."
+  - "git add <file> stages exactly that file — don't reach for git add . when only one file should be committed."
+  - "git commit -m \"<message>\" sets the commit message in one step; match the requested message exactly."

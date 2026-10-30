@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+version=$(cat /infra/MODULE_VERSION 2>/dev/null || echo "")
+module="/infra/modules/render-${version}.sh"
+if [ ! -f "$module" ]; then
+  echo "infra-apply: module version '$version' not found, leaving deployed config unchanged" >&2
+  exit 0
+fi
+source "$module"
+message=$(sed -n 's/^message: *//p' /infra/site.yaml)
+mkdir -p /etc/site
+render "$message" > /etc/site/deployed.conf
+echo "applied with module $version"

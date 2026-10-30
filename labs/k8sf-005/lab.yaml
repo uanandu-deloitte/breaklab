@@ -1,0 +1,42 @@
+id: k8sf-005
+title: Readiness Probes Gate Traffic, Not Liveness
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, workloads]
+type: guided
+path: k8s-fundamentals
+module: readiness-and-liveness
+summary: A catalog-api Pod is Running and never crashing, yet its Service has no backends to send traffic to — find out why Running isn't the same claim as Ready.
+objectives:
+  - distinguish a Pod's Running status from its Ready condition
+  - confirm a Service excludes a NotReady Pod via kubectl get endpoints
+  - read a live readinessProbe's configuration directly from the Deployment, not a manifest file
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pods -o wide
+      why: "STATUS=Running only means the container started and hasn't exited — the READY column (e.g. 0/1) is the separate, independent claim that it's passing its readiness probe."
+    - do: kubectl describe pod -l app=catalog-api
+      why: The Events section prints the readiness probe's own failure (connection refused, 404, timeout) — the exact reason, not a guess.
+    - do: kubectl get endpoints catalog-api
+      why: An empty ADDRESSES column is the direct, observable consequence — the Service has zero backends to route to, confirmed independently of reading Pod status at all.
+    - do: kubectl get deployment catalog-api -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
+      why: Reads the probe's configured path and port exactly as deployed, rather than assuming it matches what the container actually serves.
+    - do: kubectl exec deploy/catalog-api -- wget -qO- localhost:8080/
+      why: Confirms what the container is actually serving on its real port, so you can compare that against the probe's path and see exactly where they diverge.
+hints:
+  - "kubectl get pods -o wide shows READY as a separate column from STATUS — Running and Ready answer different questions."
+  - "kubectl get endpoints <service> shows an empty ADDRESSES list the moment a Pod stops passing its readiness probe, with no error logged anywhere else."
+  - "kubectl get deployment <name> -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}' reads the probe's real configuration, rather than assuming it from a manifest on disk."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

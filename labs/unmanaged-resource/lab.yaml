@@ -1,0 +1,61 @@
+id: unmanaged-resource
+title: infra-apply keeps skipping it
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+summary: The config source was updated and the apply tool ran clean, but nothing on disk actually changed.
+prerequisites: [iac-008]
+loop:
+  learn: >
+    Many apply tools only touch resources they've been explicitly told to
+    manage — usually tracked in a state file as a list of paths — and
+    deliberately skip anything not on that list, printing a quiet notice
+    instead of an error. That's a safety feature (it stops the tool from
+    clobbering things it doesn't own), but it means a resource can look
+    completely configured in your source of truth and still never get
+    applied, for either of two reasons: it was never added to the managed
+    list at all, or it's on the list under a path that doesn't exactly
+    string-match the one the apply step actually targets.
+  guided:
+    - do: infra-apply
+      why: Run it yourself and read its exact output — a "skipping ... not in state" message versus total silence are two different problems with two different next steps.
+    - do: cat /infra/resources.yaml
+      why: Confirm the source of truth actually has the path and value you expect — rule out a bad source edit before blaming the apply mechanism.
+    - do: cat /infra/state.json
+      why: See the exact list of paths the tool considers managed — this is the gate the resource has to pass before anything gets written.
+    - do: "diff <(sed -n 's/^path: *//p' /infra/resources.yaml) <(jq -r '.managed[]' /infra/state.json)"
+      why: Directly compare the resource's declared path against every entry in the managed list, character for character — a trailing slash or any other tiny difference fails an exact-match check even though the paths look the same at a glance.
+    - do: cat /etc/motd.conf
+      why: Confirm what's actually on disk right now, so you know definitively whether the apply step has ever successfully written this resource at all.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: "infra-apply exits 0 and prints \"skipping /etc/motd.conf: not in state, run with --import first\" — is this a bug in the tool?"
+        answer: No — this is the tool working as designed. It deliberately refuses to touch resources it hasn't been told to manage, as a safety mechanism against clobbering unrelated files; the actual problem is that the resource was never added to (or correctly matches) the managed list.
+      - prompt: "/infra/state.json lists \"/etc/motd.conf/\" (trailing slash) but resources.yaml declares the path as \"/etc/motd.conf\" (no slash). Why does this fail even though both obviously refer to the same file?"
+        answer: An exact string-match gate (like `jq -e '.managed | index($p)'`) compares the two strings literally, not semantically — a trailing slash makes them different strings even though a human (or the filesystem) would treat them as the same path.
+      - prompt: Why would simply re-running infra-apply after fixing resources.yaml's value not be enough to fix this, if the path itself was never in state.json to begin with?
+        answer: The apply step's gate check happens before it looks at the value at all — if the path isn't in the managed list, the tool skips the resource regardless of what value resources.yaml holds, so the path has to be added to state.json before any value change will ever take effect.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - infra-apply isn't erroring, so start by reading exactly what it prints when you run it.
+  - infra-apply only touches a resource whose exact path is listed in /infra/state.json's "managed" array.
+variants:
+  - id: never-imported
+    script: variants/never-imported.sh
+    weight: 1
+    hints:
+      - Compare /infra/resources.yaml's path against every entry in /infra/state.json.
+  - id: path-mismatch
+    script: variants/path-mismatch.sh
+    weight: 1
+    hints:
+      - The path is in state.json, but infra-apply does an exact string match. Check it character for character.

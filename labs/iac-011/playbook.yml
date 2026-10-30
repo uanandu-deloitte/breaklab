@@ -1,0 +1,6 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: ensure max_connections is configured
+      shell: echo "max_connections=200" >> /etc/app/app.conf

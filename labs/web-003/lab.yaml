@@ -1,0 +1,37 @@
+id: web-003
+title: 502 Bad Gateway
+stage: networking
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, web-servers, nginx]
+type: break-fix
+path: web-servers
+module: nginx
+summary: nginx is configured to reverse-proxy to a backend, but every request now comes back 502 — nginx is reaching for a port nothing is listening on.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl -i http://localhost:8080/
+      why: Reproduces the 502 — confirms nginx itself is up and responding, just failing to reach its upstream.
+    - do: cat /var/log/nginx/error.log
+      why: Records the exact address nginx tried and the reason it failed, usually a connection refused while connecting to upstream.
+    - do: ss -ltnp
+      why: Shows ground truth of what port the backend is actually listening on right now, independent of what any config claims.
+    - do: grep proxy_pass /etc/nginx/sites-available/default
+      why: Shows what nginx currently believes the backend's address is, so it can be compared against the backend's real port.
+    - do: edit /etc/nginx/sites-available/default to correct the proxy_pass port to match the backend's real port
+      why: The fix is always to point nginx's config at where the backend actually is — never to move the backend to match a wrong config.
+    - do: nginx -t && nginx -s reload
+      why: Validates the fix before applying it, then applies it without dropping the listening socket.
+    - do: curl http://localhost:8080/
+      why: Confirms the proxy itself now serves the backend's content, not just that the backend works when hit directly.
+hints:
+  - "A 502 from nginx means nginx itself is fine and listening -- it's the upstream it's trying to reach that's refusing the connection. Check /var/log/nginx/error.log for the exact address it tried."
+  - "Find out what port the backend is actually listening on (ss -ltnp), then compare that against the proxy_pass address in /etc/nginx/sites-available/default."
+  - "Fix nginx's proxy_pass port to match the backend's real port, then nginx -t && nginx -s reload -- test by curling nginx's own exposed port, not the backend directly."

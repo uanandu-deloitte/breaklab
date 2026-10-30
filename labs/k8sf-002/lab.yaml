@@ -1,0 +1,42 @@
+id: k8sf-002
+title: Deployments and Rollouts
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, workloads]
+type: guided
+path: k8s-fundamentals
+module: workloads
+summary: A healthy Deployment is running one image tag — update it to a new tag the way a real rollout works, and confirm every Pod actually picked it up.
+objectives:
+  - update a running Deployment's container image with kubectl set image
+  - distinguish a rollout that's in progress from one that's actually complete
+  - confirm live Pod state matches the image you intended to ship, not just the Deployment spec
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get deployment web -o jsonpath='{.spec.template.spec.containers[0].image}'
+      why: Confirms the image tag currently running, read live, before you change anything.
+    - do: kubectl get pods -l app=web -o wide
+      why: Confirms both existing Pods are Running before you start a rollout, so you have a clean baseline to compare against afterward.
+    - do: kubectl set image deployment/web web=nginx:1.27-alpine
+      why: Changes the Pod template's image for the container named web — this only updates the Deployment's spec, instantly; no Pod has changed yet.
+    - do: kubectl rollout status deployment/web
+      why: Blocks until the rollout actually finishes (or reports a problem) — the authoritative way to know it's done, not just that the command was accepted.
+    - do: kubectl get pods -l app=web -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{.spec.containers[0].image}{"\n"}{end}'
+      why: Reads each live Pod's actual container image directly — the only way to be certain every Pod, not just the Deployment's spec, reflects the new tag.
+hints:
+  - "kubectl set image deployment/<name> <container>=<image:tag> only changes the Deployment's Pod template — the rollout that replaces old Pods with new ones happens afterward, on its own."
+  - "kubectl rollout status deployment/<name> blocks until the rollout finishes (or fails) and tells you which outcome happened — don't assume it's done just because the command you ran returned."
+  - "The Deployment's spec always reflects the new image immediately; only kubectl get pods tells you whether every live Pod has actually been replaced yet."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

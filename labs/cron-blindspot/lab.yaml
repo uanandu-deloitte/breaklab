@@ -1,0 +1,62 @@
+id: cron-blindspot
+title: Last night's backup is stale
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, cron, scripting]
+summary: The backup script works perfectly when run by hand, but last night's scheduled run produced something stale or wrong.
+loop:
+  learn: >
+    cron runs jobs in a drastically smaller environment than an interactive
+    login shell: a minimal PATH that may not include wherever a script
+    lives, and a working directory that's always the user's home, never the
+    script's own location. A script that relies on either of those —
+    calling a command by bare name instead of full path, or using a
+    relative path for its data directory — can work flawlessly when you
+    run it by hand from the right directory with your normal PATH, and
+    fail or silently do the wrong thing the moment cron invokes it under
+    its own minimal environment. "It works when I run it" is not evidence
+    the cron job will work.
+  guided:
+    - do: crontab -u opsuser -l
+      why: Read the exact scheduled command — specifically whether it calls the script by bare name or by an absolute path.
+    - do: cat /var/log/backup.log
+      why: Check what the actual scheduled run produced — a "command not found" or unexpected path error here tells you cron's environment is the problem, not the script's logic.
+    - do: cat /usr/local/bin/backup.sh
+      why: Read the script itself for any path it assumes is relative to the current directory, rather than hardcoded to an absolute location.
+    - do: env -i HOME=/home/opsuser LOGNAME=opsuser PATH=/usr/bin:/bin SHELL=/bin/sh sh -c 'backup.sh'
+      why: Reproduce cron's actual minimal environment and working directory by hand — this surfaces exactly the same failure a real cron run would hit, instead of your full interactive shell's PATH and cwd masking it.
+    - do: 'crontab -u opsuser -l | sed "s#[^ ]*backup\.sh#/usr/local/bin/backup.sh#" | crontab -u opsuser -'
+      why: If the crontab entry itself is the problem, rewrite it to call the script by its full absolute path so cron's limited PATH can't matter.
+  practice:
+    task: >
+      Before touching the real incident below, reason through why "it works
+      when I run it" doesn't prove the cron job will work, then reveal the
+      answer.
+    questions:
+      - prompt: Running `backup.sh` by hand from /usr/local/bin works fine, but the same bare command fails under cron. Why?
+        answer: Because your interactive shell's PATH includes /usr/local/bin (or you're already in that directory), while cron runs jobs with a much smaller PATH that may not include it — so the exact same bare command resolves fine in your shell and fails as "command not found" under cron.
+      - prompt: A script has DATA_DIR=data (a relative path). Why does this work when you cd into the script's directory and run it, but fail under cron?
+        answer: Because cron always invokes jobs with the user's home directory as the current working directory, never the directory the script lives in — a relative path resolves against wherever you happened to be standing, which differs between your manual test and cron's real invocation.
+      - prompt: What's the one fix that makes both the PATH problem and the working-directory problem impossible to hit again?
+        answer: Using absolute paths everywhere — a full path to the script in the crontab entry, and full paths for any directories or files the script itself reads or writes, so neither cron's limited PATH nor its home-directory cwd can change the outcome.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - The backup script works fine when you run it yourself. Check what's actually scheduled with crontab -u opsuser -l.
+  - "cron runs jobs with a much smaller environment than your login shell: a minimal PATH, and the job's working directory is always the user's home, never wherever the script lives."
+variants:
+  - id: bare-command
+    script: variants/bare-command.sh
+    weight: 1
+    hints:
+      - Check /var/log/backup.log. Does the crontab entry use an absolute path to the script, or just its name?
+  - id: relative-path
+    script: variants/relative-path.sh
+    weight: 1
+    hints:
+      - The crontab entry itself looks fine. Read backup.sh — does it assume anything about the current directory?

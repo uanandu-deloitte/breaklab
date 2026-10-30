@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+metric=$(sed -n 's/^metric: *//p' /etc/alerts/rules.yaml)
+op=$(sed -n 's/^op: *//p' /etc/alerts/rules.yaml | tr -d '"')
+threshold=$(sed -n 's/^threshold: *//p' /etc/alerts/rules.yaml)
+value=$(jq -r --arg m "$metric" '.[$m]' /var/lib/metrics/current.json)
+
+fire=0
+case "$op" in
+  ">")  if [ "$value" -gt "$threshold" ]; then fire=1; fi ;;
+  ">=") if [ "$value" -ge "$threshold" ]; then fire=1; fi ;;
+  "<")  if [ "$value" -lt "$threshold" ]; then fire=1; fi ;;
+  "<=") if [ "$value" -le "$threshold" ]; then fire=1; fi ;;
+esac
+
+if [ "$fire" = "1" ]; then
+  echo "$(date -u +%FT%TZ) ALERT ${metric}=${value} breached ${op} ${threshold}" >> /var/log/alerts.log
+fi

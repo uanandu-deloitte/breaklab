@@ -1,0 +1,66 @@
+id: selector-mismatch
+title: Orders Service stopped routing after a cleanup pass
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, networking, chaos-engineering, blast-radius]
+summary: The orders Pod is Running and Ready, but every request through the orders Service times out — the Service can't find it, or finds it on the wrong port.
+prerequisites: [k8sf-006]
+loop:
+  learn: >
+    A Service never talks to a Pod directly by name — it matches its
+    spec.selector against Pod labels to build an Endpoints list, then
+    forwards each connection from its own port to each backend's
+    targetPort. A selector that drifts from the Pod template's labels,
+    even by one character, leaves the Service with zero Endpoints and
+    nothing to send traffic to. A selector that's fine but a targetPort
+    that doesn't match what the container actually listens on leaves the
+    Service with real Endpoints that simply refuse every connection. Both
+    look identical from a client's point of view ("the Service is
+    broken"), so the fix is to check Endpoints first — its presence or
+    absence tells you immediately which of the two problems you have.
+  guided:
+    - do: kubectl get pods -l app=orders -o wide
+      why: Confirm the Pod itself is Running and Ready before suspecting the Service layer at all.
+    - do: kubectl get endpoints orders
+      why: Zero addresses means the selector matches no Pod's labels; one or more addresses means the selector is fine and the problem is downstream, in the port mapping.
+    - do: kubectl get pod -l app=orders --show-labels
+      why: Compare the Pod's actual labels character-for-character against what the Service is supposed to be selecting for.
+    - do: kubectl get svc orders -o jsonpath='{.spec.selector}{"\n"}{.spec.ports}{"\n"}'
+      why: Read the Service's live selector and port/targetPort pair exactly as configured in the cluster, not as assumed from a manifest file.
+    - do: kubectl run probe --rm -it --image=busybox:1.36 --restart=Never -- wget -qO- orders.default.svc:80
+      why: Tests the Service end to end from inside the cluster, isolating whether the failure is in routing (selector) or in reaching the app once routed (port).
+    - do: kubectl patch service orders -p '<corrected selector or targetPort>'
+      why: Endpoints told you which half is broken; the fix is always a single-field patch to whichever side drifted from the Pod's real labels or real listening port.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each signal
+      on its own, then reveal the answer.
+    questions:
+      - prompt: kubectl get endpoints orders returns zero addresses. Does that mean the orders Pod is unhealthy?
+        answer: Not necessarily — it means no Pod's labels currently match the Service's selector. The Pod can be fully Running and Ready; Endpoints is a label-matching join, with readiness as a second filter on top.
+      - prompt: kubectl get endpoints orders shows one address. Does that guarantee traffic will reach the application correctly?
+        answer: No — an address in Endpoints only proves the selector matched a Ready Pod. It says nothing about whether the Service's targetPort matches the port the container actually listens on.
+      - prompt: Why does a selector typo produce a hanging timeout, while a wrong targetPort produces a fast connection failure?
+        answer: With zero Endpoints there's no backend to forward to at all, so the connection just waits until the client's own timeout fires. With a wrong targetPort there is a real (if wrong) destination, so the connection reaches it and gets actively refused much faster.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Troubleshoot inside-out - confirm the Pod is healthy on its own first, separately from the Service.
+  - Do not blame the client while the Service itself has no reachable backend; compare its config against the Pod's.
+variants:
+  - id: wrong-selector
+    script: variants/wrong-selector.sh
+    weight: 1
+    hints:
+      - Compare the Service's selector with the Pod's actual labels.
+  - id: wrong-target-port
+    script: variants/wrong-target-port.sh
+    weight: 1
+    hints:
+      - The Service has endpoints, but compare its targetPort against the port the container actually listens on.

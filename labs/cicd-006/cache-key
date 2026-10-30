@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Prints the current dependency cache key.
+echo "deps-v1"

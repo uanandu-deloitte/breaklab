@@ -1,0 +1,39 @@
+id: lnx-013
+title: Shared Operations Access
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, identity]
+type: practice
+path: linux-fundamentals
+module: identity
+summary: developer and operator both need to drop files for each other in a shared directory — give them a real group and a directory that keeps new files in that group automatically.
+objectives:
+  - create a group and add existing users to it
+  - set the setgid bit on a directory so new files inherit its group
+  - verify group inheritance by creating a file as an unprivileged user
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: groupadd ops-team
+      why: Creates the new shared group that both users will join.
+    - do: usermod -aG ops-team developer
+      why: -aG appends developer to ops-team without touching their existing group memberships; plain -G would overwrite the whole list.
+    - do: usermod -aG ops-team operator
+      why: Same append for operator, so both roles end up sharing the one group.
+    - do: chgrp ops-team /srv/team && chmod g+w /srv/team
+      why: Makes the directory's group ops-team and group-writable, so members can actually create files there, not just read them.
+    - do: chmod g+s /srv/team
+      why: The setgid bit makes every new file or subdirectory created inside inherit the directory's group, instead of the creating user's own primary group.
+    - do: su -s /bin/bash -c "touch /srv/team/testfile" developer
+      why: Proves inheritance by actually creating a file as a group member — the real test is checking which group the new file lands in, not just reading the permission bits.
+hints:
+  - "groupadd ops-team creates the group; usermod -aG ops-team <user> adds an existing user to it without touching their other groups."
+  - "chmod g+s /srv/team sets the setgid bit — new files created inside inherit the directory's group instead of the creator's primary group."
+  - "chgrp ops-team /srv/team and chmod g+w /srv/team make the directory's group ops-team and group-writable, so members can actually create files there."

@@ -1,0 +1,45 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run linter
+        run: ./scripts/lint.sh || true
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: deps-${{ hashFiles('requirements.lock') }}
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Build package
+        run: ./scripts/build.sh
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run test suite
+        run: ./scripts/run_tests.sh
+
+  deploy:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        run: ./scripts/deploy.sh

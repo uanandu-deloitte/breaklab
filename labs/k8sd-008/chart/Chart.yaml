@@ -1,0 +1,6 @@
+apiVersion: v2
+name: web
+description: A minimal web chart for this lab
+type: application
+version: 0.1.0
+appVersion: "1.0"

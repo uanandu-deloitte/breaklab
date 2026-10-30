@@ -1,0 +1,38 @@
+id: git-004
+title: Branch and Switch
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, branching]
+type: guided
+path: version-control
+module: branching
+summary: Create a branch, do work on it, and come back to main untouched — the basic move behind trying anything in git without risking what already works.
+objectives:
+  - create a new branch and switch to it in one step
+  - commit new work on a branch without affecting any other branch
+  - switch back to main and confirm its history is unchanged
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git checkout -b feature-logging
+      why: Creates the branch and switches to it in one step, so the next commit lands on feature-logging instead of main.
+    - do: printf '# Logging plan\n\nAdd structured logging to the service.\n' > logging.md
+      why: Creates the exact file content the task requires, ready to commit on the new branch.
+    - do: git add logging.md && git commit -m "Add logging plan"
+      why: Commits the new file — this only moves feature-logging's pointer forward; main's pointer doesn't move.
+    - do: git checkout main
+      why: Returns to main, which was never touched by the commit you just made on another branch.
+    - do: git log --oneline
+      why: Confirms main still shows only its original commit — logging.md isn't part of main's history.
+hints:
+  - "git checkout -b <name> creates a branch and switches to it in one command."
+  - "A commit made on a branch only exists on that branch until it's merged or cherry-picked elsewhere."
+  - "git checkout main (or git switch main) returns you to main; git log --oneline there should look exactly like it did before you branched."
+  - "git branch -v shows every branch's name alongside the SHA its tip points at — useful for confirming main didn't move."

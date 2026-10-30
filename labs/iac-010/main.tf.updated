@@ -1,0 +1,17 @@
+terraform {
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
+  }
+}
+
+# Renamed from legal_notice during a config cleanup -- same real file,
+# same content, just a clearer resource label. Nobody told Terraform
+# that on purpose; from its state's point of view this address simply
+# doesn't exist yet.
+resource "local_file" "privacy_notice" {
+  filename = "/var/www/legal/notice.txt"
+  content  = "All rights reserved, Acme Corp.\n"
+}

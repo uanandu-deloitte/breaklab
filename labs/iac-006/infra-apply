@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SRC=/infra/resources.yaml
+
+flag_value=""
+for arg in "$@"; do
+  case "$arg" in
+    --value=*) flag_value="${arg#--value=}" ;;
+  esac
+done
+
+file_value=$(sed -n 's/^value: *//p' "$SRC")
+env_value="${INFRA_VALUE:-}"
+
+if [ -n "$flag_value" ]; then
+  resolved="$flag_value"
+  source_used="flag"
+elif [ -n "$env_value" ]; then
+  resolved="$env_value"
+  source_used="env"
+else
+  resolved="$file_value"
+  source_used="file"
+fi
+
+path=$(sed -n 's/^path: *//p' "$SRC")
+mkdir -p "$(dirname "$path")"
+echo "$resolved" > "$path"
+echo "applied (source: $source_used): $resolved"

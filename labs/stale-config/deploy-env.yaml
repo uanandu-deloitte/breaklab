@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: configwatcher
+  labels:
+    app: configwatcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: configwatcher
+  template:
+    metadata:
+      labels:
+        app: configwatcher
+    spec:
+      containers:
+        - name: configwatcher
+          image: busybox:1.36
+          command: ["sh", "-c", "echo \"$MODE\" > /tmp/status && sleep infinity"]
+          env:
+            - name: MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: site-config
+                  key: mode

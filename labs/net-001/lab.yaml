@@ -1,0 +1,36 @@
+id: net-001
+title: Identify the Network
+stage: networking
+path: networking-fundamentals
+module: addresses-ports-transport
+difficulty: 1
+estimated_minutes: 20
+tags: [networking, orientation]
+type: guided
+summary: You've been given shell access to an unfamiliar host — before debugging anything over the network, establish what that host's own network identity actually is.
+objectives:
+  - inspect a host's network interfaces and identify the one carrying its default route
+  - read a host's default route and DNS resolver configuration
+  - enumerate every TCP port a host is actually listening on
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ip addr
+      why: Lists every network interface and the addresses attached to it, so you can see which one actually carries a real (non-loopback) address.
+    - do: ip route
+      why: "The line starting \"default via ... dev <iface>\" names the interface that carries this host's default route — that's INTERFACE_NAME."
+    - do: cat /etc/resolv.conf
+      why: Shows which DNS resolver this host is configured to use — context worth knowing even though it isn't an answer field.
+    - do: ss -tlnp
+      why: Lists every TCP socket in LISTEN state and the process holding it — the Local Address:Port column's ports, sorted and comma-joined, is LISTENING_PORTS.
+hints:
+  - "ip addr lists every interface and its addresses; ip route shows the default gateway and which interface reaches it."
+  - "cat /etc/resolv.conf shows which DNS resolver this host is configured to use."
+  - "ss -tlnp lists every TCP socket in LISTEN state, and the process holding it."
+  - Record a sorted, comma-separated list of listening ports — don't just list them in whatever order ss prints them.

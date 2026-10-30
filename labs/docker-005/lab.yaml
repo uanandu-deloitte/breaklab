@@ -1,0 +1,40 @@
+id: docker-005
+title: The Volume That Was Already There
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, volumes]
+type: guided
+path: docker-fundamentals
+module: volumes
+summary: The Dockerfile clearly wrote a file at /data during the build — so why is /data empty the moment the container starts?
+objectives:
+  - explain why a volume mounted over a path replaces that path's content for the life of the mount, rather than merging with it
+  - recreate content that a mount shadowed from the image's own filesystem layer
+  - confirm a path is a genuinely distinct mount point using stat's device id, not assumptions
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  volumes:
+    - name: data
+      container_path: /data
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ls -la /data
+      why: Shows what's actually in /data right now — empty, despite the Dockerfile having written a welcome file there during the build.
+    - do: stat -c '%d' /data
+      why: Prints /data's filesystem device id — the factual way to prove it's a distinct mount, not an assumption.
+    - do: stat -c '%d' /
+      why: Prints the root filesystem's device id, to compare directly against /data's — a different number proves /data is a genuinely separate mount point.
+    - do: echo "Welcome to the shared data volume." > /data/welcome.txt
+      why: Writes the file into the volume itself, since the volume — not the image's own layer — is what the running container actually reads and persists; rebuilding the image would never put it here.
+    - do: cat /data/welcome.txt
+      why: Confirms the file now exists with exactly the right content, from the same mount the container will keep reading from for the life of this volume.
+hints:
+  - A volume mounted at a path replaces that path's content entirely for the life of the mount — it does not merge with whatever the image put there.
+  - stat -c '%d' prints the numeric device id of the filesystem a path lives on — two paths on the same filesystem report the same number, two paths on different mounts report different numbers.
+  - Rebuilding the image does not help here — the volume gets mounted over /data again on every container start no matter what the image contains.

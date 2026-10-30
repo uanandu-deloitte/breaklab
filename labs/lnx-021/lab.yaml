@@ -1,0 +1,33 @@
+id: lnx-021
+title: Where Did the Space Go?
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, storage]
+type: practice
+path: linux-fundamentals
+module: storage
+summary: /data has grown unexpectedly. Use du and find to pin down exactly which top-level directory, and which single file, is responsible.
+objectives:
+  - use du to compare disk usage across sibling directories
+  - find the single largest file in a directory tree
+  - report absolute paths computed from the live filesystem, not guessed
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: df -h /data
+      why: Confirms /data's filesystem is actually consuming unusual space before drilling into which subdirectory or file is responsible.
+    - do: du -sh /data/*/ | sort -rh | head -1
+      why: Totals each top-level directory's size recursively and sorts largest first, isolating which top-level directory under /data is actually responsible.
+    - do: "find /data -type f -printf '%s %p\\n' | sort -rn | head -1"
+      why: Prints every file's size next to its path and ranks numerically descending, surfacing the single largest file anywhere in the tree regardless of nesting depth.
+hints:
+  - "du -sh /data/*/ lists the total size of each top-level directory under /data, one line per directory — sort -rh after it puts the largest first."
+  - "find /data -type f -printf '%s %p\\n' | sort -rn | head -1 prints the single largest file anywhere in the tree, biggest first."
+  - Report absolute paths exactly as the filesystem reports them.

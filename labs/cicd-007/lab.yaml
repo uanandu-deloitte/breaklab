@@ -1,0 +1,35 @@
+id: cicd-007
+title: Promoting Artifacts Between Environments
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [cicd, artifacts, deployment]
+type: guided
+path: cicd-fundamentals
+module: promotion
+summary: Three builds sit in the artifacts directory, and the newest one isn't the one actually marked for promotion — find out which mechanism really decides that.
+objectives:
+  - read a symlink's actual target with readlink instead of assuming "newest by filename" is what's promoted
+  - recognize that a promotion mechanism (here, a symlink) can point at any artifact in the directory, independent of how recent or high-versioned its filename looks
+  - distinguish what's actually marked for promotion right now from what merely looks newest
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ls -la /srv/artifacts/
+      why: Shows every artifact file that exists, plus the current symlink itself — the mechanism promotion actually reads, not just the files sitting next to it.
+    - do: readlink /srv/artifacts/current
+      why: Reveals exactly which file the symlink genuinely points to right now — the one piece of state that actually defines "promoted," independent of how any filename looks.
+    - do: ls -la --time-style=full-iso /srv/artifacts/*.tar
+      why: Shows the newest-by-mtime file is a different one entirely — proving "most recently built" and "currently promoted" are not the same question.
+    - do: Record the symlink's real target and whether guessing by filename would have matched it, in /workspace/answers.env
+      why: Turns the observation into a durable record check.sh can verify against the symlink's real, live target.
+hints:
+  - "ls -la /srv/artifacts/ shows a 'current' entry — is it a regular file or a symlink? readlink tells you exactly what it points at."
+  - "Don't assume the highest version number or the newest mtime is what's promoted — only the symlink's actual target tells you that."
+  - "readlink /srv/artifacts/current is the ground truth. Compare it against what sorting by version or by time would have guessed instead."

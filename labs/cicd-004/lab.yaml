@@ -1,0 +1,37 @@
+id: cicd-004
+title: Secrets and Config in CI
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [cicd, secrets, config]
+type: break-fix
+path: cicd-fundamentals
+module: secrets
+summary: The deploy script "authenticates" against a token it carries as a literal in its own source — fix it to take the real secret at run time instead.
+objectives:
+  - recognize a hardcoded secret literal in a script as a standing leak, not just bad style
+  - refactor a script to read a secret from its environment instead of its own source
+  - verify that a runtime credential check actually depends on the credential given, not a comparison that always succeeds regardless of input
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /opt/pipeline/deploy.sh
+      why: Shows both the submitted and expected token as literals in the same file — the comparison always agrees with itself, so this isn't real authentication.
+    - do: Edit deploy.sh to read the submitted token from $DEPLOY_TOKEN instead of a literal in its own source
+      why: Makes the check depend on something the caller supplies at run time, not something the script already has memorized.
+    - do: cat /opt/pipeline/.deploy_token.sha256
+      why: Gives deploy.sh a reference it can compare a hash against, so it can verify a match without ever holding the real plaintext secret on disk.
+    - do: export DEPLOY_TOKEN=brk-ci-7f2a9d41c8b3 && /opt/pipeline/deploy.sh
+      why: Confirms the real token, supplied only at run time, is accepted now that the check is genuine.
+    - do: unset DEPLOY_TOKEN; /opt/pipeline/deploy.sh
+      why: Confirms the fixed script still refuses to deploy when no credential is supplied at all — proving the check actually depends on the input given.
+hints:
+  - "Read /opt/pipeline/deploy.sh. The token it compares against is sitting right there in the file — anyone who can read this script can deploy."
+  - "Have deploy.sh read $DEPLOY_TOKEN from its environment instead of a literal in its own source — and don't just hardcode the real value in its place, which leaks it right back into the image."
+  - "export DEPLOY_TOKEN=<value> before running deploy.sh. Where should the real value come from, if not the script itself?"

@@ -1,0 +1,44 @@
+# Oops: a sensitive API token was stored directly in a ConfigMap. A
+# ConfigMap is plain, unencoded-for-privacy config data — anyone who can
+# read it (or read the Pod's env) sees this value as-is.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  LOG_LEVEL: info
+  API_TOKEN: tok_live_8f3ac2b9e1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: default
+  labels:
+    app: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sh", "-c", "sleep infinity"]
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: API_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: API_TOKEN

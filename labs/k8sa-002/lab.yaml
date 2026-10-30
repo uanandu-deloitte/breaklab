@@ -1,0 +1,44 @@
+id: k8sa-002
+title: Default Limits with LimitRange
+stage: k8s-admin
+path: k8s-admin
+module: limitranges
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, limitrange, quotas]
+type: guided
+summary: A namespace has no default resource requests or limits — add a LimitRange and prove it injects defaults into a brand-new Pod that declares none itself.
+objectives:
+  - author a LimitRange that sets default container resource requests and limits
+  - distinguish admission-time default injection from values a Pod sets itself
+  - confirm that a LimitRange applies only to objects created after it exists, never retroactively
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get limitrange -n limits-demo
+      why: Confirms limits-demo has no LimitRange yet, which is why pod-before has no resources set despite running fine.
+    - do: kubectl apply -f /workspace/limitrange.yaml
+      why: Creates default-limits — admission will now inject these defaults into any container that doesn't set its own requests/limits.
+    - do: kubectl apply -f /workspace/pod-after.yaml
+      why: Creates a new Pod with no resources block at all, so anything in its live spec afterward came from the LimitRange, not the manifest.
+    - do: kubectl get pod pod-after -n limits-demo
+      why: Confirms pod-after reached Running before reading its injected spec.
+    - do: kubectl get pod pod-after -n limits-demo -o jsonpath='{.spec.containers[0].resources}'
+      why: Reads the live, already-admitted resources block — these numbers were filled in by the LimitRange at creation time, not typed by you.
+    - do: kubectl get pod pod-before -n limits-demo -o jsonpath='{.spec.containers[0].resources}'
+      why: Confirms pod-before, created before the LimitRange existed, still has nothing set — proof defaults are injected at admission, never patched in retroactively.
+hints:
+  - "A LimitRange with no defaultRequest/default set has nothing to inject — both fields matter."
+  - "kubectl get pod <name> -o jsonpath='{.spec.containers[0].resources}' shows the live, already-admitted spec — not the YAML you wrote."
+  - "pod-before was created before any LimitRange existed in this namespace — it stays exactly as it was, since a LimitRange never rewrites objects that already exist."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

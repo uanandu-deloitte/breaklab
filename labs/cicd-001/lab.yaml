@@ -1,0 +1,39 @@
+id: cicd-001
+title: Read the Pipeline
+stage: cicd
+difficulty: 1
+estimated_minutes: 15
+tags: [cicd, orientation]
+type: practice
+path: cicd-fundamentals
+module: orientation
+summary: No live pipeline run to watch this time — just a workflow file, and the question of whether you can trace its triggers, job ordering, caching, and failure handling by reading alone.
+objectives:
+  - "identify which event(s) trigger a CI workflow from its on: block"
+  - distinguish jobs that run in parallel from a job ordered after another via needs
+  - trace a cache key back to the file it's derived from, and what changing that file does to the cache
+  - spot a step whose non-zero exit is silently swallowed, and a job whose failure is masked by continue-on-error
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: grep -A2 '^on:' /workspace/pipeline.yml
+      why: "on: lists every event that starts this workflow — there can be more than one, and both can fire it."
+    - do: grep -n 'needs:' /workspace/pipeline.yml
+      why: A job only waits on another when its own needs entry names it — any job with no needs at all runs in parallel with every other job that also has none.
+    - do: grep -n 'hashFiles' /workspace/pipeline.yml
+      why: The file named inside hashFiles(...) is what the cache key is actually derived from — change that file's contents and the hash, and therefore the key, changes with it.
+    - do: grep -n 'continue-on-error' /workspace/pipeline.yml
+      why: "A job marked continue-on-error: true reports its own failure without stopping anything that depends on it."
+    - do: grep -B2 '|| true' /workspace/pipeline.yml
+      why: "|| true turns a step's real exit code into 0 no matter what happened — this shows exactly which step's failure gets swallowed, with its name: right above."
+hints:
+  - "A workflow's on: block lists every event that triggers it — there can be more than one, and both can fire the same workflow."
+  - "A job runs in parallel with every other job unless its own needs: entry names another job — only then must it wait."
+  - "A cache action's key: is often built with hashFiles(...) on a lockfile; changing that file changes the hash, which changes the key, which means the old cache entry no longer matches."
+  - "continue-on-error: true on a job, and || true at the end of a shell command, have the same effect: a real non-zero exit happens, and nothing downstream ever notices."

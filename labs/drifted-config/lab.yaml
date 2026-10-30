@@ -1,0 +1,61 @@
+id: drifted-config
+title: The site doesn't match what the infra source says
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, web-servers, scripting]
+summary: The live site doesn't match the infra source of truth, and nobody can tell why just by looking at the page.
+prerequisites: [iac-002]
+loop:
+  learn: >
+    Infrastructure-as-code only guarantees reality matches the declared
+    source at the moment you apply it. Drift creeps in two ways: someone
+    edits the deployed artifact directly, bypassing the source entirely, or
+    the source itself changes but the apply step that would reconcile
+    deployed state to it never runs again. Both look identical from the
+    outside — "the site says the wrong thing" — but the fix is the same
+    either way: re-run the apply so deployed state is rebuilt from the
+    current source, not hand-patched.
+  guided:
+    - do: curl -s http://localhost:8081/
+      why: Confirms the actual symptom — what's being served right now, independent of any theory about why.
+    - do: cat /infra/site.yaml
+      why: Shows the declared source of truth you're supposed to be matching.
+    - do: "MESSAGE=$(sed -n 's/^message: *//p' /infra/site.yaml); envsubst '${MESSAGE}' < /infra/templates/index.html.tmpl"
+      why: Renders what the deployed file should contain if the source were correctly applied, so you can diff it against reality instead of guessing.
+    - do: diff <(cat /var/www/html/index.html) <(the rendered output above)
+      why: A direct diff tells you definitively whether this is drift at all, versus some unrelated serving problem.
+    - do: ls -l --time-style=full-iso /infra/site.yaml /var/www/html/index.html
+      why: Comparing modification times tells you which drift pattern you're looking at — a source edited after the last apply, versus a deployed file touched directly and recently.
+    - do: infra-apply
+      why: Re-running the declared apply step rebuilds deployed state from the current source — the fix for drift is always reconciliation, never hand-editing the deployed file to look right.
+  practice:
+    task: >
+      Think through each scenario before revealing the answer.
+    questions:
+      - prompt: Someone hand-edits the deployed file to match what the source currently says, typing it in directly. Is the incident fixed?
+        answer: Not really. The deployed state happens to match right now, but it was never produced by the declared apply process, so the next source change will drift again. The fix is re-running the apply, not matching the output by hand.
+      - prompt: What specific evidence distinguishes "source changed but never applied" from "someone edited the deployed file directly"?
+        answer: Compare modification times and content. If the source is newer than the deployed file and the deployed file still reflects an older source, that's a stale apply. If the deployed file was touched recently and doesn't match any version of the source at all, that's manual drift.
+      - prompt: Why is infra-apply the correct fix for both variants, even though their causes are different?
+        answer: Both failures are really the same thing — deployed state no longer reflects the declared source. Re-running the apply step reconciles deployed state to whatever the source currently says, regardless of how it fell out of sync.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8081:80"]
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Compare /infra/site.yaml (the declared source) against what's actually deployed.
+  - Re-running infra-apply should make the deployed state match the source again.
+variants:
+  - id: stale-apply
+    script: variants/stale-apply.sh
+    weight: 1
+    hints:
+      - The source file changed. Was infra-apply ever run after that?
+  - id: manual-drift
+    script: variants/manual-drift.sh
+    weight: 1
+    hints:
+      - Someone may have edited /var/www/html directly instead of going through infra-apply.

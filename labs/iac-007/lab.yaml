@@ -1,0 +1,41 @@
+id: iac-007
+title: Why You Pin Module Versions
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+type: guided
+path: iac-fundamentals
+module: module-pinning
+summary: resources.yaml declares which module it expects, a separate pin file decides which one actually runs — and right now, those two disagree.
+objectives:
+  - read a module reference declared in a config file and distinguish it from the separate pin file that actually controls which implementation runs
+  - confirm whether the declared reference and the pin actually agree, by comparing them directly rather than assuming
+  - fix a stale pin and confirm the real resolved module now matches the declared reference
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/resources.yaml
+      why: "Shows the `module:` field — render-v2. This is the module the config declares it expects, but infra-apply never actually reads this field."
+    - do: cat /infra/MODULE_VERSION
+      why: Shows the pin file that infra-apply actually reads to decide which module to run — compare this against what resources.yaml declared.
+    - do: cat /etc/app/release.conf
+      why: Shows the currently deployed output, so you can tell which module's format actually produced it.
+    - do: ls /infra/modules/
+      why: Confirms a module file actually exists for the pinned version — a pin pointing at a version that was removed fails differently (and more quietly) than one pointing at a buggy but present version.
+    - do: cat /infra/modules/render-v1.sh /infra/modules/render-v2.sh
+      why: Reads both render implementations directly — their output format differs, which is how you can tell which one actually produced the deployed file.
+    - do: Edit /infra/MODULE_VERSION so it matches the module resources.yaml declares
+      why: The pin file is what actually controls resolution — fixing it, not resources.yaml, is what makes the declared and resolved module agree.
+    - do: infra-apply
+      why: Re-applies using the now-corrected pin, so the deployed output finally gets rendered by the module resources.yaml actually declared.
+hints:
+  - "resources.yaml's `module:` field is purely declarative — infra-apply never reads it. /infra/MODULE_VERSION is the file that actually controls which module runs."
+  - "Compare /infra/MODULE_VERSION against resources.yaml's `module:` field directly — don't assume they agree just because the apply ran without error."
+  - "cat /etc/app/release.conf and compare its format against each module in /infra/modules/ to see which one actually rendered it."

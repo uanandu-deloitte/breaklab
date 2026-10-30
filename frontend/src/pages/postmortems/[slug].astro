@@ -1,0 +1,20 @@
+---
+import "@astryxdesign/core/reset.css";
+import "@astryxdesign/core/astryx.css";
+import PostmortemDetail from "../../components/PostmortemDetail";
+
+// One physical shell file for any slug — same pattern as
+// labs/[id].astro (design.md "Astro builds shells, not content").
+export function getStaticPaths() {
+  return [{ params: { slug: "_" } }];
+}
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BreakLab — postmortem</title>
+  </head>
+  <body>
+    <PostmortemDetail client:load />
+  </body>
+</html>

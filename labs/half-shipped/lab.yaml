@@ -1,0 +1,62 @@
+id: half-shipped
+title: The release that's only half true
+stage: capstone
+difficulty: 5
+estimated_minutes: 35
+tags: [capstone, git, iac]
+summary: The release pipeline ran clean and the git log looks fine, but tonight's change still isn't actually live — because two unrelated things broke at once.
+loop:
+  learn: >
+    Not every incident has one root cause. When multiple independent
+    systems feed the same release (an IaC apply step and a separate git
+    repository, say), each can fail on its own and still look "done" in
+    isolation — a clean exit code from one tool says nothing about the
+    other. Treat a suspiciously stubborn incident as potentially layered:
+    verify each subsystem's actual output against its own source of truth
+    independently, rather than stopping once you've found one plausible
+    explanation.
+  guided:
+    - do: "cat /etc/site/deployed.conf; sed -n 's/^message: *//p' /infra/site.yaml"
+      why: Directly compares deployed state against the declared source for the IaC side — confirms whether that half of the pipeline actually landed, independent of the git side.
+    - do: cat /infra/MODULE_VERSION; ls /infra/modules/
+      why: infra-apply silently no-ops (exit 0, no error) if the module version it's pinned to doesn't exist on disk — this is the kind of failure that looks clean in logs but changes nothing.
+    - do: infra-apply
+      why: Running it directly and reading its own stdout/stderr shows whether it's actually applying or quietly skipping, rather than inferring from side effects.
+    - do: cd /srv/release-repo && git log main --oneline && git reflog
+      why: Checks the second, independent subsystem on its own terms — a clean-looking git log on main doesn't rule out a release commit that landed off-branch or got reset away.
+    - do: Fix each problem on its own terms — correct the module pin (or add the missing module) and rerun infra-apply; separately recover the orphaned commit from the reflog and fast-forward main onto it.
+      why: These are two unrelated failures; fixing only one leaves check.sh still failing on the other half.
+    - do: bash check.sh
+      why: The check script verifies both halves independently — rerunning it is the only way to confirm neither half is still broken.
+  practice:
+    task: >
+      Think through these before revealing the answer.
+    questions:
+      - prompt: infra-apply exits 0 and prints nothing alarming, but the deployed config never changed. What does that tell you about trusting exit codes alone here?
+        answer: A clean exit code only means the script didn't crash — it says nothing about whether it actually did the work. This script explicitly no-ops when its pinned module is missing, so "it ran without error" and "it worked" are different claims.
+      - prompt: Why check the git repository and the IaC apply as two separate investigations instead of looking for one explanation that covers both symptoms?
+        answer: They're genuinely independent systems with no shared failure path here — one is a module-pinning problem in the apply script, the other is a git history problem in a different repo. Assuming a single root cause would mean stopping after fixing one and missing that the other is still broken.
+      - prompt: After fixing the module pin and rerunning infra-apply, check.sh still fails. What should that prompt you to check, given the ticket said there might be more than one cause?
+        answer: Check the other, unrelated subsystem — the release repository's git history — rather than re-diagnosing the IaC side again. A still-failing check after fixing one cause doesn't mean that fix was wrong.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - This incident has two independent causes, not one — fixing the first thing you find might not be enough.
+  - Check the deploy pipeline (/infra/site.yaml, /infra/MODULE_VERSION, /etc/site/deployed.conf) and the release repo's git history (/srv/release-repo) separately.
+variants:
+  - id: wrong-pin-hard-reset
+    script: variants/wrong-pin-hard-reset.sh
+    weight: 1
+    hints:
+      - Compare /infra/modules/render-v1.sh against render-v2.sh against what /infra/MODULE_VERSION actually points at.
+      - git reflog on main in /srv/release-repo remembers what HEAD pointed to before the reset.
+  - id: missing-module-detached-commit
+    script: variants/missing-module-detached-commit.sh
+    weight: 1
+    hints:
+      - Does /infra/modules/ actually have a file matching what MODULE_VERSION says?
+      - The release commit was made outside of any branch in /srv/release-repo — the HEAD reflog still remembers it.

@@ -1,0 +1,37 @@
+id: iac-010
+title: Renaming a Resource Isn't Free
+stage: iac
+difficulty: 3
+estimated_minutes: 20
+tags: [iac, terraform]
+type: practice
+path: iac-fundamentals
+module: terraform-workflow
+summary: main.tf renamed a resource's label from legal_notice to privacy_notice -- read naively, Terraform's plan is to destroy the old one and create a new one.
+objectives:
+  - recognize that Terraform identifies resources by address, not by what they manage
+  - read a terraform plan that shows a destroy+create pair and recognize it as a rename, not a real change
+  - use terraform state mv to relabel a resource without ever destroying the real thing it manages
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/main.tf
+      why: Shows the resource is now labeled privacy_notice -- compare this against what terraform plan still thinks is true.
+    - do: cd /infra && terraform plan
+      why: Shows the real danger plainly -- Terraform's literal plan for this rename is to destroy legal_notice and create privacy_notice from scratch.
+    - do: terraform state list
+      why: Confirms legal_notice is the only address Terraform currently knows about -- privacy_notice doesn't exist in state yet, which is why plan wants to create it.
+    - do: terraform state mv local_file.legal_notice local_file.privacy_notice
+      why: Relabels the existing state entry in place -- the real file is never touched, only Terraform's own bookkeeping changes.
+    - do: terraform plan -detailed-exitcode
+      why: Exits 0 only once state's address matches config's address with nothing left to reconcile.
+hints:
+  - "Run terraform plan before doing anything else and read it literally -- destroy one thing, create another, is exactly what a plain rename looks like to Terraform."
+  - "The real file never needs to be destroyed for a rename. terraform state mv exists specifically to relabel an address in state without touching the real resource."
+  - "terraform state mv <old_address> <new_address> -- both addresses are exactly what you'd use to refer to the resource elsewhere, e.g. local_file.legal_notice."

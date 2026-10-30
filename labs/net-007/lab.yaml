@@ -1,0 +1,38 @@
+id: net-007
+title: HTTP Failure Classification
+stage: networking
+path: networking-fundamentals
+module: http
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, http, troubleshooting]
+type: practice
+summary: Five local endpoints fail in five different ways — use curl to tell a DNS failure apart from a refusal, a timeout, and two very different HTTP error codes.
+objectives:
+  - distinguish a DNS failure, a connection refusal, and a timeout using curl's own error output
+  - distinguish a client error (404) from a server error (500) once a connection succeeds
+  - classify an HTTP failure correctly before deciding how to respond to it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl -v --max-time 3 http://nosuchhost.invalid:9001/
+      why: Fails with "Could not resolve host" before any connection is attempted — that's dns-failure.
+    - do: curl -v --max-time 3 http://127.0.0.1:9002/
+      why: Fails immediately with "Connection refused" — the host answered that nothing is listening — that's refused.
+    - do: curl -v --max-time 3 http://127.0.0.1:9003/
+      why: The connection succeeds but nothing ever comes back until the timeout fires — that's timeout.
+    - do: curl -v --max-time 3 http://127.0.0.1:9004/anything
+      why: A real response comes back with status 404 — the server works but says the specific path doesn't exist.
+    - do: curl -v --max-time 3 http://127.0.0.1:9005/
+      why: A real response comes back with status 500 — the server itself hit a problem producing an answer.
+hints:
+  - "curl -v shows exactly which stage failed: DNS resolution, TCP connection, or waiting for a response that never came."
+  - Always use a short --max-time when probing the timeout endpoint, or you'll wait a long time to learn what you already suspect.
+  - A refused connection fails immediately with no handshake; a timeout accepts the connection and then goes silent — curl -v tells these apart instantly.
+  - 404 and 500 both mean the connection worked; the status code is the only thing that tells you client problem from server problem.

@@ -1,0 +1,37 @@
+id: iac-002
+title: Preview Before You Apply
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+type: guided
+path: iac-fundamentals
+module: plan-and-apply
+summary: resources.yaml was edited after the last real apply — before touching anything for real, learn to preview exactly what an apply would do.
+objectives:
+  - run an apply tool's dry-run/plan mode to preview a pending change before touching the real resource
+  - confirm a plan genuinely left the real resource untouched
+  - apply the previewed change for real and confirm the resource now matches the declared source of truth
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: "cat /infra/resources.yaml; cat /infra/managed-file.txt"
+      why: Confirms the declared content and the real file currently differ — this is the pending change you're about to preview.
+    - do: infra-apply --plan
+      why: Prints exactly what applying would change, without writing anything — read this before committing to a real apply.
+    - do: cat /infra/managed-file.txt
+      why: Confirms --plan never wrote anything — the real file is still byte-for-byte what it was before.
+    - do: infra-apply
+      why: Only now, having read and understood the plan, apply the previewed change for real.
+    - do: cat /infra/managed-file.txt
+      why: Confirms the real file now matches resources.yaml's declared content.
+hints:
+  - "infra-apply --plan reads resources.yaml and the real file's current content, but only prints what it would do."
+  - "cat the real file before and after running --plan — it should be byte-for-byte identical; --plan never writes."
+  - "Only run infra-apply with no flag once you've read and understood what --plan said it would change."

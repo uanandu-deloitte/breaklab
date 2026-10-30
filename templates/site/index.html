@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BreakLab progress</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>BreakLab progress</h1>
+
+<section class="totals">
+  <p>Labs completed: {{.Totals.LabsCompleted}}</p>
+  <p>Variants seen: {{.Totals.VariantsSeen}}</p>
+  <p>Current streak: {{.Totals.Streak}} day(s)</p>
+  <p><a href="postmortems/index.html">All postmortems &rarr;</a></p>
+</section>
+
+{{range .Stages}}
+<section class="stage">
+  <h2>{{.Title}}</h2>
+  <div class="bar"><div class="bar-fill" style="width: {{.Percent}}%;"></div></div>
+  <p>{{.Completed}}/{{.Total}} labs complete</p>
+  {{if .Labs}}
+  <ul class="labs">
+    {{range .Labs}}
+    <li>
+      {{if .PostmortemHref}}<a href="{{.PostmortemHref}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}
+      &mdash; {{.Date}} &middot; <span class="difficulty difficulty-{{.Difficulty}}">difficulty {{.Difficulty}}</span> &middot; {{.MinutesToFix}}m to fix
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+</section>
+{{end}}
+
+</body>
+</html>

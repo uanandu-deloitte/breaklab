@@ -1,0 +1,63 @@
+id: pvc-bad-storageclass
+title: data-pending has been Pending since this morning
+stage: k8s-developer
+difficulty: 3
+estimated_minutes: 20
+tags: [kubernetes, storage, chaos-engineering, blast-radius]
+summary: A PersistentVolumeClaim has sat Pending since this morning while every other resource looks fine.
+prerequisites: [k8sd-006]
+loop:
+  learn: >
+    A PVC only binds when a StorageClass exists that matches both its name
+    and its provisioner's actual capabilities — the access modes it
+    supports, the capacity it can provision, and so on. Copying a PVC
+    manifest from a different cluster or a different example is one of the
+    most common ways to break this silently: the YAML is well-formed and
+    admits fine, but nothing ever provisions it because the referenced
+    StorageClass doesn't exist, or exists but can't satisfy what was
+    requested, like an access mode its provisioner doesn't implement. A
+    Pending PVC's own Events are the direct evidence; it never shows up as
+    an error anywhere else.
+  guided:
+    - do: kubectl get pvc data-pending
+      why: Confirm the phase is actually Pending (not Bound or Lost) before digging further.
+    - do: kubectl describe pvc data-pending
+      why: The Events section at the bottom records the provisioner's exact rejection reason — this is the single most direct piece of evidence for why binding is failing, read it before guessing.
+    - do: kubectl get storageclass
+      why: See every StorageClass that actually exists in the cluster, to compare against what the PVC's storageClassName requests.
+    - do: kubectl get pvc data-pending -o jsonpath='{.spec.storageClassName}{"\n"}{.spec.accessModes}{"\n"}'
+      why: Read exactly what the PVC is requesting — the class name it wants, and the access mode(s) it needs the provisioner to support.
+    - do: kubectl get storageclass <name> -o yaml
+      why: Check the matched StorageClass's provisioner and parameters — some provisioners, like many local/node-based ones, only support ReadWriteOnce, and requesting ReadWriteMany against one of those will never bind no matter how long you wait.
+  practice:
+    task: >
+      Before touching the real incident, reason through what makes a PVC
+      bind or not.
+    questions:
+      - prompt: A PVC's storageClassName exactly matches an existing StorageClass, but the PVC still never binds. What's the next thing to check?
+        answer: Whether that StorageClass's provisioner actually supports the PVC's requested access mode(s) — the class existing is necessary but not sufficient; the provisioner also has to be capable of what's being asked for, like ReadWriteMany on a provisioner that only does ReadWriteOnce.
+      - prompt: Why does a Pending PVC not produce any error in the Pod that's waiting to mount it?
+        answer: The Pod itself is just waiting on a volume that doesn't exist yet — from the Pod's perspective this is a normal, if prolonged, wait state, not a failure; the actual rejection reason lives in the PVC's own Events, not the Pod's.
+      - prompt: A manifest copied from another cluster references a storageClassName that doesn't exist here. Is fixing the typo enough, or could the same manifest still fail to bind?
+        answer: Fixing the name to match a real StorageClass is necessary but not automatically sufficient — if the manifest's accessModes still don't match what that StorageClass's provisioner supports, it will go back to Pending for a different reason.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - A PVC's own Events are the first evidence for a provisioning or binding failure.
+  - kubectl get storageclass shows what's actually available to provision against.
+variants:
+  - id: missing-storageclass
+    script: variants/missing-storageclass.sh
+    weight: 1
+    hints:
+      - Compare the PVC's requested storageClassName against kubectl get storageclass.
+  - id: unsupported-access-mode
+    script: variants/unsupported-access-mode.sh
+    weight: 1
+    hints:
+      - The StorageClass exists. Check which access modes its provisioner actually supports.

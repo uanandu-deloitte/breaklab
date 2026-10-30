@@ -1,0 +1,39 @@
+id: lnx-020
+title: Prepare a Troubleshooting Host
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, packages]
+type: guided
+path: linux-fundamentals
+module: packages
+summary: This host is a bare Ubuntu base image with none of the usual troubleshooting tools installed. Install exactly the ones you need.
+objectives:
+  - use apt-get update and apt-get install to add packages to a running host
+  - verify an installed tool is actually on PATH and working, not just "installed"
+  - avoid installing more than the task actually calls for
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: apt-get update
+      why: Refreshes the local package index before install — skipping this is the most common reason a fresh install fails on a brand-new container.
+    - do: apt-get install -y curl iproute2 lsof jq
+      why: Installs exactly the four packages the task calls for, no more — every extra package is something that has to be patched and tracked later for no benefit.
+    - do: curl --version
+      why: Confirms curl is actually on PATH and executes, not just "installed."
+    - do: ip -V
+      why: iproute2 is the package name, but ip is the actual binary it provides — this is the version check that proves it works.
+    - do: lsof -v
+      why: Same verification for lsof.
+    - do: jq --version
+      why: Same verification for jq, completing proof that all four tools actually work.
+hints:
+  - "apt-get update refreshes the package index before apt-get install can find anything — skipping it is the most common reason an install fails."
+  - "The package names you need: curl, iproute2, lsof, jq."
+  - "Prove each one works with its own version/help flag: curl --version, ip -V, lsof -v, jq --version."

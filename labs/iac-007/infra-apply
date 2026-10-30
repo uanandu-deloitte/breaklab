@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SRC=/infra/resources.yaml
+PIN=/infra/MODULE_VERSION
+MODDIR=/infra/modules
+
+pinned=$(cat "$PIN")
+module_file="$MODDIR/${pinned}.sh"
+
+if [ ! -f "$module_file" ]; then
+  echo "skipping: pinned module $pinned not found in $MODDIR"
+  exit 0
+fi
+
+# shellcheck disable=SC1090
+source "$module_file"
+
+path=$(sed -n 's/^path: *//p' "$SRC")
+seed=$(sed -n 's/^content_seed: *//p' "$SRC")
+
+mkdir -p "$(dirname "$path")"
+render "$seed" > "$path"
+echo "applied: $path (rendered by $pinned)"

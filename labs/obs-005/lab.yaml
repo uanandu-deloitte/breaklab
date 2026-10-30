@@ -1,0 +1,48 @@
+id: obs-005
+title: Log Rotation Breaks Naive File Tailing
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, logs, linux]
+type: guided
+path: observability-fundamentals
+module: log-rotation
+summary: A reader process opened the log by path once — now the log has rotated out from under it, and it's silently following a file nobody writes to anymore.
+objectives:
+  - recognize that a long-running reader following a file descriptor keeps reading whatever file that descriptor originally pointed to, even after the file at that path is replaced
+  - compare a process's open file descriptors (and the inode behind them) against the current file at that path to confirm it's reading the wrong one
+  - identify that a stale file handle produces no error at all — it just stops seeing new data
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /var/run/reader.pid
+      why: Finds the PID of the background reader process that's been following /var/log/app.log since this container started.
+    - do: wc -l /var/log/app.log /var/log/reader-output.log
+      why: Confirms the live symptom directly — the current log has more lines than the reader has ever written out.
+    - do: ls -l /proc/$(cat /var/run/reader.pid)/fd
+      why: Lists every file descriptor the reader process has open right now, including which file each one actually points at.
+    - do: for fd in /proc/$(cat /var/run/reader.pid)/fd/*; do readlink -f "$fd"; done
+      why: Resolves exactly which files the reader process's descriptors currently target — one of them is the log-reading one, and it won't say /var/log/app.log.
+    - do: stat -c '%n inode=%i' /var/log/app.log /var/log/app.log.1
+      why: Shows that the current app.log and the rotated-away app.log.1 are two different files with two different inodes, even though the reader never noticed the swap.
+  practice:
+    task: >
+      Before touching the real incident below, reason through what a
+      stale file descriptor actually does, then reveal the answer.
+    questions:
+      - prompt: A reader opened /var/log/app.log with tail -f, then the file was renamed to app.log.1 and a fresh empty app.log was created. Does tail -f notice the rename and switch to the new file?
+        answer: "No. tail -f follows the open file descriptor (and the inode behind it), not the path string. After the rename, that descriptor still points at the same inode, now reachable only via app.log.1 — the reader never looks at the new app.log at all."
+      - prompt: Why does this failure mode produce zero error output, from either the application or the reader?
+        answer: Because nothing is actually broken from either process's point of view. The application opens a path, writes to it, and succeeds. The reader keeps reading from a valid, still-open descriptor and succeeds. Neither process is aware the path and the descriptor now point to different data.
+      - prompt: What are the two general fixes for a reader that needs to survive rotation?
+        answer: Either have the reader periodically reopen the file by path (so it picks up whatever inode currently lives there — this is what tail -F does instead of tail -f), or have the log rotation itself avoid breaking the descriptor by truncating the file in place (copytruncate) instead of renaming it.
+hints:
+  - "A process's open file descriptors live at /proc/<pid>/fd/ — each one is a symlink you can readlink to see exactly what file it currently resolves to."
+  - "tail -f follows the descriptor it opened, not the path string; tail -F reopens by path and would have survived this rotation."
+  - "Compare inode numbers (stat -c %i) between the current /var/log/app.log and whatever file the reader's descriptor actually points at."

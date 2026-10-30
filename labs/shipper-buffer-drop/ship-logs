@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+CAP=5
+mkdir -p /var/spool/shipper/queue /var/lib/shipper
+cursor_file=/var/lib/shipper/cursor
+cursor=$(cat "$cursor_file" 2>/dev/null || echo 0)
+total=$(wc -l < /var/log/app.log)
+next=$((cursor + 1))
+
+while [ "$next" -le "$total" ]; do
+  if [ -f /var/spool/shipper/.readonly ]; then
+    break
+  fi
+  count=$(find /var/spool/shipper/queue -type f | wc -l)
+  if [ "$count" -ge "$CAP" ]; then
+    break
+  fi
+  line=$(sed -n "${next}p" /var/log/app.log)
+  printf '%s\n' "$line" > "/var/spool/shipper/queue/msg-$(printf '%06d' "$next")"
+  cursor=$next
+  next=$((next + 1))
+done
+
+echo "$cursor" > "$cursor_file"

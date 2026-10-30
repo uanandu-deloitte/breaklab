@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+STATE=/infra/state.json
+RESDIR=/infra/resources
+
+if [ "${1:-}" = "--import" ]; then
+  target="${2:-}"
+  [ -n "$target" ] || { echo "usage: infra-apply --import <path>"; exit 1; }
+  tmp=$(mktemp)
+  jq --arg p "$target" '.managed += [$p] | .managed |= unique' "$STATE" > "$tmp"
+  mv "$tmp" "$STATE"
+  echo "imported: $target"
+  exit 0
+fi
+
+for f in "$RESDIR"/*.yaml; do
+  path=$(sed -n 's/^path: *//p' "$f")
+  content=$(sed -n 's/^content: *//p' "$f")
+
+  if jq -e --arg p "$path" '.managed | index($p) != null' "$STATE" >/dev/null; then
+    current=""
+    [ -f "$path" ] && current=$(cat "$path")
+    if [ "$current" = "$content" ]; then
+      echo "applied: $path (no changes)"
+    else
+      mkdir -p "$(dirname "$path")"
+      echo "$content" > "$path"
+      echo "applied: $path"
+    fi
+  else
+    echo "skipping $path: not in state, run with --import first"
+  fi
+done

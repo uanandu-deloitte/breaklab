@@ -1,0 +1,48 @@
+id: obs-007
+title: Why Clocks Have to Agree Across Hosts
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, linux]
+type: guided
+path: observability-fundamentals
+module: clock-sync
+summary: Two simulated hosts log events at the "same time" — one of their clocks is lying about what time it is, and every timestamp it produces inherits that lie.
+objectives:
+  - compare timestamps produced by two independent hosts against the real system clock to detect per-host drift
+  - recognize that a clock offset shifts every timestamp a host produces by the same fixed amount, not just the one you happen to be looking at
+  - distinguish genuine clock drift from an actual event-ordering problem before trusting a merged timeline
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: date +%s
+      why: Gets the real current time directly from this container's system clock — the independent baseline everything else gets compared against.
+    - do: log-event-a "check-in" && tail -1 /var/log/host-a.log
+      why: Produces a fresh timestamp from host-a's own clock, the same way its real application code would, so there's a current value to compare.
+    - do: log-event-b "check-in" && tail -1 /var/log/host-b.log
+      why: Produces a fresh timestamp from host-b's clock too — a second independent reading at effectively the same real moment.
+    - do: "echo \"real now: $(date +%s)\""
+      why: Captures real time again right before comparing, so the gap you compute isn't inflated by the handful of seconds these commands took to type.
+    - do: diff <(tail -1 /var/log/host-a.log | awk '{print $2}') <(tail -1 /var/log/host-b.log | awk '{print $2}')
+      why: Lines up the two hosts' unix timestamps side by side — a large, consistent gap between them (not just noise) is the signature of real clock drift, not of events happening at genuinely different times.
+  practice:
+    task: >
+      Before touching the real incident below, reason through what clock
+      drift actually does to a timeline, then reveal the answer.
+    questions:
+      - prompt: host-a's clock is running 2 minutes ahead of real time. Every event host-a logs for the next hour — does the offset grow, shrink, or stay the same across all of them?
+        answer: It stays the same (assuming no further drift) — every timestamp host-a produces is shifted by that same fixed 2-minute offset, because the offset lives in the clock itself, not in any individual event.
+      - prompt: host-a's clock is 2 minutes ahead, and it logs "response sent" one real second after host-b logs "request received." In a timeline merged by timestamp alone, which one appears to happen first?
+        answer: "host-a's \"response sent\" appears to happen first — nearly 2 minutes before the request that actually caused it — purely because its clock is fast, not because of anything wrong with the real sequence of events."
+      - prompt: Why isn't "the two timestamps disagree" by itself proof of drift rather than a real ordering bug?
+        answer: Because a disagreement could also be genuinely correct — a slow network, a delayed retry, independent unrelated events. What distinguishes drift is comparing each host's own clock against a trusted real-time reference directly, rather than just comparing the hosts to each other.
+hints:
+  - "Compare each host's logged timestamp against the real current time (date +%s) directly — don't just compare the two hosts to each other."
+  - "A drifted clock shifts every timestamp that host produces by the same fixed offset; it's not random per event."
+  - "A real ordering problem and clock drift can look identical in a merged timeline — the only way to tell them apart is checking each clock against ground truth."

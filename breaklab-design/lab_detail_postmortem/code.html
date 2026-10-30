@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<title>BreakLab — Lab Detail / Postmortem (TKT-2088)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #131315; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2c; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #39393b; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#131315",
+            "background": "#0f0f11",
+            "surface-container-lowest": "#0b0b0c",
+            "surface-container-low": "#161619",
+            "surface-container": "#1c1c1f",
+            "surface-container-high": "#232327",
+            "surface-container-highest": "#2c2c31",
+            "outline": "#44444a",
+            "outline-variant": "#2f2f35",
+            "on-surface": "#f1f1f4",
+            "on-surface-variant": "#a2a2ab",
+            "primary": "#ffffff",
+            "on-primary": "#121214",
+            "secondary": "#4edea3",
+            "secondary-container": "#00a572",
+            "tertiary": "#7bd0ff",
+            "error": "#ff6b6b",
+            "error-container": "#3d1417"
+          },
+          fontFamily: {
+            sans: ["Geist", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background font-sans text-on-surface antialiased min-h-screen flex flex-col selection:bg-secondary/20 selection:text-secondary">
+<!-- Top Global Navigation Bar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#121214]/90 backdrop-blur-md border-b border-outline-variant">
+<div class="h-14 w-full px-6 flex items-center justify-between gap-4">
+<div class="flex items-center gap-6 shrink-0">
+<div class="flex items-center gap-2.5">
+<div class="w-7 h-7 rounded bg-primary text-on-primary flex items-center justify-center font-bold text-xs tracking-wider">
+            BL
+          </div>
+<span class="font-semibold text-[15px] tracking-tight text-white">BreakLab</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high border border-outline-variant text-[11px] font-mono text-zinc-300">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+            daemon: active (pid 4182)
+          </span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant hidden md:block"></div>
+<nav class="hidden md:flex items-center gap-1 text-[13px]">
+<a class="px-2.5 py-1 rounded text-on-surface-variant hover:text-white hover:bg-surface-container transition-colors" href="#">Dashboard</a>
+<a class="px-2.5 py-1 rounded text-on-surface-variant hover:text-white hover:bg-surface-container transition-colors" href="#">Roadmap</a>
+<a class="px-2.5 py-1 rounded text-on-surface-variant hover:text-white hover:bg-surface-container transition-colors" href="#">Challenges</a>
+<a class="px-2.5 py-1 rounded text-white bg-surface-container-high border border-outline-variant font-medium" href="#">Lab Detail / Postmortem</a>
+</nav>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<div class="hidden xl:flex items-center gap-2 px-2.5 py-1 rounded border border-outline-variant bg-surface-container-low text-[12px] font-mono text-zinc-400">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          Docker: <span class="text-zinc-200">v26.1.1 healthy</span>
+</div>
+<div class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded border border-outline-variant bg-surface-container text-[12px] font-mono text-zinc-300">
+<span class="text-secondary">$</span> breaklab attach
+        </div>
+<div class="hidden sm:flex items-center gap-1 px-2 py-1 rounded bg-surface-container text-[11px] font-mono text-zinc-400 border border-outline-variant">
+<kbd class="px-1 py-0.5 bg-surface-container-highest rounded text-zinc-300">⌘K</kbd>
+<span>alt+`</span>
+</div>
+<div class="w-7 h-7 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center text-zinc-300">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+</div>
+</div>
+</header>
+<main class="w-full pt-14 flex-1 flex flex-col">
+<!-- Header / Context Ribbon -->
+<section class="w-full bg-[#141417] border-b border-outline-variant px-6 py-5">
+<div class="max-w-[1600px] mx-auto flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+<!-- Title & Breadcrumbs -->
+<div class="flex flex-col gap-2 min-w-0">
+<div class="flex items-center gap-2 font-mono text-[12px] text-zinc-400 flex-wrap">
+<a class="hover:text-white transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[14px]">grid_view</span> Challenges
+            </a>
+<span class="text-zinc-600">/</span>
+<span class="text-zinc-300">Containers &amp; Cgroups</span>
+<span class="text-zinc-600">/</span>
+<span class="text-secondary">TKT-2088</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high border border-outline-variant text-zinc-400 text-[11px]">cgroup_v2</span>
+</div>
+<div class="flex items-start sm:items-center gap-3 flex-wrap">
+<h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              Java JVM Heap Ignorant of Cgroup Memory Limits
+            </h1>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-semibold shrink-0">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              ● COMPLETE
+            </span>
+</div>
+<!-- Metadata Badges -->
+<div class="flex items-center gap-2 flex-wrap text-[12px]">
+<div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container border border-outline-variant text-zinc-300">
+<span class="material-symbols-outlined text-[15px] text-zinc-400">memory</span>
+              Stage: <span class="font-medium text-white">Memory Subsystem &amp; Kernel</span>
+</div>
+<div class="flex items-center gap-1 px-2.5 py-0.5 rounded bg-surface-container border border-outline-variant text-zinc-300">
+<span class="text-amber-400 text-[13px]">★★</span>
+<span class="font-medium">Intermediate</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container border border-outline-variant text-zinc-300 font-mono">
+<span class="material-symbols-outlined text-[14px] text-zinc-400">timer</span>
+              Solve: <span class="text-secondary font-medium">12m 45s</span>
+<span class="text-zinc-500">(Bench 19m)</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container border border-outline-variant text-zinc-300 font-mono">
+<span class="material-symbols-outlined text-[14px] text-zinc-400">help_center</span>
+              Hints: <span class="text-tertiary">1 / 3 revealed</span>
+</div>
+<div class="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container border border-outline-variant text-zinc-400 font-mono">
+<span class="material-symbols-outlined text-[14px]">dns</span>
+<span>breaklab-vm-node-01 (6.5.0-generic)</span>
+</div>
+</div>
+</div>
+<!-- Action Commands -->
+<div class="flex items-center gap-2.5 shrink-0 flex-wrap pt-2 xl:pt-0">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant hover:border-zinc-500 text-zinc-300 hover:text-white font-mono text-[12px] transition-all" onclick="copyCliCommand()">
+<span class="text-secondary">$</span>
+<span>breaklab test TKT-2088</span>
+<span class="material-symbols-outlined text-zinc-500 text-[14px]">content_copy</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant text-zinc-200 hover:text-white font-medium text-[13px] transition-all" onclick="triggerRerun()">
+<span class="material-symbols-outlined text-zinc-400 text-[16px]">replay</span>
+<span>Run Sandbox</span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-white hover:bg-zinc-200 text-black font-semibold text-[13px] transition-all shadow-sm" onclick="exportMarkdown()">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Export Postmortem .md</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Main Learning & Sandbox Canvas (Two Column Pedagogical Layout) -->
+<div class="max-w-[1600px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- LEFT COLUMN: Incident Diagnostic Briefing & Terminal Sandbox (5 cols) -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Diagnostic Briefing & Symptom -->
+<section class="bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+<header class="px-4 py-3 bg-surface-container border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[18px]">emergency</span>
+<h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Incident Ticket &amp; Diagnostic Briefing</h2>
+</div>
+<span class="px-2 py-0.5 rounded bg-error/10 border border-error/30 text-error font-mono text-[11px] font-semibold">
+              SIGKILL (137)
+            </span>
+</header>
+<div class="p-4 flex flex-col gap-4">
+<!-- Kernel Ring Buffer Raw Error Snippet -->
+<div class="rounded bg-surface-container-lowest border border-outline-variant p-3 font-mono text-[11.5px] leading-relaxed flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-zinc-500 text-[10px] pb-1 border-b border-outline-variant">
+<span>kernel_ring_buffer // cgroup.oom</span>
+<span class="text-error font-medium">Out-Of-Memory Ceiling Hit</span>
+</div>
+<div class="text-error font-semibold">FATAL: Container 'worker-ingest-4' terminated with ExitCode: 137</div>
+<div class="text-zinc-400 break-all">
+                [ 142.812903] memory cgroup out of memory: Killed process 8192 (java) total-vm:4294967296kB, anon-rss:524288kB, file-rss:12288kB
+              </div>
+<div class="text-zinc-500 break-all text-[11px]">
+                [ 142.813010] oom-kill:constraint=CONSTRAINT_MEMCG,oom_memcg=/docker/worker-ingest-4,task=java,pid=8192
+              </div>
+</div>
+<!-- Plain Pedagogical Summary -->
+<p class="text-[13px] text-zinc-300 leading-relaxed">
+              Production worker container crashed reliably under heavy batch loads. The host VM has <span class="font-mono text-white bg-surface-container px-1 py-0.5 rounded border border-outline-variant">32GB RAM</span>, and Docker restricted the cgroup ceiling to <span class="font-mono text-tertiary bg-surface-container px-1 py-0.5 rounded border border-outline-variant">512MB</span>. Because the legacy JVM was unaware of cgroup constraints, it defaulted maximum heap sizing to 25% of total host RAM (<span class="font-mono text-error">8,192MB</span>), inducing instantaneous host-level kernel termination.
+            </p>
+<!-- Memory Subsystem Visualizer -->
+<div class="bg-surface-container rounded-md border border-outline-variant p-3.5 flex flex-col gap-2.5">
+<div class="flex items-center justify-between font-mono text-[11px]">
+<span class="text-zinc-400">Allocated Memory vs Cgroup Limit</span>
+<span class="text-error font-semibold">512.0 MB / 512.0 MB (OOM CEILING)</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-3 rounded overflow-hidden flex border border-outline-variant">
+<div class="bg-zinc-400 h-full" style="width: 25%" title="JVM Young/Old Heap (128MB)"></div>
+<div class="bg-zinc-600 h-full" style="width: 45%" title="JVM Metaspace &amp; CodeCache (230MB)"></div>
+<div class="bg-error h-full" style="width: 30%" title="Batch Buffer Explosion (154MB) -&gt; Trip OOM"></div>
+</div>
+<div class="flex items-center justify-between font-mono text-[11px] text-zinc-500 pt-0.5">
+<span>Host: 32,768 MB</span>
+<span class="flex items-center gap-1.5 text-zinc-400">
+<span class="w-2 h-2 rounded-full bg-error"></span> Trigger: memcg oom-kill
+                </span>
+</div>
+</div>
+</div>
+</section>
+<!-- Reproducer Terminal & Commands Logs -->
+<section class="bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+<header class="px-4 py-3 bg-surface-container border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">terminal</span>
+<h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Terminal Reproducer Steps</h2>
+</div>
+<span class="font-mono text-[11px] text-zinc-400">STDOUT / TTY</span>
+</header>
+<div class="p-3.5 flex flex-col gap-3 font-mono text-[12px]">
+<!-- Step 1 -->
+<div class="bg-surface-container-lowest rounded border border-outline-variant p-3 flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-zinc-500 text-[11px]">
+<span># STEP 1: INSPECT RUNTIME CGROUP USAGE</span>
+<span class="text-secondary">exit: 0</span>
+</div>
+<div class="text-zinc-200 flex items-center gap-1">
+<span class="text-secondary">$</span> docker stats worker-ingest-4 --no-stream
+              </div>
+<div class="text-zinc-400 text-[11px] mt-1 space-y-0.5">
+<div class="text-zinc-500">CONTAINER ID   NAME              MEM USAGE / LIMIT     MEM %</div>
+<div class="text-zinc-200">9a84f3c88102   worker-ingest-4   <span class="text-error font-semibold">511.8MiB / 512.0MiB</span> <span class="text-error font-semibold">99.96%</span></div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="bg-surface-container-lowest rounded border border-outline-variant p-3 flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-zinc-500 text-[11px]">
+<span># STEP 2: VERIFY MEMORY CEILING IN HOST CONFIG</span>
+<span class="text-secondary">exit: 0</span>
+</div>
+<div class="text-zinc-200 flex items-center gap-1">
+<span class="text-secondary">$</span> docker inspect --format '{{.HostConfig.Memory}}' worker-ingest-4
+              </div>
+<div class="text-zinc-300 text-[11px]">
+                536870912 <span class="text-zinc-500">(bytes == 512.00 MiB)</span>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="bg-surface-container-lowest rounded border border-outline-variant p-3 flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-zinc-500 text-[11px]">
+<span># STEP 3: PROBE JVM ERGONOMICS HEAP CEILING</span>
+<span class="text-error">mismatch detected</span>
+</div>
+<div class="text-zinc-200 flex items-center gap-1">
+<span class="text-secondary">$</span> <span class="break-all">docker exec worker-ingest-4 java -XX:+PrintFlagsFinal -version | grep -iE 'maxheapsize|usecontainersupport'</span>
+</div>
+<div class="text-zinc-400 text-[11px] mt-1 space-y-0.5">
+<div>bool UseContainerSupport = <span class="text-error font-bold">false</span></div>
+<div>size_t MaxHeapSize = <span class="text-error font-bold">8589934592</span> <span class="text-zinc-500">/* 8GB calculated from 32GB host */</span></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Investigation Hints Accordion -->
+<section class="bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden flex flex-col">
+<header class="px-4 py-3 bg-surface-container border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">lightbulb</span>
+<h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Investigation Hints</h2>
+</div>
+<span class="font-mono text-[11px] text-zinc-400">Progressive Disclosure</span>
+</header>
+<div class="p-3.5 flex flex-col gap-2.5">
+<!-- Hint 1: Unlocked -->
+<details class="group bg-surface-container rounded border border-outline-variant overflow-hidden" open="">
+<summary class="p-3 flex items-center justify-between cursor-pointer list-none select-none text-[13px] hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">lock_open</span>
+<span class="font-semibold text-white">Hint 1: JVM Ergonomics &amp; Flags</span>
+</div>
+<span class="font-mono text-[11px] text-secondary font-medium">[UNLOCKED]</span>
+</summary>
+<div class="px-3.5 pb-3 text-[12.5px] text-zinc-300 border-t border-outline-variant pt-2.5 leading-relaxed bg-surface-container-lowest">
+                Older Java versions prior to 8u191 do not enable container detection by default. Inspect if runtime flag <code class="font-mono text-tertiary">-XX:+UseContainerSupport</code> exists or configure <code class="font-mono text-secondary">MaxRAMPercentage</code>.
+              </div>
+</details>
+<!-- Hint 2: Locked / Interactive -->
+<div class="bg-surface-container rounded border border-outline-variant p-3 flex items-center justify-between gap-3 transition-colors" id="hint-2-container">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-tertiary text-[18px]">lock</span>
+<div class="flex flex-col">
+<span class="text-[13px] font-semibold text-white">Hint 2: Host Cgroup Path Resolution</span>
+<span class="text-[11px] text-zinc-400">Inspect cgroupv2 memory.max directory mapping</span>
+</div>
+</div>
+<button class="px-3 py-1 rounded bg-surface-container-high hover:bg-zinc-700 text-tertiary font-mono text-[11px] font-semibold border border-outline-variant hover:border-zinc-500 transition-all" onclick="revealHint2(this)">
+                Unlock (-5 pts)
+              </button>
+</div>
+<!-- Hint 3: Locked / Solution Walkthrough -->
+<div class="bg-surface-container rounded border border-outline-variant p-3 flex items-center justify-between gap-3 transition-colors" id="hint-3-container">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-zinc-500 text-[18px]">lock</span>
+<div class="flex flex-col">
+<span class="text-[13px] font-semibold text-zinc-300">Hint 3: Dockerfile &amp; JVM Configuration Patch</span>
+<span class="text-[11px] text-zinc-400">Complete multi-stage patch walkthrough</span>
+</div>
+</div>
+<button class="px-3 py-1 rounded bg-surface-container-high hover:bg-zinc-700 text-zinc-300 hover:text-white font-mono text-[11px] font-semibold border border-outline-variant hover:border-zinc-500 transition-all" onclick="revealHint3(this)">
+                Unlock (-15 pts)
+              </button>
+</div>
+</div>
+</section>
+<!-- Sandbox Environment Info -->
+<div class="p-3.5 bg-surface-container-low rounded-lg border border-outline-variant font-mono text-[11.5px] text-zinc-400 flex flex-col gap-2">
+<div class="flex items-center justify-between text-zinc-300 font-semibold uppercase text-[11px]">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-secondary">lan</span> Sandbox Topology
+            </span>
+<span class="text-zinc-500">172.24.0.0/16</span>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+<div class="p-2 rounded bg-surface-container border border-outline-variant">
+<span class="text-zinc-500 block">Target Container</span>
+<span class="text-white font-medium">worker-ingest-4</span>
+</div>
+<div class="p-2 rounded bg-surface-container border border-outline-variant">
+<span class="text-zinc-500 block">Base Image</span>
+<span class="text-tertiary font-medium">openjdk:8u121-jre</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Structured Engineering Postmortem Document (7 cols) -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<article class="bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden flex flex-col shadow-sm">
+<!-- Postmortem Top Bar -->
+<header class="px-5 py-3.5 bg-surface-container border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white text-[20px]">assignment_turned_in</span>
+<div class="flex items-center gap-2">
+<span class="font-bold text-sm tracking-tight text-white">ENGINEERING POSTMORTEM</span>
+<span class="font-mono text-[11px] px-2 py-0.5 rounded bg-surface-container-highest text-tertiary border border-outline-variant font-semibold">TKT-2088-PM</span>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-[11px]">
+<span class="inline-flex items-center gap-1.5 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                PUBLISHED / VERIFIED
+              </span>
+<span class="text-zinc-500">v1.2 Signed</span>
+</div>
+</header>
+<div class="p-6 flex flex-col gap-6 text-on-surface">
+<!-- Section 1: Executive Summary -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h3 class="font-mono text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-secondary/10 border border-secondary/30 text-secondary flex items-center justify-center text-[10px]">1</span>
+                  Executive Summary
+                </h3>
+<span class="font-mono text-[11px] text-zinc-500">Severity: P1 (Ingest Pipeline Stall)</span>
+</div>
+<div class="bg-surface-container rounded-md border border-outline-variant p-4 text-[13.5px] text-zinc-200 leading-relaxed">
+                Containerized batch ingest microservice <code class="font-mono text-tertiary bg-surface-container-highest px-1.5 py-0.5 rounded border border-outline-variant text-[12px]">worker-ingest-4</code> repeatedly crashed with exit code 137 (<code class="font-mono text-error">SIGKILL</code>) under burst ingest loads. Root cause was an unconstrained JVM Ergonomics memory ceiling reading the 32GB host physical RAM instead of the 512MB container cgroup limit. The Linux kernel OOM killer abruptly aborted the Java process without application-level stack traces. Ingestion recovered with zero unrecoverable message loss via Kafka offset commits, though pipeline processing SLA degraded by 44 minutes.
+              </div>
+</section>
+<!-- Section 2: Detection & Symptoms -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h3 class="font-mono text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-secondary/10 border border-secondary/30 text-secondary flex items-center justify-center text-[10px]">2</span>
+                  Detection &amp; Immediate Symptoms
+                </h3>
+<span class="font-mono text-[11px] text-zinc-500">MTTD: 3m 12s</span>
+</div>
+<div class="bg-surface-container rounded-md border border-outline-variant p-4 text-[13px] text-zinc-300 leading-relaxed flex flex-col gap-3">
+<p>
+                  Alert fired via Prometheus rule <code class="font-mono text-secondary bg-surface-container-highest px-1.5 py-0.5 rounded border border-outline-variant text-[11.5px]">container_last_seen{container="worker-ingest-4"} == 0</code> during peak batch ingest. Automated restart loops triggered pagerduty escalation.
+                </p>
+<p>
+                  Host kernel dmesg ring buffer confirmed direct invocation of <code class="font-mono text-error">mem_cgroup_out_of_memory</code> on PID 8192 with zero corresponding Java <code class="font-mono text-zinc-200">java.lang.OutOfMemoryError</code> thrown in container logs, indicating a kernel-level cull before the runtime could trigger heap dumps.
+                </p>
+</div>
+</section>
+<!-- Section 3: Root Cause Analysis with Architectural Diagram -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h3 class="font-mono text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-secondary/10 border border-secondary/30 text-secondary flex items-center justify-center text-[10px]">3</span>
+                  Root Cause Analysis (RCA)
+                </h3>
+<span class="font-mono text-[11px] text-zinc-400">Cgroup CFS Subsystem Mismatch</span>
+</div>
+<div class="bg-surface-container rounded-md border border-outline-variant p-4 text-[13px] text-zinc-300 leading-relaxed flex flex-col gap-3">
+<p>
+                  The legacy base image <code class="font-mono text-zinc-200 bg-surface-container-highest px-1.5 py-0.5 rounded border border-outline-variant text-[12px]">openjdk:8u121-jre</code> predates backported container awareness (introduced in OpenJDK 8u191+). By default, <code class="font-mono text-tertiary">-XX:+UseContainerSupport</code> was absent or inert.
+                </p>
+<!-- Pedagogical Architectural Disconnect Diagram -->
+<div class="bg-surface-container-lowest rounded border border-outline-variant p-3.5 font-mono text-[11.5px] flex flex-col gap-1.5">
+<div class="text-secondary font-semibold pb-1 border-b border-outline-variant">
+                    // Memory Boundary Disconnect Topology
+                  </div>
+<div class="text-zinc-400">Host Physical Hardware Memory   : 32.00 GB (32,768 MB)</div>
+<div class="text-tertiary">Docker cgroup.max Memory Limit  :  0.50 GB (   512 MB)</div>
+<div class="text-error font-medium">JVM Ergonomics Default (-Xmx)   :  8.00 GB ( 8,192 MB)  &lt;-- [1600% of cgroup]</div>
+<div class="text-zinc-500 pt-1 border-t border-outline-variant text-[11px]">
+                    Result: Once JVM Resident Set Size (RSS) crossed 512MB threshold, Linux OOM killer terminated the cgroup with SIGKILL (137).
+                  </div>
+</div>
+</div>
+</section>
+<!-- Section 4: Verified Fix with Syntax-Highlighted Unified Diff -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h3 class="font-mono text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-white/10 border border-white/30 text-white flex items-center justify-center text-[10px]">4</span>
+                  Verified Resolution &amp; Patch
+                </h3>
+<span class="font-mono text-[11px] text-secondary">Verified in Sandbox</span>
+</div>
+<div class="bg-surface-container rounded-md border border-outline-variant p-4 flex flex-col gap-3">
+<p class="text-[13px] text-zinc-300">
+                  Upgraded the runtime container to Temurin 17 LTS and configured container-aware heap sizing using percentage constraints rather than static host heuristics:
+                </p>
+<!-- Formatted Unified Diff Code Box -->
+<div class="rounded bg-surface-container-lowest border border-outline-variant overflow-hidden font-mono text-[12px]">
+<div class="px-3 py-1.5 bg-surface-container-high border-b border-outline-variant flex items-center justify-between text-[11px]">
+<span class="text-zinc-200">Dockerfile.production.patch</span>
+<span class="text-secondary">unified diff</span>
+</div>
+<pre class="p-3.5 leading-relaxed overflow-x-auto text-zinc-300"><code><span class="text-zinc-500">@@ -1,7 +1,11 @@</span>
+<span class="text-error bg-error/10 block px-1 -mx-1">- FROM openjdk:8u121-jre</span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+ FROM eclipse-temurin:17-jre-alpine</span>
+<span class="text-zinc-500"> </span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+ ENV JAVA_OPTS="-XX:+UseContainerSupport \</span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+                -XX:MaxRAMPercentage=75.0 \</span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+                -XX:+ExitOnOutOfMemoryError \</span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+                -XX:+HeapDumpOnOutOfMemoryError \</span>
+<span class="text-secondary bg-secondary/10 block px-1 -mx-1">+                -XX:HeapDumpPath=/var/log/dumps"</span>
+<span class="text-zinc-500"> </span>
+<span class="text-zinc-400"> ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/worker.jar"]</span></code></pre>
+</div>
+<div class="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-2 text-[12px] font-mono">
+<span class="material-symbols-outlined text-[16px] text-emerald-400">verified</span>
+<span>Validation: Sandbox sustained 1,200 msg/sec with RSS stabilized at 374MB under 512MB cap.</span>
+</div>
+</div>
+</section>
+<!-- Section 5: Prevention & Action Items Checklist -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<h3 class="font-mono text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-2">
+<span class="w-4 h-4 rounded bg-secondary/10 border border-secondary/30 text-secondary flex items-center justify-center text-[10px]">5</span>
+                  Prevention &amp; Regression Safeguards
+                </h3>
+<span class="font-mono text-[11px] text-zinc-400">Action Items (2 of 3 Completed)</span>
+</div>
+<div class="bg-surface-container rounded-md border border-outline-variant p-4 flex flex-col gap-2.5 text-[13px]">
+<!-- Action Item 1 (Done) -->
+<label class="flex items-start gap-3 p-2 rounded hover:bg-surface-container-high/60 transition-colors cursor-pointer select-none">
+<input checked="" class="mt-0.5 rounded border-outline-variant bg-surface-container-lowest text-secondary focus:ring-0 cursor-not-allowed" disabled="" type="checkbox"/>
+<div class="flex flex-col">
+<span class="text-zinc-400 line-through font-medium">Add automated CI linter verifying <code class="font-mono text-zinc-300 text-[12px]">MaxRAMPercentage</code> in Dockerfiles</span>
+<span class="font-mono text-[11px] text-zinc-500">Owner: @alex-ops // Merged PR #412</span>
+</div>
+</label>
+<!-- Action Item 2 (Done) -->
+<label class="flex items-start gap-3 p-2 rounded hover:bg-surface-container-high/60 transition-colors cursor-pointer select-none">
+<input checked="" class="mt-0.5 rounded border-outline-variant bg-surface-container-lowest text-secondary focus:ring-0 cursor-not-allowed" disabled="" type="checkbox"/>
+<div class="flex flex-col">
+<span class="text-zinc-400 line-through font-medium">Standardize all base images to Temurin 17 LTS across cluster workloads</span>
+<span class="font-mono text-[11px] text-zinc-500">Owner: @devops-core // Template rollout complete</span>
+</div>
+</label>
+<!-- Action Item 3 (Interactive / Pending) -->
+<label class="flex items-start gap-3 p-2 rounded bg-surface-container-high/40 hover:bg-surface-container-high border border-outline-variant transition-colors cursor-pointer select-none">
+<input class="mt-0.5 rounded border-zinc-500 bg-surface-container-lowest text-secondary focus:ring-0 cursor-pointer" id="action-item-3" onchange="handleCheckboxToggle(this)" type="checkbox"/>
+<div class="flex flex-col">
+<span class="text-white font-medium" id="action-item-3-text">Configure Prometheus cgroup memory alert at 85% threshold (<code class="font-mono text-tertiary text-[12px]">container_memory_working_set_bytes</code>)</span>
+<span class="font-mono text-[11px] text-amber-400" id="action-item-3-sub">Pending Deployment // Target: Alertmanager cluster rules</span>
+</div>
+</label>
+</div>
+</section>
+</div>
+</article>
+</div>
+</div>
+<!-- Sticky Postmortem Footer Control Bar -->
+<footer class="w-full bg-[#121214] border-t border-outline-variant px-6 py-3 mt-auto">
+<div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-2 text-zinc-400 font-mono flex-wrap">
+<span class="material-symbols-outlined text-[16px] text-zinc-500">folder_open</span>
+<span>Artifact:</span>
+<code class="text-white bg-surface-container px-2 py-0.5 rounded border border-outline-variant">~/.breaklab/postmortems/TKT-2088.md</code>
+<span class="text-zinc-600 hidden md:inline">sha256: 8f9b...a12c</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant text-zinc-300 hover:text-white font-mono text-[11.5px] transition-colors" onclick="openEditor()">
+<span class="material-symbols-outlined text-[15px] text-zinc-400">edit_note</span>
+<span>Open in $EDITOR</span>
+</button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-surface-container-high text-zinc-500 border border-outline-variant font-mono text-[11.5px] cursor-not-allowed transition-all" disabled="" id="save-btn">
+<span class="material-symbols-outlined text-[15px] text-zinc-500">check</span>
+<span>All Changes Saved</span>
+</button>
+</div>
+</div>
+</footer>
+<!-- System Telemetry Micro Footer -->
+<div class="w-full bg-background border-t border-outline-variant py-2 px-6">
+<div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-mono text-zinc-500">
+<span>BREAKLAB // LOCAL INSTANCE // WORKSPACE: <span class="text-zinc-300">~/.breaklab/labs/prod-sim-04</span></span>
+<div class="flex items-center gap-4">
+<span>IO: 0.12 MB/s</span>
+<span>CPU: 4.2%</span>
+<span class="text-secondary">NET: LOCALHOST MESH</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Toast Notification Notification -->
+<div class="fixed bottom-14 right-6 bg-surface-container-highest border border-zinc-600 text-white px-4 py-2.5 rounded-md shadow-2xl flex items-center gap-2.5 font-mono text-xs transition-all duration-300 opacity-0 pointer-events-none translate-y-3 z-50" id="toast">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+<span id="toast-text">Command copied to clipboard</span>
+</div>
+<script>
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toast-text');
+      if (!toast || !msg) return;
+      msg.textContent = text;
+      toast.classList.remove('opacity-0', 'translate-y-3', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-3', 'pointer-events-none');
+      }, 2600);
+    }
+
+    function copyCliCommand() {
+      navigator.clipboard.writeText('breaklab test TKT-2088');
+      showToast('Copied: breaklab test TKT-2088');
+    }
+
+    function triggerRerun() {
+      showToast('Spinning up fresh Docker sandbox container for TKT-2088...');
+    }
+
+    function exportMarkdown() {
+      showToast('Exported TKT-2088-PM.md to workspace');
+    }
+
+    function openEditor() {
+      showToast('Launched: $EDITOR ~/.breaklab/postmortems/TKT-2088.md');
+    }
+
+    function revealHint2(btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[13px] animate-spin">sync</span> Unlocking...';
+      setTimeout(() => {
+        const container = document.getElementById('hint-2-container');
+        container.innerHTML = `
+          <div class="flex flex-col gap-1 w-full">
+            <div class="flex items-center justify-between">
+              <span class="text-[13px] font-semibold text-secondary flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">lock_open</span> Hint 2: Host Cgroup Path Resolution
+              </span>
+              <span class="font-mono text-[11px] text-zinc-500">-5 pts applied</span>
+            </div>
+            <p class="text-[12.5px] text-zinc-300 leading-relaxed mt-1">
+              On Linux cgroups v2, Docker maps container memory boundaries to <code class="font-mono text-tertiary">/sys/fs/cgroup/memory.max</code>. Probe inside container with <code class="font-mono text-white">cat /sys/fs/cgroup/memory.max</code>.
+            </p>
+          </div>
+        `;
+        showToast('Hint #2 unlocked (-5 pts)');
+      }, 500);
+    }
+
+    function revealHint3(btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[13px] animate-spin">sync</span> Unlocking...';
+      setTimeout(() => {
+        const container = document.getElementById('hint-3-container');
+        container.innerHTML = `
+          <div class="flex flex-col gap-1 w-full">
+            <div class="flex items-center justify-between">
+              <span class="text-[13px] font-semibold text-secondary flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">lock_open</span> Hint 3: Dockerfile &amp; JVM Patch
+              </span>
+              <span class="font-mono text-[11px] text-zinc-500">-15 pts applied</span>
+            </div>
+            <p class="text-[12.5px] text-zinc-300 leading-relaxed mt-1">
+              Switch base to <code class="font-mono text-zinc-200">eclipse-temurin:17-jre-alpine</code> and declare <code class="font-mono text-zinc-200">-XX:MaxRAMPercentage=75.0</code> to respect memory constraints dynamically.
+            </p>
+          </div>
+        `;
+        showToast('Hint #3 unlocked (-15 pts)');
+      }, 500);
+    }
+
+    function handleCheckboxToggle(checkbox) {
+      const text = document.getElementById('action-item-3-text');
+      const sub = document.getElementById('action-item-3-sub');
+      const saveBtn = document.getElementById('save-btn');
+
+      if (checkbox.checked) {
+        text.classList.add('line-through', 'text-zinc-400');
+        text.classList.remove('text-white');
+        sub.textContent = 'Completed // Verified in Prometheus rules';
+        sub.classList.remove('text-amber-400');
+        sub.classList.add('text-zinc-500');
+
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('bg-surface-container-high', 'text-zinc-500', 'cursor-not-allowed');
+        saveBtn.classList.add('bg-white', 'text-black', 'hover:bg-zinc-200', 'cursor-pointer');
+        saveBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">save</span><span>Save Checkpoint</span>';
+        saveBtn.onclick = function() {
+          showToast('Safeguard checklist saved to manifest.');
+          saveBtn.disabled = true;
+          saveBtn.classList.remove('bg-white', 'text-black', 'hover:bg-zinc-200', 'cursor-pointer');
+          saveBtn.classList.add('bg-surface-container-high', 'text-zinc-500', 'cursor-not-allowed');
+          saveBtn.innerHTML = '<span class="material-symbols-outlined text-[15px] text-secondary">check</span><span>All Changes Saved</span>';
+        };
+      } else {
+        text.classList.remove('line-through', 'text-zinc-400');
+        text.classList.add('text-white');
+        sub.textContent = 'Pending Deployment // Target: Alertmanager cluster rules';
+        sub.classList.add('text-amber-400');
+        sub.classList.remove('text-zinc-500');
+      }
+    }
+  </script>
+</body></html>

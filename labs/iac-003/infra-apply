@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SRC=/infra/resources.yaml
+STATE=/infra/state.json
+
+path=$(sed -n 's/^path: *//p' "$SRC")
+value=$(sed -n 's/^value: *//p' "$SRC")
+
+current=""
+if [ -f "$path" ]; then
+  current=$(cat "$path")
+fi
+
+if [ "$current" = "$value" ]; then
+  echo "applied: $path (no changes)"
+else
+  echo "$value" > "$path"
+  echo "applied: $path (changed)"
+fi
+
+jq -n --arg path "$path" --arg value "$value" \
+  '{path: $path, last_applied_value: $value}' > "$STATE"

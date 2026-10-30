@@ -1,0 +1,11 @@
+2026-01-15 10:21:40 INFO starting checkout for order ord-5521
+2026-01-15 10:22:01 INFO connecting to db (attempt 1)
+2026-01-15 10:22:01 ERROR could not connect to db (attempt 1)
+2026-01-15 10:22:03 INFO connecting to db (attempt 2)
+2026-01-15 10:22:03 ERROR could not connect to db (attempt 2)
+2026-01-15 10:22:07 INFO connecting to db (attempt 3)
+2026-01-15 10:22:07 ERROR could not connect to db (attempt 3)
+2026-01-15 10:22:07 ERROR checkout failed for order ord-5521: db unavailable after 3 attempts
+2026-01-15 10:25:00 INFO starting checkout for order ord-5522
+2026-01-15 10:25:00 INFO connecting to db (attempt 1)
+2026-01-15 10:25:00 INFO checkout completed for order ord-5522

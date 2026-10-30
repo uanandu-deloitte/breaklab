@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+message=$(sed -n 's/^message: *//p' /infra/site.yaml)
+MESSAGE="$message" envsubst '${MESSAGE}' < /infra/templates/index.html.tmpl > /var/www/html/index.html
+nginx -t
+if pgrep -x nginx >/dev/null; then
+  nginx -s reload
+else
+  nginx
+fi

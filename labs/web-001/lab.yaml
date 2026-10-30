@@ -1,0 +1,38 @@
+id: web-001
+title: Serve a Static Site
+stage: networking
+path: web-servers
+module: nginx
+difficulty: 1
+estimated_minutes: 15
+tags: [networking, web-servers, nginx]
+type: guided
+summary: A static status page already exists on disk, but nginx isn't configured to serve it yet, and nginx itself isn't even running.
+objectives:
+  - add an nginx location block that serves a specific static asset at a specific route
+  - validate nginx configuration syntax before starting or reloading
+  - start nginx and confirm the fix with curl
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /var/www/status-site/index.html
+      why: Confirms the static file already exists on disk and shows exactly what content needs to be served.
+    - do: "edit /etc/nginx/sites-available/default to add: location /status/ { alias /var/www/status-site/; index index.html; }"
+      why: nginx only serves a route once a matching location block names it — alias maps the /status/ prefix straight onto this directory, since the directory name doesn't match the route.
+    - do: nginx -t
+      why: Validates the config's syntax before touching the running process, catching a typo before it becomes downtime.
+    - do: nginx
+      why: nginx isn't running yet in this container — starting it is what actually makes the new config take effect.
+    - do: curl http://localhost:8080/status/
+      why: Confirms the fix — the status page should now be reachable at the configured route.
+hints:
+  - "The static asset already exists on disk at /var/www/status-site/index.html — nginx just isn't pointed at it yet."
+  - "Edit /etc/nginx/sites-available/default and add: location /status/ { alias /var/www/status-site/; index index.html; }"
+  - "Always run nginx -t before (re)starting — a syntax error means nginx won't come up at all."
+  - nginx isn't running yet in this container. Fixing the config alone doesn't start the process — you still need to run nginx afterward.

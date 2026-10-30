@@ -1,0 +1,40 @@
+id: git-003
+title: Curate a Commit
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, staging]
+type: practice
+path: version-control
+module: staging
+summary: A working tree has two unrelated uncommitted changes sitting in it at once — split them into two clean commits instead of folding them into one.
+objectives:
+  - recognize when a working tree holds more than one unrelated change
+  - stage changes selectively, file by file (or hunk by hunk with git add -p)
+  - produce a commit history where each commit represents one coherent change
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git status
+      why: Confirms both unrelated changes — app.py and utils.py — are present and uncommitted before you stage anything.
+    - do: git diff app.py
+      why: Shows the off-by-one fix in get_last_item, confirming it's a coherent, self-contained change worth its own commit.
+    - do: git diff utils.py
+      why: Shows the stray debug print, confirming it has nothing to do with the app.py fix and belongs in a different commit.
+    - do: git add app.py && git commit -m "Fix off-by-one in get_last_item"
+      why: Stages and commits only the bugfix, since git add <file> never touches utils.py's unrelated change.
+    - do: git add utils.py && git commit -m "Add debug print to utils.py"
+      why: Commits the unrelated debug-print change separately, so it's never bundled with the bugfix.
+    - do: git log --oneline
+      why: Confirms there are now two commits since the fixture base, one per change, instead of one commit mixing both.
+hints:
+  - "git status and git diff will show you both changes before you stage anything — read them first."
+  - "Stage and commit one file at a time with git add <file> && git commit, rather than git add -A once."
+  - "If two unrelated changes ever land in the same file, git add -p lets you stage one hunk at a time instead of the whole file."
+  - "git log --oneline and git show <sha> afterward are how you'd verify the split actually worked, before anything checks it for you."

@@ -1,0 +1,41 @@
+id: git-010
+title: Undo Safely
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, version-control, history]
+type: guided
+path: version-control
+module: history
+summary: The same kind of bad change shows up three times, each needing a different undo — pick the one that fits whether the mistake is still private or already shared.
+objectives:
+  - discard a staged-but-uncommitted change with git restore
+  - remove a commit that only ever existed locally with git reset
+  - undo a commit already on a shared branch with git revert instead of rewriting history
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cd /workspace/repo-staged && git status
+      why: Shows config.yaml under "Changes to be committed" — a staged mistake that was never actually committed.
+    - do: git restore --staged config.yaml && git restore config.yaml
+      why: restore operates on the index and working tree only, resetting both back to the last commit — safe because nothing was committed yet.
+    - do: cd /workspace/repo-private && git log --oneline -1
+      why: Confirms the bad "DEBUG" commit is the current tip, made locally with no remote to have ever fetched it.
+    - do: git reset --hard HEAD~1
+      why: Safe to discard a commit entirely when nobody else could possibly have already fetched it.
+    - do: cd /workspace/repo-shared && git log --oneline -1
+      why: Confirms this repo is a clone of a shared remote that already has the same bad commit.
+    - do: git revert HEAD
+      why: Adds a new commit that undoes the bad commit's effect instead of rewriting history a shared remote might already have.
+    - do: 'printf "STAGED_CHANGE_COMMAND=restore\nPRIVATE_COMMIT_COMMAND=reset\nSHARED_COMMIT_COMMAND=revert\n" > /workspace/answers.env'
+      why: Records which git subcommand actually fit each situation, matching what was just done in each repo.
+hints:
+  - "git status and git diff --staged tell you exactly what's staged before you decide how to discard it."
+  - "git reset --hard HEAD~1 is safe only when nobody else could have already fetched the commit you're removing."
+  - "git revert doesn't delete a commit -- it adds a new one that undoes its changes, which is why it's safe on a branch other clones may have already pulled."

@@ -1,0 +1,39 @@
+id: lnx-005
+title: Build the Application Layout
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, filesystem]
+type: guided
+path: linux-fundamentals
+module: filesystem
+summary: Stand up the standard directory layout a new application expects, and move its binary in without losing the original.
+objectives:
+  - create a nested directory tree in one operation
+  - create placeholder files with touch
+  - copy (not move) a file, preserving the original
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: mkdir -p /opt/acme-app/{bin,config,data,logs}
+      why: The -p flag creates the directory and every missing parent it needs along the way, building the whole nested tree in one command.
+    - do: touch /opt/acme-app/config/app.conf
+      why: touch creates an empty placeholder file without needing any real content yet.
+    - do: touch /opt/acme-app/logs/app.log
+      why: Same tool, same reason — an empty placeholder log file.
+    - do: cp /opt/fixtures/acme-app /opt/acme-app/bin/acme-app
+      why: cp leaves the original fixture in place, unlike mv, which is why the task requires copying rather than moving.
+    - do: chmod +x /opt/acme-app/bin/acme-app
+      why: File permissions survive cp inconsistently across filesystems, so the executable bit needs to be explicitly reapplied after copying.
+    - do: ls -l /opt/acme-app/bin/acme-app
+      why: Confirms the copy actually kept its executable bit before moving on.
+hints:
+  - "mkdir -p can create an entire nested tree in a single command."
+  - "cp, not mv — the original fixture must still exist afterward."
+  - "Don't forget chmod +x on the copy: cp alone doesn't guarantee it stays executable on every filesystem."

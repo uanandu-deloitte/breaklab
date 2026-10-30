@@ -1,0 +1,36 @@
+id: lnx-012
+title: Create Operations Accounts
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, identity]
+type: guided
+path: linux-fundamentals
+module: identity
+summary: Two new operations roles need Linux accounts — one for an interactive engineer, one for a service that should never get a login shell.
+objectives:
+  - create a user account with an interactive login shell and a real home directory
+  - create a system account with no login shell
+  - distinguish the two by inspecting /etc/passwd fields
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: useradd -m -s /bin/bash developer
+      why: -m creates developer's home directory (populated from /etc/skel) and -s sets an interactive login shell, exactly what a human engineer needs.
+    - do: useradd -r -s /usr/sbin/nologin operator
+      why: -r creates a system account conventionally used for services, and /usr/sbin/nologin refuses any attempt to open an interactive session, even with a password.
+    - do: id developer
+      why: Shows the UID, home directory, and shell developer actually ended up with, confirming it looks the way you intended.
+    - do: id operator
+      why: Same check for operator, confirming its UID is distinct from developer's and its shell truly blocks login.
+hints:
+  - "useradd -m -s /bin/bash developer creates a normal user with a home directory and an interactive shell."
+  - "useradd -r -s /usr/sbin/nologin operator creates a system account that can never get an interactive login."
+  - "If useradd complains that a group named operator already exists, this base image reserves that name as a system group — add -g operator to reuse it instead of creating a new one."
+  - "getent passwd <user> or id <user> shows you the UID, shell, and home directory that were actually assigned."

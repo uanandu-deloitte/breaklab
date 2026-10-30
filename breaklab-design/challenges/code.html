@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<title>BreakLab — Challenge Catalog &amp; Drills</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#0f1115",
+            "surface-dim": "#0a0c0f",
+            "surface-container-lowest": "#08090c",
+            "surface-container-low": "#13161c",
+            "surface-container": "#181b22",
+            "surface-container-high": "#1f232c",
+            "surface-container-highest": "#282d38",
+            outline: "#4a5160",
+            "outline-variant": "#2a2f3a",
+            "on-surface": "#f1f3f7",
+            "on-surface-variant": "#9aa2b1",
+            primary: "#22c55e",
+            "primary-container": "#16a34a",
+            "on-primary": "#052e16",
+            secondary: "#38bdf8",
+            "secondary-container": "#0369a1",
+            tertiary: "#fbbf24",
+            error: "#f87171",
+            "error-container": "#450a0a",
+            "on-error": "#fef2f2"
+          },
+          fontFamily: {
+            sans: ["Geist", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      body {
+        background-color: #0c0e12;
+        color: #f1f3f7;
+        font-family: 'Geist', sans-serif;
+      }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="bg-[#0c0e12] font-sans antialiased min-h-screen text-[#f1f3f7] selection:bg-white/10 selection:text-white">
+<!-- Top App Navigation Bar -->
+<header class="sticky top-0 z-40 w-full border-b border-[#232731] bg-[#0f1115]/95 backdrop-blur">
+<div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2.5 group" href="#">
+<div class="w-7 h-7 rounded bg-white/10 border border-white/20 flex items-center justify-center font-mono font-bold text-sm tracking-tighter text-white group-hover:border-white/40 transition">
+            BL
+          </div>
+<span class="font-bold text-[15px] tracking-tight text-white">BreakLab</span>
+<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            daemon 4182
+          </span>
+</a>
+<nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+<a class="px-3 py-1.5 rounded text-[#9aa2b1] hover:text-white hover:bg-white/[0.04] transition" href="#">Dashboard</a>
+<a class="px-3 py-1.5 rounded text-[#9aa2b1] hover:text-white hover:bg-white/[0.04] transition" href="#">Roadmap</a>
+<a aria-current="page" class="px-3 py-1.5 rounded bg-white/10 text-white font-semibold transition" href="#">Challenges</a>
+<a class="px-3 py-1.5 rounded text-[#9aa2b1] hover:text-white hover:bg-white/[0.04] transition" href="#">Postmortems</a>
+</nav>
+</div>
+<div class="flex items-center gap-3 text-xs">
+<div class="hidden lg:flex items-center gap-2 px-3 py-1 rounded border border-[#232731] bg-[#14171e] text-[#9aa2b1] font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>Docker Engine <strong class="text-white font-normal">v26.1.1</strong></span>
+</div>
+<div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded border border-[#232731] bg-[#14171e] text-[#9aa2b1] font-mono">
+<span>uptime <strong class="text-white font-normal">2h 45m</strong></span>
+</div>
+<button class="h-8 w-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center text-white/80 hover:text-white hover:border-white/40 transition" title="User Settings">
+<span class="material-symbols-outlined text-[17px]">person</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-6">
+<!-- Active Incident Heads-Up Mini Banner -->
+<div class="rounded-lg border border-red-900/40 bg-red-950/20 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex items-start sm:items-center gap-3">
+<span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-mono font-semibold uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+          Active Incident
+        </span>
+<div class="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+<span class="font-mono text-xs font-bold text-red-300">TKT-4091</span>
+<span class="text-sm font-medium text-white">CoreDNS CrashLoopBackOff: Servfail loop on upstream resolvers</span>
+<span class="hidden xl:inline text-xs font-mono text-[#9aa2b1] bg-[#14171e] px-2 py-0.5 rounded border border-[#232731]">kube-system</span>
+</div>
+</div>
+<div class="flex items-center gap-3 self-end sm:self-auto shrink-0 font-mono text-xs">
+<span class="text-[#9aa2b1] flex items-center gap-1">
+<span class="material-symbols-outlined text-red-400 text-[15px]">schedule</span>
+          Elapsed: <strong class="text-white font-bold">00:34:18</strong>
+</span>
+<button class="px-3 py-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-medium transition flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px]">terminal</span>
+          Attach Terminal
+        </button>
+<button class="h-8 w-8 rounded border border-white/10 hover:border-red-500/40 hover:bg-white/5 text-[#9aa2b1] hover:text-red-400 transition flex items-center justify-center" title="Teardown Incident">
+<span class="material-symbols-outlined text-[16px]">stop</span>
+</button>
+</div>
+</div>
+<!-- Header & Search Controls Bar -->
+<div class="flex flex-col gap-4">
+<div>
+<h1 class="text-2xl font-bold tracking-tight text-white">Challenge Browser</h1>
+<p class="text-sm text-[#9aa2b1] mt-0.5">Explore, launch, and troubleshoot production outage simulations in sandboxed environments.</p>
+</div>
+<!-- Search & Filters Container -->
+<div class="rounded-lg border border-[#232731] bg-[#13161c] p-4 flex flex-col gap-4">
+<!-- Search Row -->
+<div class="flex flex-col sm:flex-row gap-3">
+<div class="relative flex-1">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#9aa2b1]">
+<span class="material-symbols-outlined text-[18px]">search</span>
+</span>
+<input class="w-full pl-9 pr-14 py-2 bg-[#0c0e12] border border-[#232731] rounded-md text-sm text-white placeholder-[#687082] focus:outline-none focus:border-white/40 focus:ring-0 font-sans" placeholder="Search scenarios, error codes, logs (e.g. 'OOMKilled', 'CoreDNS', 'iptables')..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+<kbd class="px-1.5 py-0.5 text-[11px] font-mono text-[#9aa2b1] bg-[#1c202a] border border-[#2e3444] rounded">⌘K</kbd>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-md bg-white text-black font-semibold text-xs hover:bg-[#e2e4e9] transition flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">shuffle</span>
+<span>Launch Random</span>
+</button>
+<button class="px-3 py-2 rounded-md border border-[#232731] bg-[#181b22] hover:bg-[#20242e] text-[#9aa2b1] hover:text-white text-xs font-medium transition flex items-center gap-1.5" title="Export CSV">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="hidden sm:inline">Export</span>
+</button>
+</div>
+</div>
+<!-- Filter Dropdowns Row -->
+<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-1 border-t border-[#1e222c]">
+<div class="flex flex-col gap-1">
+<span class="text-[11px] font-mono font-medium text-[#7c8596] uppercase tracking-wider">Stage</span>
+<select class="w-full bg-[#0c0e12] border border-[#232731] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer">
+<option>All Stages (4)</option>
+<option>Linux Basics</option>
+<option>Networking</option>
+<option>Containers</option>
+<option>Kubernetes</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[11px] font-mono font-medium text-[#7c8596] uppercase tracking-wider">Difficulty</span>
+<select class="w-full bg-[#0c0e12] border border-[#232731] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer">
+<option>All Difficulties</option>
+<option>★ Beginner</option>
+<option>★★ Intermediate</option>
+<option>★★★ Advanced</option>
+<option>★★★★ Expert</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[11px] font-mono font-medium text-[#7c8596] uppercase tracking-wider">Status</span>
+<select class="w-full bg-[#0c0e12] border border-[#232731] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer">
+<option>All Statuses</option>
+<option>● Completed</option>
+<option>◐ In Progress</option>
+<option>✕ Broken / Active</option>
+<option>○ Unstarted</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[11px] font-mono font-medium text-[#7c8596] uppercase tracking-wider">Sort By</span>
+<select class="w-full bg-[#0c0e12] border border-[#232731] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer">
+<option>Recent Activity</option>
+<option>Difficulty (Asc)</option>
+<option>Difficulty (Desc)</option>
+<option>Time to Solve</option>
+</select>
+</div>
+<div class="col-span-2 sm:col-span-4 lg:col-span-1 flex items-end">
+<button class="w-full py-1.5 px-3 rounded border border-[#232731] bg-[#181b22] hover:bg-[#20242e] text-xs font-mono text-[#9aa2b1] hover:text-white transition flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[15px]">restart_alt</span>
+<span>Reset</span>
+</button>
+</div>
+</div>
+<!-- Topic Tags Pill Strip -->
+<div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+<span class="text-[11px] font-mono text-[#687082] mr-2">TOPICS:</span>
+<button class="px-2.5 py-1 rounded border border-white/20 bg-white/10 text-white font-medium flex items-center gap-1 hover:bg-white/15 transition">
+            DNS <span class="text-[#9aa2b1] text-[10px]">✕</span>
+</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">Cgroups</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">TCP/IP</button>
+<button class="px-2.5 py-1 rounded border border-white/20 bg-white/10 text-white font-medium flex items-center gap-1 hover:bg-white/15 transition">
+            Docker <span class="text-[#9aa2b1] text-[10px]">✕</span>
+</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">K8s</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">TLS</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">Storage</button>
+<button class="px-2.5 py-1 rounded border border-[#232731] bg-[#181b22] text-[#9aa2b1] hover:text-white hover:border-[#383f4f] transition">Systemd</button>
+<span class="ml-auto text-xs font-mono text-[#7c8596]">Showing <strong class="text-white font-medium">8</strong> of 24 scenarios</span>
+</div>
+</div>
+</div>
+<!-- Challenge Catalog Data Table -->
+<div class="rounded-lg border border-[#232731] bg-[#13161c] overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm border-collapse">
+<thead>
+<tr class="border-b border-[#232731] bg-[#101217] text-[#7c8596] font-mono text-[11px] uppercase tracking-wider">
+<th class="py-3 px-4 font-medium w-24">ID</th>
+<th class="py-3 px-4 font-medium">Scenario &amp; Diagnostic</th>
+<th class="py-3 px-4 font-medium">Stage</th>
+<th class="py-3 px-4 font-medium">Difficulty</th>
+<th class="py-3 px-4 font-medium">Status</th>
+<th class="py-3 px-4 font-medium">Best / Avg</th>
+<th class="py-3 px-4 font-medium text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#1e222c] text-xs">
+<!-- Item 1: Active Incident -->
+<tr class="bg-red-950/10 hover:bg-red-950/20 transition-colors">
+<td class="py-4 px-4 font-mono font-bold text-red-400 whitespace-nowrap">
+                TKT-4091
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-red-300 transition-colors" href="#">
+                    CoreDNS CrashLoopBackOff: Servfail loop on upstream resolvers
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    Querying 10.96.0.10:53 results in SERVFAIL; forward loop detected between resolv.conf and Corefile.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">k8s</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">dns</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">coredns</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300 font-mono text-[11px]">
+                  Kubernetes
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono text-[11px] font-medium border border-amber-500/20">
+                  ★★★ Adv
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 font-mono text-[11px] font-medium border border-red-500/30">
+<span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                  ✕ broken
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-white">—</span> / 28m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded bg-red-500 text-white font-medium hover:bg-red-600 transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">play_arrow</span>
+                  Resume
+                </button>
+</td>
+</tr>
+<!-- Item 2: Completed -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-3012
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-emerald-300 transition-colors" href="#">
+                    Ephemeral Port Starvation in Docker Bridge Network
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    net.ipv4.ip_local_port_range exhausted under high-concurrency microservice egress stress test.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">tcp</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">socket</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">bridge</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 font-mono text-[11px]">
+                  Networking
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-mono text-[11px] font-medium border border-sky-500/20">
+                  ★★ Interm
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/30">
+                  ● complete
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-emerald-400 font-bold">18m 10s</span> / 24m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-[#2e3444] bg-[#1a1e27] hover:bg-[#232834] text-[#c8d0de] hover:text-white transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">history</span>
+                  Inspect
+                </button>
+</td>
+</tr>
+<!-- Item 3: Completed -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-2088
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-emerald-300 transition-colors" href="#">
+                    Java JVM 11 Heap Ignorant of Container Memory Limits
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    cgroups v2 memory.max set to 512MiB but MaxRAMPercentage defaulted to 25% of 64GB host hardware.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">cgroup-v2</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">oom</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">java</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 font-mono text-[11px]">
+                  Containers
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-mono text-[11px] font-medium border border-sky-500/20">
+                  ★★ Interm
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/30">
+                  ● complete
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-emerald-400 font-bold">12m 45s</span> / 19m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-[#2e3444] bg-[#1a1e27] hover:bg-[#232834] text-[#c8d0de] hover:text-white transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">history</span>
+                  Inspect
+                </button>
+</td>
+</tr>
+<!-- Item 4: Completed Beginner -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-1044
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-emerald-300 transition-colors" href="#">
+                    Systemd Service Masked by Broken Symlink Loop
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    /etc/systemd/system/node-exporter.service pointing recursively to /dev/null symlink chain.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">systemd</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">fs</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-300 font-mono text-[11px]">
+                  Linux Basics
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/20">
+                  ★ Beginner
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/30">
+                  ● complete
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-emerald-400 font-bold">07m 12s</span> / 11m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-[#2e3444] bg-[#1a1e27] hover:bg-[#232834] text-[#c8d0de] hover:text-white transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">history</span>
+                  Inspect
+                </button>
+</td>
+</tr>
+<!-- Item 5: In Progress -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-3095
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-amber-300 transition-colors" href="#">
+                    Inode Exhaustion Despite 80GB Free Disk Space
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    df -h reports 14% used, while df -i registers 100% full from millions of abandoned 0-byte tmp files.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">ext4</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">inodes</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 font-mono text-[11px]">
+                  Containers
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-mono text-[11px] font-medium border border-sky-500/20">
+                  ★★ Interm
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-mono text-[11px] font-medium border border-amber-500/30">
+                  ◐ in-progress
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-white">—</span> / 22m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-white/20 bg-white/10 hover:bg-white/20 text-white font-medium transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">play_arrow</span>
+                  Launch
+                </button>
+</td>
+</tr>
+<!-- Item 6: Unstarted / Expert -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-4022
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-white transition-colors" href="#">
+                    Calico BGP Peer Connection Dropped on Node MTU Clashing
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    Inter-rack vxlan packets silently fragmented; BGP sessions flaps every 90s due to 1440 vs 1500 MTU mismatch.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">calico</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">bgp</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300 font-mono text-[11px]">
+                  Kubernetes
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono text-[11px] font-medium border border-rose-500/20">
+                  ★★★★ Expert
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1c202a] text-[#808a9d] font-mono text-[11px] border border-[#2e3444]">
+                  ○ unstarted
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-white">—</span> / 42m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-white/20 bg-white/10 hover:bg-white/20 text-white font-medium transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">play_arrow</span>
+                  Launch
+                </button>
+</td>
+</tr>
+<!-- Item 7: Completed Beginner -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-2019
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-emerald-300 transition-colors" href="#">
+                    TLS Handshake Failure Due to Truncated CA Bundle in Alpine
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    curl: (60) SSL certificate problem: unable to get local issuer certificate in scratch root container.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">tls</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">certs</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 font-mono text-[11px]">
+                  Networking
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/20">
+                  ★ Beginner
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/30">
+                  ● complete
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-emerald-400 font-bold">09m 30s</span> / 15m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-[#2e3444] bg-[#1a1e27] hover:bg-[#232834] text-[#c8d0de] hover:text-white transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">history</span>
+                  Inspect
+                </button>
+</td>
+</tr>
+<!-- Item 8: Completed -->
+<tr class="hover:bg-[#181b22] transition-colors">
+<td class="py-4 px-4 font-mono font-semibold text-[#c8d0de] whitespace-nowrap">
+                TKT-3040
+              </td>
+<td class="py-4 px-4 max-w-md">
+<div class="flex flex-col gap-1">
+<a class="font-medium text-sm text-white hover:text-emerald-300 transition-colors" href="#">
+                    Zombie Process PID Exhaustion under Dumb-Init Missing
+                  </a>
+<p class="text-xs text-[#9aa2b1] line-clamp-1 font-mono">
+                    Node.js spawning child processes without reaping; container PID table fills 32768 capacity in 4 hours.
+                  </p>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">docker</span>
+<span class="px-1.5 py-0.5 rounded bg-[#1c202a] text-[#9aa2b1] font-mono text-[10px]">pid1</span>
+</div>
+</div>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 font-mono text-[11px]">
+                  Containers
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-mono text-[11px] font-medium border border-sky-500/20">
+                  ★★ Interm
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[11px] font-medium border border-emerald-500/30">
+                  ● complete
+                </span>
+</td>
+<td class="py-4 px-4 whitespace-nowrap font-mono text-[#9aa2b1]">
+<span class="text-emerald-400 font-bold">16m 02s</span> / 25m
+              </td>
+<td class="py-4 px-4 whitespace-nowrap text-right">
+<button class="px-3 py-1.5 rounded border border-[#2e3444] bg-[#1a1e27] hover:bg-[#232834] text-[#c8d0de] hover:text-white transition inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">history</span>
+                  Inspect
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination & CLI Hint Bar -->
+<div class="p-3 border-t border-[#232731] bg-[#101217] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-2 font-mono text-[#9aa2b1]">
+<span>Page <strong class="text-white">1</strong> of 3</span>
+<span class="text-[#3b4252]">•</span>
+<span>1-8 of 24 drills</span>
+<div class="flex items-center gap-1 ml-2">
+<button class="w-6 h-6 rounded border border-[#232731] text-[#555d6e] cursor-not-allowed flex items-center justify-center" disabled="">
+<span class="material-symbols-outlined text-[14px]">chevron_left</span>
+</button>
+<button class="w-6 h-6 rounded bg-white text-black font-bold flex items-center justify-center">1</button>
+<button class="w-6 h-6 rounded border border-[#232731] text-[#9aa2b1] hover:text-white hover:bg-white/5 flex items-center justify-center transition">2</button>
+<button class="w-6 h-6 rounded border border-[#232731] text-[#9aa2b1] hover:text-white hover:bg-white/5 flex items-center justify-center transition">3</button>
+<button class="w-6 h-6 rounded border border-[#232731] text-[#9aa2b1] hover:text-white hover:bg-white/5 flex items-center justify-center transition">
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-[#0c0e12] border border-[#232731] px-3 py-1.5 rounded font-mono text-xs text-[#9aa2b1]">
+<span class="text-amber-400 font-bold">$</span>
+<span>breaklab pull --tag k8s</span>
+<button class="text-[#687082] hover:text-white transition ml-1" onclick="navigator.clipboard.writeText('breaklab pull --tag k8s')" title="Copy CLI Command">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Learning Telemetry Footer Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Card 1: Velocity -->
+<div class="rounded-lg border border-[#232731] bg-[#13161c] p-4 flex flex-col justify-between gap-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-medium text-[#7c8596] uppercase tracking-wider">Training Velocity</span>
+<span class="text-xs font-mono font-bold text-emerald-400">66.6% Solved</span>
+</div>
+<div>
+<div class="h-2 w-full bg-[#1e222c] rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full" style="width: 66.6%"></div>
+<div class="bg-amber-400 h-full" style="width: 12.5%"></div>
+<div class="bg-red-400 h-full" style="width: 4.1%"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-xs font-mono text-[#9aa2b1]">
+<span>16 Completed</span>
+<span>3 In Progress</span>
+<span>1 Active Breakdown</span>
+</div>
+</div>
+<!-- Card 2: Difficulty Distribution -->
+<div class="rounded-lg border border-[#232731] bg-[#13161c] p-4 flex flex-col justify-between gap-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-medium text-[#7c8596] uppercase tracking-wider">Difficulty Curve</span>
+<span class="text-xs font-mono text-[#7c8596]">24 Scenarios</span>
+</div>
+<div class="flex items-center justify-between text-xs font-mono text-[#9aa2b1]">
+<div>Beginner: <span class="text-white font-medium">6 Labs</span></div>
+<div>Intermediate: <span class="text-white font-medium">11 Labs</span></div>
+<div>Adv / Expert: <span class="text-white font-medium">7 Labs</span></div>
+</div>
+<div class="text-xs font-mono text-[#7c8596]">
+          Median Solve Time: <span class="text-white font-medium">19m 45s</span>
+</div>
+</div>
+<!-- Card 3: Storage & Local Sandbox Cache -->
+<div class="rounded-lg border border-[#232731] bg-[#13161c] p-4 flex flex-col justify-between gap-3">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-medium text-[#7c8596] uppercase tracking-wider">Sandbox Image Cache</span>
+<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold uppercase">Ready</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-mono text-white">3.82</span>
+<span class="text-xs font-mono text-[#7c8596]">GB / 8.00 GB pre-cached</span>
+</div>
+<div class="flex items-center justify-between text-xs font-mono text-[#9aa2b1]">
+<span>Layers: 42</span>
+<button class="text-emerald-400 hover:text-emerald-300 hover:underline transition">Run Prune →</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Clean Bottom Status Footer -->
+<footer class="w-full border-t border-[#1e222c] bg-[#090b0e] py-3 text-xs font-mono text-[#687082]">
+<div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+<div>BREAKLAB // WORKSPACE: <span class="text-white">~/.breaklab/labs/prod-sim-04</span></div>
+<div class="flex items-center gap-4">
+<span>IO: 0.12 MB/s</span>
+<span>CPU: 4.2%</span>
+<span class="text-emerald-400">NET: LOCALHOST MESH</span>
+</div>
+</div>
+</footer>
+<script>
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) searchInput.focus();
+      }
+    });
+  </script>
+</body></html>

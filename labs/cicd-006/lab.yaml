@@ -1,0 +1,37 @@
+id: cicd-006
+title: Cache Keys Must Track What Changed
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [cicd, caching, scripting]
+type: guided
+path: cicd-fundamentals
+module: caching
+summary: cache-key prints the same key no matter what — before you can fix a stale build cache, you have to find what the key is actually derived from.
+objectives:
+  - read a cache-key script to determine what input it actually reads, rather than assuming it tracks whatever it's named after
+  - recognize that a cache key which never changes when the thing it's meant to track changes gives you silent staleness, not a real cache hit
+  - fix a cache-key script so its output is genuinely derived from the dependency lockfile's content
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /usr/local/bin/cache-key
+      why: Shows the entire cache key logic in one line — a static string, with no reference to requirements.lock anywhere.
+    - do: /usr/local/bin/cache-key
+      why: Confirms the key it prints right now, giving you a concrete "before" to compare once you've edited the lockfile.
+    - do: "echo '# touch' >> /srv/app/requirements.lock && /usr/local/bin/cache-key"
+      why: Proves live that editing the lockfile's content has zero effect on the key — this cache would never notice a real dependency change either.
+    - do: Edit /usr/local/bin/cache-key to compute its key from sha256sum of /srv/app/requirements.lock instead of the static string
+      why: Makes the key actually derived from the one file whose content is supposed to invalidate the cache.
+    - do: /usr/local/bin/cache-key
+      why: Re-running confirms the key now reflects the lockfile's real content instead of a string that never moves.
+hints:
+  - "cat /usr/local/bin/cache-key — is there anywhere in it that reads requirements.lock at all?"
+  - "Edit requirements.lock yourself, then re-run cache-key. Does the printed key change?"
+  - "sha256sum /srv/app/requirements.lock gives you a hash of the file's real content — derive the key from that, not a literal string."

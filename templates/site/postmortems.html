@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BreakLab postmortems</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<p><a href="../index.html">&larr; Back to progress</a></p>
+<h1>Postmortems</h1>
+
+{{if .Postmortems}}
+<ul class="labs">
+  {{range .Postmortems}}
+  <li>
+    <a href="{{.Href}}">{{.Title}}</a>
+    &mdash; {{.StageTitle}} &middot; {{.Date}} &middot;
+    <span class="difficulty difficulty-{{.Difficulty}}">difficulty {{.Difficulty}}</span> &middot;
+    {{.MinutesToFix}}m to fix
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p>No postmortems published yet.</p>
+{{end}}
+
+</body>
+</html>

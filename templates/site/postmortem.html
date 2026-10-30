@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{.Lab}} postmortem</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<p><a href="../index.html">&larr; Back to progress</a></p>
+<h1>{{.Lab}} &mdash; {{.Variant}}</h1>
+<p class="date">{{.Date}}</p>
+{{range .Sections}}
+<h2>{{.Name}}</h2>
+{{range .Paragraphs}}<p>{{.}}</p>
+{{end}}
+{{end}}
+</body>
+</html>

@@ -1,0 +1,39 @@
+id: cicd-003
+title: Artifacts Between Stages
+stage: cicd
+difficulty: 1
+estimated_minutes: 15
+tags: [cicd, artifacts, pipelines]
+type: guided
+path: cicd-fundamentals
+module: artifacts
+summary: The build step's output naming changed but the deploy step was never updated to match — find the mismatch and fix the pipeline's artifact handoff.
+objectives:
+  - trace how one pipeline stage's output becomes the next stage's input
+  - recognize that a build step's own output is the real source of truth, not whatever filename a downstream script has memorized
+  - fix a hardcoded artifact reference so it tracks whatever the build step actually produces instead of a stale filename
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: /opt/pipeline/build.sh
+      why: Runs the one place that truly knows what it just built, so you see the real artifact before touching deploy.sh at all.
+    - do: ls /opt/pipeline/artifacts/
+      why: Shows the actual versioned filename build.sh left behind — the real source of truth, not whatever deploy.sh happens to expect.
+    - do: cat /opt/pipeline/deploy.sh
+      why: Reveals deploy.sh is hardcoded to a stale filename left over from a prior release, instead of discovering whatever build.sh actually produced.
+    - do: /opt/pipeline/deploy.sh
+      why: Watch it fail live, looking for a file that no longer exists — confirming the mismatch isn't just theoretical.
+    - do: Edit deploy.sh to locate its artifact with a glob over the artifacts directory (e.g. app-bundle-*.tar.gz) instead of one hardcoded filename
+      why: Makes deploy.sh track whatever build.sh actually produces, so the handoff survives the next time build.sh's naming changes again.
+    - do: /opt/pipeline/deploy.sh
+      why: Re-running confirms the right version now lands in /opt/app/ and gets recorded in /workspace/deployed-version.txt.
+hints:
+  - "Run /opt/pipeline/build.sh first, then look at exactly what filename it leaves behind in /opt/pipeline/artifacts/."
+  - "Read /opt/pipeline/deploy.sh. What filename does it look for? Does that file actually exist?"
+  - "Don't just rename today's artifact to match deploy.sh's old expectation — fix deploy.sh so it locates whatever build.sh actually produces, since that name will change again."

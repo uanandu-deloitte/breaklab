@@ -1,0 +1,61 @@
+id: impossible-scheduling-request
+title: worker-task has been Pending for an hour
+stage: k8s-admin
+difficulty: 2
+estimated_minutes: 15
+tags: [kubernetes, scheduling]
+summary: A one-off Pod has sat Pending for an hour, and nothing about its container looks wrong.
+loop:
+  learn: >
+    The scheduler places a Pod only on a node whose allocatable capacity can
+    satisfy that Pod's resource requests — not what it will actually end up
+    using. A Pod can ask for far more CPU or memory than any node in the
+    cluster has, and it will simply sit Pending forever with no node
+    assigned, because there's genuinely nowhere it fits. This is a
+    completely different problem from an OOM kill or a crash: the container
+    never even starts, so logs and exec won't help — only the scheduler's
+    own Events do.
+  guided:
+    - do: kubectl get pod worker-task -o wide
+      why: An empty NODE column alongside phase Pending confirms the scheduler has never placed this Pod anywhere — it's not crashing, it never started.
+    - do: kubectl describe pod worker-task
+      why: The Events section records FailedScheduling attempts with the specific reason (such as Insufficient cpu or Insufficient memory) — this is the actual diagnosis, not a guess from the symptom alone.
+    - do: kubectl get pod worker-task -o jsonpath='{.spec.containers[0].resources.requests}'
+      why: Shows exactly what this Pod is asking for — compare this number against real node capacity before assuming it's reasonable.
+    - do: kubectl describe nodes | grep -A5 Allocatable
+      why: Shows what's actually available per node; a request bigger than any single node's allocatable capacity can never be scheduled, no matter how many nodes you have.
+    - do: kubectl delete pod worker-task --wait=true
+      why: Pod resource requests are immutable after creation, same as limits — you can't patch requests on a running spec, only replace the Pod.
+    - do: kubectl apply -f <manifest with corrected requests> && kubectl wait --for=condition=Ready pod/worker-task --timeout=30s
+      why: Recreating with requests sized to what a real node can satisfy lets the scheduler actually place it — confirm with the wait rather than assuming the apply alone fixed it.
+  practice:
+    task: >
+      Reason through these before revealing the answer.
+    questions:
+      - prompt: A Pod has been Pending for an hour with no crash, no restarts, and no logs. What does the complete absence of logs tell you?
+        answer: The container has never actually started. Pending with an unset nodeName means the scheduler hasn't placed it anywhere yet, so there's no container process to produce logs — this rules out a crash entirely and points at a scheduling constraint.
+      - prompt: Why does the scheduler care about a Pod's requested resources rather than how much it will actually use once running?
+        answer: Scheduling happens before the Pod runs, so the scheduler has no way to know future usage — it can only reserve capacity based on what the Pod declares it needs via requests, treating that as a hard commitment against each node's allocatable capacity.
+      - prompt: Why delete and recreate the Pod instead of trying to patch its resource requests in place?
+        answer: A Pod's container resource requests, like its limits, are immutable after creation — Kubernetes doesn't allow editing them on a running Pod spec, so the only way to change them is to delete the Pod and create a new one with corrected values.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Pending is a phase, not a cause. Scheduler Events name the exact blocking constraint.
+  - Scheduling decisions use requests, not current usage — confirm nodeName is still unset.
+variants:
+  - id: impossible-cpu
+    script: variants/impossible-cpu.sh
+    weight: 1
+    hints:
+      - Check the Pod's own resource requests against what the node actually has allocatable.
+  - id: impossible-memory
+    script: variants/impossible-memory.sh
+    weight: 1
+    hints:
+      - Check the Pod's own resource requests against what the node actually has allocatable.

@@ -1,0 +1,33 @@
+id: lnx-004
+title: Find the Production Log
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, filesystem]
+type: practice
+path: linux-fundamentals
+module: filesystem
+summary: A support ticket references a transaction ID — the log that recorded it could be almost anywhere on the filesystem.
+objectives:
+  - search multiple plausible log locations instead of guessing one
+  - search file contents, not just file names, to find a specific record
+  - combine find and grep into a single filesystem-wide search
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: 'grep -R "transaction-id=TX-8842" /var/log /opt /tmp 2>/dev/null'
+      why: Checks the usual log locations first — grep searches file content, not just names, which is what you need since you don't know the file's name.
+    - do: 'grep -R "transaction-id=TX-8842" / 2>/dev/null'
+      why: Real deployments scatter logs outside the usual three directories, so searching from / guarantees you find the file regardless of where it ended up.
+    - do: 'find / -type f -exec grep -l "transaction-id=TX-8842" {} + 2>/dev/null'
+      why: Combining find and grep -l prints just the matching file's path directly — the value the task asks you to record.
+hints:
+  - Start by checking the usual log locations — /var/log, /opt, /tmp — rather than searching the whole filesystem immediately.
+  - The file name won't tell you which log has it — search file contents recursively, not just file names.
+  - "grep -R \"TX-8842\" / 2>/dev/null, or find / -type f -exec grep -l TX-8842 {} + , will surface it directly."

@@ -1,0 +1,63 @@
+id: bind-mount-shadow
+title: The volume that outranks the Dockerfile
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, linux]
+summary: The Dockerfile chowns the directory at build time — but a volume mounted there at runtime overrides whatever the image set up.
+loop:
+  learn: >
+    A Dockerfile's RUN and COPY instructions only affect the image's own
+    filesystem layers. The moment a volume — named or bind-mounted — is
+    attached at a path, whatever ownership and permissions exist on that
+    volume (set when it was created, or on the host side for a bind mount)
+    completely shadow anything the image baked in at that same path. This is
+    why "the Dockerfile clearly chows it" is not evidence of anything at
+    runtime: you have to check the live filesystem's actual ownership, not
+    the build instructions that produced the image.
+  guided:
+    - do: cat Dockerfile
+      why: See what ownership the image build intends for the mount path — this is the expectation you need to verify against reality.
+    - do: stat /data
+      why: Check who actually owns the path right now, at runtime — this is ground truth, and it can differ completely from what the Dockerfile set up.
+    - do: id appuser
+      why: Get the exact uid the application process runs as, so you can compare it precisely against the mount's owning uid rather than assuming names line up.
+    - do: tail -5 /var/log/writer-errors.log
+      why: Confirm the actual failure mode — a permission denied here on every write loop confirms it's an ownership problem, not a crashed process.
+    - do: chown appuser:appuser /data
+      why: Once you've confirmed the mismatch, re-apply ownership to the live mount directly — rebuilding the image would not help, since the volume's ownership persists independently of the image.
+  practice:
+    task: >
+      Before touching the real incident below, reason through what "the
+      Dockerfile chowns it" actually guarantees, then reveal the answer.
+    questions:
+      - prompt: A Dockerfile has RUN chown appuser:appuser /data before a volume is declared at /data. Does a container started from that image have /data owned by appuser at runtime?
+        answer: "Not necessarily — if a volume (named or bind mount) is mounted at /data when the container starts, the volume's own ownership (from how it was created, or the host-side directory for a bind mount) replaces whatever the image set up at that path. The chown only matters if nothing is mounted over it."
+      - prompt: "/data is owned by uid 9999 and appuser's uid is 1000. Does chmod 777 /data fix the underlying problem the way chown does?"
+        answer: "It would let appuser write, but it leaves the ownership wrong and the directory world-writable, which is a worse fix than chown appuser:appuser /data — matching ownership is the correct remediation, not loosening permissions for everyone."
+      - prompt: Why can't rebuilding the image fix a volume that's owned by the wrong uid?
+        answer: Because the volume's contents and ownership live outside the image entirely — rebuilding only changes what's in the image's own layers, and the volume gets mounted over that path again on every container start regardless of what the new image contains.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  volumes:
+    - name: data
+      container_path: /data
+      named: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - The Dockerfile chowns /data to appuser at build time. Does that still apply once a volume is mounted there at runtime?
+  - A bind-mounted directory's permissions come from the host side at mount time, not whatever the image set up at that path.
+variants:
+  - id: root-owned-mount
+    script: variants/root-owned-mount.sh
+    weight: 1
+    hints:
+      - Check who actually owns /data right now with stat /data, not what the Dockerfile says.
+  - id: wrong-uid-mount
+    script: variants/wrong-uid-mount.sh
+    weight: 1
+    hints:
+      - "Compare appuser's actual uid (id appuser) against /data's owning uid (stat -c '%u' /data) — they don't have to match just because both are non-root."

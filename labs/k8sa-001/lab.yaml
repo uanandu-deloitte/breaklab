@@ -1,0 +1,44 @@
+id: k8sa-001
+title: Namespaces and Resource Quotas
+stage: k8s-admin
+path: k8s-admin
+module: resource-quotas
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, quotas, namespaces]
+type: guided
+summary: A namespace's ResourceQuota caps it at 2 Pods total — fill it up, then watch the API server itself refuse a third.
+objectives:
+  - read a live ResourceQuota's used/hard counters instead of assuming them from the manifest
+  - bring a namespace to its quota limit by applying a Pod manifest
+  - trigger and read a real quota-rejection error from the API server, not a simulated one
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get resourcequota -n quota-demo
+      why: Shows the quota's hard limit and current used count before you add anything — pod-a already counts as 1 of 2.
+    - do: kubectl apply -f /workspace/pod-b.yaml
+      why: Creates a second Pod in quota-demo, pushing the live used counter to 2 — the API server increments this the instant the Pod is admitted.
+    - do: kubectl get pods -n quota-demo
+      why: Confirms pod-b reached Running before relying on it counting toward the quota.
+    - do: kubectl get resourcequota pod-quota -n quota-demo
+      why: Confirms the namespace is now at 2/2 — a live counter the API server maintains, not something you compute yourself.
+    - do: kubectl apply -f /workspace/pod-c.yaml
+      why: Attempts a third Pod — expect the API server to reject it at admission time, before anything is created, and print its real rejection error.
+    - do: echo 'REJECTION_REASON="<the exact text kubectl printed>"' > /workspace/answers.env
+      why: Records the real rejection message you just saw, not a guessed wording, so the check can confirm you actually read it.
+hints:
+  - "kubectl get resourcequota -n quota-demo shows both the hard limit and how many pods currently count against it."
+  - "A ResourceQuota is enforced by the API server at admission time — it's not something you have to poll for, the rejected kubectl apply/create tells you immediately."
+  - "The rejection happens before anything is created — capture its real output rather than guessing the wording."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

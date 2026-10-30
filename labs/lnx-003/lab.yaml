@@ -1,0 +1,37 @@
+id: lnx-003
+title: Explore the Filesystem
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, filesystem]
+type: guided
+path: linux-fundamentals
+module: filesystem
+summary: Walk the standard Linux directory tree and prove you can navigate it, not just read about it.
+objectives:
+  - navigate the filesystem with absolute paths
+  - distinguish /etc, /var/log, /opt, and a home directory by purpose
+  - return to a known working directory after exploring
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: 'cd /etc && echo "$(pwd)" >> /workspace/transcript.txt'
+      why: /etc holds system-wide configuration; logging pwd's output right after cd records the exact absolute path you landed on, not a guess.
+    - do: 'cd /var/log && echo "$(pwd)" >> /workspace/transcript.txt'
+      why: /var/log holds logs that change over time — visiting it next keeps the transcript in the required order.
+    - do: 'cd /opt && echo "$(pwd)" >> /workspace/transcript.txt'
+      why: /opt holds optional, self-contained software that doesn't fit the distribution's own package layout.
+    - do: 'cd ~ && echo "$(pwd)" >> /workspace/transcript.txt'
+      why: Your home directory holds your own files and shell configuration, nothing the system itself depends on.
+    - do: cd /workspace
+      why: The task requires finishing back in /workspace, a known working directory, after exploring.
+hints:
+  - "cd takes you somewhere; pwd confirms where you actually ended up."
+  - Append each location to the transcript file as you visit it, in the order you visit them.
+  - "echo \"$(pwd)\" >> /workspace/transcript.txt after each cd gets you there."

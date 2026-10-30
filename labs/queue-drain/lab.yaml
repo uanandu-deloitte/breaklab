@@ -1,0 +1,61 @@
+id: queue-drain
+title: The job queue isn't draining
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, scripting, linux]
+summary: Five jobs have been sitting in the spool all afternoon with nothing draining them.
+loop:
+  learn: >
+    A worker script that "fails before doing any work" and one that "does
+    the work but can't record it" are two very different failures to
+    diagnose, and a job queue that stops moving can be either: a config
+    pointing at a binary that no longer exists (an upstream exit before any
+    work starts), or permissions that let the worker read its work but not
+    write its results (a failure partway through, after work already
+    happened). Don't assume the queue itself, or the jobs, are the problem —
+    run the processing entrypoint directly and read exactly what it prints
+    and where it stops, which immediately tells you whether the failure is
+    "never started" or "started but couldn't finish."
+  guided:
+    - do: ls /var/spool/jobs/
+      why: Confirm the jobs are actually sitting there waiting, and see whether a done/ directory exists for completed work.
+    - do: process-jobs
+      why: Run the actual processing entrypoint directly and read its output verbatim — an explicit error message here (bad config, permission denied, etc.) is far more direct evidence than inferring from symptoms.
+    - do: cat /etc/jobs/worker.conf
+      why: Check what binary the processing script is actually configured to invoke — a config value pointing at a path that doesn't exist anymore fails immediately, before any job is touched.
+    - do: ls -l "$WORKER_BIN" 2>/dev/null || echo "not found"
+      why: Verify the configured worker binary actually exists and is executable at that exact path — a cleanup that renamed or moved a file without updating the config that references it is one of the most common causes here.
+    - do: ls -ld /var/spool/jobs/done && id jobsrunner
+      why: Check ownership and permissions on the destination directory against the user the worker actually runs as — a worker that can read jobs fine but can't write into done/ fails partway through, which looks different from a config pointing nowhere.
+  practice:
+    task: >
+      Before touching the real incident, reason through the two different
+      ways this kind of worker can fail.
+    questions:
+      - prompt: process-jobs prints an explicit "WORKER_BIN is not executable" error, versus a worker that runs but silently never moves jobs into done/. Which one is a config problem and which is a permissions problem?
+        answer: The explicit error is the config problem — worker.conf points at a path that doesn't exist or isn't executable, caught before anything runs. A worker that runs but never produces output in done/ despite no error points at a permissions problem — the move into done/ is failing silently, which you'd confirm by checking ownership/mode on that directory against the worker's actual user.
+      - prompt: A "cleanup pass" renamed worker.sh to worker (dropping the extension) but didn't update worker.conf. Why does this fail loudly instead of silently?
+        answer: process-jobs explicitly checks that WORKER_BIN resolves to an executable path before using it and exits with a clear error if not, so a dangling config reference is caught immediately rather than being allowed to fail quietly deep inside job processing.
+      - prompt: The worker process runs as an unprivileged user, not root. Why does that matter for diagnosing a stuck queue?
+        answer: Any directory the worker needs to read from or write into has to actually grant that unprivileged user access — a permissions change that only considers locking things down from everyone else, without checking that the service account which needs it can still get in, breaks the pipeline even though nothing about the jobs or the worker's own code changed.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Try running process-jobs yourself and read what it prints.
+  - Check /etc/jobs/worker.conf and the ownership of /var/spool/jobs/done.
+variants:
+  - id: missing-config
+    script: variants/missing-config.sh
+    weight: 1
+    hints:
+      - process-jobs sources /etc/jobs/worker.conf for WORKER_BIN. Is that path still right?
+  - id: bad-permissions
+    script: variants/bad-permissions.sh
+    weight: 1
+    hints:
+      - The worker runs as an unprivileged user. Can that user still write into done/?

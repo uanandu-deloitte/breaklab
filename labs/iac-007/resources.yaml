@@ -1,0 +1,3 @@
+path: /etc/app/release.conf
+module: render-v2
+content_seed: build-42

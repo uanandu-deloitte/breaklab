@@ -1,0 +1,13 @@
+.breaklab/
+/site/
+.DS_Store
+/breaklab
+/dist/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.astro/
+/breaklab-dev
+/breaklab-linux-arm64
+*.tfstate
+*.tfstate.*
+.terraform/

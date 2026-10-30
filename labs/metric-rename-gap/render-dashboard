@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+metric=$(sed -n 's/^metric: *//p' /etc/dashboards/overview.yaml)
+value=$(jq -r --arg m "$metric" '.[$m] // empty' /var/lib/metrics/exported.json)
+
+if [ -z "$value" ] && [ -f /etc/dashboards/aliases.yaml ]; then
+  aliased=$(sed -n "s/^${metric}: *//p" /etc/dashboards/aliases.yaml)
+  if [ -n "$aliased" ]; then
+    value=$(jq -r --arg m "$aliased" '.[$m] // empty' /var/lib/metrics/exported.json)
+  fi
+fi
+
+mkdir -p /var/lib/dashboards
+if [ -n "$value" ]; then
+  echo "panel=requests value=$value" > /var/lib/dashboards/overview.rendered
+else
+  echo "panel=requests value=no-data" > /var/lib/dashboards/overview.rendered
+fi

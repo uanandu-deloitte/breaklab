@@ -1,0 +1,66 @@
+id: stale-config
+title: configwatcher won't leave maintenance mode
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, configuration]
+summary: The ConfigMap has said "normal" for over an hour, but configwatcher's Pod has been reporting "maintenance" the entire time.
+prerequisites: [k8sd-001]
+loop:
+  learn: >
+    Updating a ConfigMap only changes the object stored in the API
+    server — it does not reach into any already-running Pod and change
+    what that Pod currently has. Whether a Pod ever sees the new value
+    depends entirely on how it consumes the ConfigMap: an environment
+    variable is resolved once, at container start, and stays frozen for
+    the Pod's entire life no matter how many times the ConfigMap changes
+    afterward; a volume-mounted file does eventually get rewritten on
+    disk, but only an app that actually re-reads that file — rather than
+    caching it in memory at startup — will ever notice. "The ConfigMap is
+    correct" and "the Pod reflects it" are two separate facts; confirm
+    the first, then work out whether anything made the second true.
+  guided:
+    - do: kubectl get configmap site-config -o yaml
+      why: Confirms the ConfigMap genuinely holds the new value before suspecting the Pod side at all.
+    - do: kubectl get pods -l app=configwatcher
+      why: The Pod's age relative to when the ConfigMap changed is a strong clue — a Pod running since before the edit is working from frozen state by definition.
+    - do: kubectl exec <pod> -- printenv MODE
+      why: Checks the env-var consumption path directly — a frozen value here confirms the "resolved once at start" mechanism.
+    - do: kubectl exec <pod> -- cat /etc/config/mode
+      why: Checks the mounted-file path — if this already shows the new value while the app's own status doesn't, the file updated but the app never re-read it.
+    - do: kubectl get deployment configwatcher -o yaml
+      why: Confirms which consumption method this Deployment actually uses (env var vs volume mount), since that determines which staleness mechanism applies.
+    - do: kubectl rollout restart deployment/configwatcher
+      why: Neither consumption path refreshes an already-running Pod on its own — replacing the Pod is the one fix that works regardless of which mechanism caused the staleness.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: The ConfigMap has shown mode normal for over an hour. Does every Pod using it already see "normal"?
+        answer: Not necessarily — a ConfigMap update only changes the stored object. An env var sourced from it is fixed at container start and never updates on its own, no matter how long the ConfigMap has held the new value.
+      - prompt: A Pod mounts the ConfigMap as a volume, and the file on disk has already updated. Is the app guaranteed to be using the new value?
+        answer: No — kubelet does update the mounted file, but if the app read that file once at startup and cached it in memory, it keeps acting on the old value even though the file on disk is current.
+      - prompt: Why does kubectl rollout restart fix both the env-var case and the stale-cached-file case, despite the underlying mechanisms being different?
+        answer: Both failure modes only affect Pods that are already running; a rollout restart replaces the Pod entirely, so the new Pod reads the current ConfigMap value fresh at startup regardless of which way it consumes it.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Check what the ConfigMap actually contains right now — is it already correct?
+  - Deployments don't automatically restart pods when a ConfigMap they reference changes.
+variants:
+  - id: env-injected
+    script: variants/env-injected.sh
+    weight: 1
+    hints:
+      - This pod reads its config through an environment variable. Environment variables are injected once, at container start, and never update after that.
+  - id: volume-cached
+    script: variants/volume-cached.sh
+    weight: 1
+    hints:
+      - This pod reads its config from a mounted file. Compare what's in /etc/config inside the pod to /tmp/status — the live file may already be right.

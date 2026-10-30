@@ -1,0 +1,37 @@
+id: iac-003
+title: Nothing Changes When Nothing Changed
+stage: iac
+difficulty: 1
+estimated_minutes: 15
+tags: [iac, idempotency]
+type: guided
+path: iac-fundamentals
+module: idempotency
+summary: Run a tiny apply tool twice — once with nothing to do, once after a real edit — and see it tell the two cases apart.
+objectives:
+  - predict that re-running an apply tool against an already-matching resource is a safe no-op
+  - distinguish an apply tool's "no changes" report from its "changed" report
+  - confirm a real edit to the declared source produces a real update to the resource
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: infra-apply
+      why: Run it first with nothing edited — its message should report a no-op, since the resource already matches the declaration.
+    - do: cat /infra/resources.yaml
+      why: Shows the current `value:` field before you change it.
+    - do: Edit the `value:` line in /infra/resources.yaml to a new value
+      why: A real change to the declared source is what gives the next apply something to actually do.
+    - do: infra-apply
+      why: Run it again — this time its message should report a real change, since the declaration no longer matches reality.
+    - do: cat /etc/app-release.conf
+      why: Confirms the real resource now holds the new value, and only changed because the declared source changed first.
+hints:
+  - Run infra-apply once before touching anything and read its message carefully — that's the baseline, "nothing to do" case.
+  - Edit the 'value:' line in /infra/resources.yaml, then run infra-apply again — its message should change to say something was actually applied.
+  - /etc/app-release.conf is the real resource. It should only ever change after resources.yaml's own value changes.

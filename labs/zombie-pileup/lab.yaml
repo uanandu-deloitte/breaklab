@@ -1,0 +1,62 @@
+id: zombie-pileup
+title: The box keeps getting slower
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, processes, chaos-engineering, fault-injection]
+summary: Nothing crashed, CPU and memory look fine, but <defunct> entries keep piling up in the process table.
+loop:
+  learn: >
+    When a child process exits, the kernel keeps a small record of it (its
+    exit status) around as a zombie (state Z) until the parent calls
+    wait()/waitpid() on it — that's the only way the parent ever finds out
+    how the child finished. If the parent never calls wait at all, or starts
+    a subprocess object and never calls the equivalent (.wait()/.communicate()
+    in languages that wrap fork+exec), every child that exits stays a zombie
+    forever, consuming a process table slot even though it's doing nothing.
+    This shows up as slow, silent growth with no CPU or memory signature,
+    because a zombie isn't running — it's just an unclaimed exit status
+    sitting in the table; the fix is always making the parent actually
+    collect what it's already spawning, not killing anything.
+  guided:
+    - do: ps -eo pid,ppid,stat,cmd | grep ' Z'
+      why: Find the zombie entries directly and read their PPID — that parent process is the one responsible for reaping them, and the one you need to go look at.
+    - do: ps -eo pid,ppid,stat,cmd | grep <parent-pid>
+      why: Confirm which long-running process owns that PPID and is still alive — a zombie's parent still running (rather than already dead) means the leak is active and ongoing, not just a one-time artifact.
+    - do: cat /usr/local/bin/supervisor.py
+      why: If the parent forks children directly, check whether its loop ever calls os.waitpid or os.wait on anything it spawns.
+    - do: cat /usr/local/bin/worker_pool.py
+      why: If the parent instead uses subprocess.Popen, check whether anything ever calls .wait() or .communicate() on the Popen objects it creates and keeps a reference to.
+    - do: restart-workers
+      why: Once the parent's loop is fixed to actually reap what it spawns, restart it with the lab's own restart script rather than killing it by hand — this clears any already-accumulated zombies and starts the corrected code.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: A process forks a child that finishes instantly. Why does that child still show up in the process table in state Z afterward?
+        answer: The kernel can't fully discard a finished child until its parent explicitly collects its exit status via wait()/waitpid() — until that happens, the kernel keeps a minimal record (the zombie) around specifically so the parent can retrieve it, even though the child itself has stopped executing.
+      - prompt: Why doesn't a zombie pileup show up as elevated CPU or memory usage, the way most other "something's leaking" problems do?
+        answer: A zombie isn't running code or holding allocated memory — it's just a leftover entry in the kernel's process table recording an exit status, so it's invisible to CPU and memory metrics; the only signal is a climbing process (table) count, specifically processes in state Z.
+      - prompt: subprocess.Popen() in Python internally does a fork+exec, same as a raw os.fork(). Why does holding a Popen object without calling .wait() still leak a zombie, just like the raw fork case?
+        answer: Popen wraps the same underlying OS mechanism — the kernel still requires an explicit wait call to release the child's exit status, and Popen's `.wait()`/`.communicate()` are exactly that call in wrapped form; holding the Python object without calling either one never actually reaps the process at the kernel level.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Check the process table for entries in state Z. `ps aux` or `ps -eo pid,ppid,stat,cmd` will show them.
+  - A zombie is a child whose exit status its parent never collected. Find out which long-running process is forking children it never reaps.
+variants:
+  - id: missing-wait
+    script: variants/missing-wait.sh
+    weight: 1
+    hints:
+      - Look at /usr/local/bin/supervisor.py. It forks a child every loop iteration — does it ever call os.waitpid or os.wait anywhere in that loop?
+  - id: leaked-subprocess
+    script: variants/leaked-subprocess.sh
+    weight: 1
+    hints:
+      - Look at /usr/local/bin/worker_pool.py. subprocess.Popen objects need to be waited on too, the same as a raw fork() child — check whether anything ever calls .wait() or .communicate() on one.

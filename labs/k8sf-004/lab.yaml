@@ -1,0 +1,44 @@
+id: k8sf-004
+title: Restarts, Backoff, and Which Pod You're Actually Looking At
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, workloads]
+type: guided
+path: k8s-fundamentals
+module: restarts-and-backoff
+summary: A flaky-worker Pod crashed a couple of times right after it started, then stabilized — reconstruct what happened to the instance that's gone, not just the one that's running now.
+objectives:
+  - read a Pod's restart count and recognize it is not on its first attempt
+  - use kubectl describe pod's Events to see each restart and its backoff delay
+  - use kubectl logs --previous to read the crashed instance's own output, not the current one
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pods -l app=flaky-worker
+      why: "The RESTARTS column shows how many times this container has already been replaced — a nonzero count means you're looking at a Pod that is not on its first try."
+    - do: kubectl describe pod -l app=flaky-worker
+      why: The Events section lists each start and crash in order, including the backoff delay Kubernetes waited before each retry.
+    - do: kubectl get pod -l app=flaky-worker -o jsonpath='{.items[0].status.containerStatuses[0].restartCount}'
+      why: Reads the exact restart count as an integer straight from the API, rather than eyeballing the RESTARTS column.
+    - do: kubectl logs -l app=flaky-worker
+      why: Shows only the current, latest instance's output — if it restarted recently, this can look empty or unrelated to any earlier failure.
+    - do: kubectl logs -l app=flaky-worker --previous
+      why: Shows the output of the instance immediately before the current one — this is where the actual crash message lives, not in the live container's logs.
+    - do: kubectl get pod -l app=flaky-worker -o jsonpath='{.items[0].status.containerStatuses[0].lastState.terminated.reason}'
+      why: Reads the previous instance's exit reason directly from the API, confirming what --previous logs already showed you.
+hints:
+  - "kubectl get pods -l app=flaky-worker shows a RESTARTS count — the live Pod may already be several attempts in."
+  - "kubectl logs --previous shows the crashed instance's own output, which kubectl logs alone will not."
+  - "lastState.terminated.reason and lastState.terminated.exitCode on the Pod's containerStatuses report exactly how the previous instance ended."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

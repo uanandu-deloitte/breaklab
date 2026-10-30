@@ -1,0 +1,35 @@
+id: git-006
+title: Merge It In
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, merging]
+type: guided
+path: version-control
+module: merging
+summary: main and a feature branch both moved forward independently — merge the feature branch in and read the resulting history graph.
+objectives:
+  - merge one branch into another
+  - distinguish a fast-forward merge from a true three-way merge
+  - read git log --graph --oneline --all to understand a merge's shape
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git log --graph --oneline --all
+      why: Draws the commit DAG for every branch at once, showing that main has moved since the branch point — so this can't fast-forward.
+    - do: git checkout main
+      why: The merge target must be the branch you're currently on.
+    - do: git merge feature/signup-form
+      why: Since both branches moved forward independently, git creates a new commit with two parents combining both histories, instead of just sliding main's pointer.
+    - do: git log --graph --oneline --all
+      why: Confirms the result is a merge commit with two parents, and that both branches' files are now present on main.
+hints:
+  - "git log --graph --oneline --all shows every branch's history at once — look at where feature/signup-form and main diverged."
+  - "main has its own commit since the branch point, so a plain git merge can't just slide main's pointer forward — it has to combine two histories."
+  - "git merge feature/signup-form, run from main, is all you need here."

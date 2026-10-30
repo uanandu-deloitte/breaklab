@@ -1,0 +1,64 @@
+id: ready-but-not-ready
+title: API Pod is Running but traffic never reaches it
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, containers]
+summary: kubectl says the api Pod is Running, but the Service behind it has nowhere to send traffic.
+prerequisites: [k8sf-005]
+loop:
+  learn: >
+    Kubernetes gates Service traffic on readiness, not on whether a
+    container process is merely alive. A Pod can be Running (its
+    container started and hasn't exited) while being NotReady (failing
+    its readiness probe) indefinitely — and kube-proxy will never add a
+    NotReady Pod's IP to a Service's Endpoints. That's a deliberate
+    safety mechanism, not a glitch: it keeps half-started or broken
+    instances out of rotation. So when traffic never reaches a Pod that
+    "looks fine" in kubectl get pods, check readiness and Endpoints
+    before suspecting the network at all.
+  guided:
+    - do: kubectl get pods -l app=api
+      why: The READY column (e.g. 0/1) separates "container started" from "passing its probe" — Running alone proves neither.
+    - do: kubectl get endpoints api
+      why: An empty address list is the direct cause of "no response" — the Service has zero eligible backends to send traffic to.
+    - do: kubectl describe pod -l app=api
+      why: The Events section prints the readiness probe's own failure message (connection refused, 404, timeout) — that message tells you exactly what's misconfigured.
+    - do: kubectl get deployment api -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
+      why: Read the probe's configured path and port exactly as deployed, rather than assuming it matches the manifest on disk.
+    - do: kubectl exec deploy/api -- wget -qO- localhost:8080/
+      why: Confirms what the container is actually serving and on which port, so you can tell whether the probe or the container itself is the thing that's wrong.
+    - do: kubectl apply -f <corrected-manifest>
+      why: A Pod's readinessProbe is immutable once created, so the fix has to come through the Deployment and a fresh Pod, not an edit to the running one.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each signal
+      on its own, then reveal the answer.
+    questions:
+      - prompt: A Pod shows STATUS Running and READY 0/1. Has the container crashed?
+        answer: No — Running means the process started and hasn't exited; READY 0/1 means it's currently failing its readiness probe. The two are independent, and a perfectly alive process can stay NotReady forever if the probe is misconfigured.
+      - prompt: kubectl get pods shows one matching Pod, but kubectl get endpoints shows zero addresses for its Service. What does that tell you?
+        answer: Endpoints only lists Pods that are both selected by the Service and currently Ready — a Running-but-NotReady Pod matches the selector but is deliberately excluded until it passes its probe.
+      - prompt: If you edit the live Pod's readinessProbe path directly with kubectl edit pod, will it become Ready?
+        answer: No — container fields like readinessProbe are immutable on an existing Pod; the edit is rejected. You have to change the Deployment and let it replace the Pod with a corrected one.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Running means a process exists. Ready means it's eligible for Service traffic — confirm which one you actually have.
+  - kubectl describe pods -l app=api shows the readiness probe's own failure message.
+variants:
+  - id: wrong-probe-path
+    script: variants/wrong-probe-path.sh
+    weight: 1
+    hints:
+      - Compare the readiness probe's path against what the server actually serves.
+  - id: wrong-probe-port
+    script: variants/wrong-probe-port.sh
+    weight: 1
+    hints:
+      - Compare the readiness probe's port against the port the container is actually listening on.

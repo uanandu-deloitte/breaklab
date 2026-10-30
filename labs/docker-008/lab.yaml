@@ -1,0 +1,43 @@
+id: docker-008
+title: Fronting a Container With a Reverse Proxy
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, networking, configuration]
+type: guided
+path: docker-fundamentals
+module: reverse-proxy
+summary: nginx is up, the backend is up, and the public port still returns a 502 — find out which of the three things a reverse proxy needs is actually missing.
+objectives:
+  - validate a reverse proxy's config syntax with nginx -t before suspecting anything else
+  - read ss -ltnp output to find which port a backend process is actually listening on, not which port a config file claims
+  - fix a reverse proxy's upstream target so it matches the backend's real address
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl -I http://localhost:8080/
+      why: Captures the exact symptom first — a 502 here means nginx itself is up and listening, but can't reach whatever it's forwarding to.
+    - do: docker exec -it breaklab-docker-008 bash
+      why: Opens a shell inside the container so the next checks can inspect nginx's config and the backend's real state directly.
+    - do: nginx -t
+      why: Asks nginx to validate its own config syntax before suspecting anything else — a passing result rules out a syntax error as the cause.
+    - do: ss -ltnp
+      why: Shows exactly what's listening on which port right now — confirms nginx is up on port 80 and reveals the backend's real listening port, independent of what any config file claims.
+    - do: grep proxy_pass /etc/nginx/sites-available/default
+      why: Reads the exact upstream address nginx is configured to forward to, so it can be compared against the backend's real port from ss.
+    - do: sed -i 's/5002/5001/' /etc/nginx/sites-available/default
+      why: Points proxy_pass at the backend's actual listening port instead of the wrong one — the fix belongs in the upstream target, not the public-facing port, which was never wrong.
+    - do: nginx -s reload
+      why: Tells the already-running nginx master process to re-read its config — editing the file on disk alone has no effect until this happens.
+    - do: curl http://localhost:8080/
+      why: Confirms the fix end-to-end from the same vantage point that showed the original symptom — it should now return the backend's real content instead of a 502.
+hints:
+  - "A 502 from the public port means the proxy itself is fine — it's the upstream target it's configured to forward to that's wrong or unreachable."
+  - "nginx -t only validates config syntax. It has no way to know whether the address a proxy_pass line names is actually listening."
+  - ss -ltnp shows every real listening port in the container right now — compare that against what the nginx config actually says to forward to.

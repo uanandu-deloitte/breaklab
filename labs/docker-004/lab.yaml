@@ -1,0 +1,35 @@
+id: docker-004
+title: Build Time vs Run Time
+stage: docker
+difficulty: 1
+estimated_minutes: 15
+tags: [containers, configuration]
+type: guided
+path: docker-fundamentals
+module: configuration
+summary: A Dockerfile bakes environment values into the image at build time — find out where they actually live at runtime, and which one should never have been baked in at all.
+objectives:
+  - read an image's baked-in environment from inside a running container, including directly from /proc/1/environ
+  - recognize that ENV values set in a Dockerfile are fixed at build time unless something explicitly overrides them at run time
+  - distinguish an environment value that makes sense baked into an image from one that should be supplied per-deployment instead
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: env
+      why: Shows the current shell's view of the environment, including every value this image's Dockerfile baked in with ENV.
+    - do: printenv APP_VERSION
+      why: Confirms one specific baked-in value directly, without scrolling through env's full output.
+    - do: cat /proc/1/environ | tr '\0' '\n'
+      why: Reads PID 1's environment straight from the kernel, NUL bytes translated to newlines — the ground truth that env and printenv should agree with.
+    - do: echo "$APP_ENV $LOG_LEVEL $APP_VERSION"
+      why: Prints all three baked-in values together, so you can judge which one looks like a deploy-time setting that was wrongly frozen into the image.
+hints:
+  - env and printenv both show the current process's environment; /proc/1/environ shows PID 1's own environment straight from the kernel, with no shell involved.
+  - /proc/1/environ is NUL-separated rather than newline-separated, so reading it with plain cat looks like one unbroken line — translating each NUL byte to a newline makes it readable one variable per line.
+  - A value that should change between staging and production without rebuilding the image is a poor fit for a Dockerfile ENV; a value that identifies the build itself is a reasonable one.

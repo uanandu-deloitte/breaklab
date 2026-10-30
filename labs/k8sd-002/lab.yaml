@@ -1,0 +1,48 @@
+id: k8sd-002
+title: Requests, Limits, and QoS
+stage: k8s-developer
+difficulty: 1
+estimated_minutes: 15
+tags: [kubernetes, resource-management]
+type: guided
+path: k8s-developer
+module: resource-management
+summary: The qos-demo Pod has no resource requests or limits at all — give it exactly the shape that earns it Guaranteed QoS.
+objectives:
+  - explain how Kubernetes derives a Pod's QoS class (BestEffort, Burstable, Guaranteed) from its containers' requests and limits
+  - set CPU and memory requests equal to limits on every container to earn Guaranteed QoS
+  - confirm a live Pod's actual QoS class with kubectl rather than assuming it from the manifest
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pod qos-demo -o jsonpath='{.status.qosClass}'
+      why: Confirms the Pod currently reports BestEffort before you change anything — the lowest-priority class, assigned because no container sets any request or limit.
+    - do: kubectl get pod qos-demo -o jsonpath='{.spec.containers[0].resources}'
+      why: Shows there is nothing at all to derive a class from — an empty resources block is exactly what produces BestEffort.
+    - do: kubectl delete pod qos-demo --wait=true
+      why: A Pod's resources are immutable once created — you can't patch a running Pod's requests or limits, so the old one has to go before a corrected one can take its place.
+    - do: kubectl apply -f <manifest with requests.cpu == limits.cpu and requests.memory == limits.memory on every container>
+      why: Guaranteed requires both CPU and memory to be set, and request to exactly equal limit, on every container in the Pod — any mismatch anywhere drops it to Burstable instead.
+    - do: kubectl wait --for=condition=Ready pod/qos-demo --timeout=60s
+      why: Confirms the new Pod actually reaches Ready rather than assuming the manifest alone is enough.
+    - do: kubectl get pod qos-demo
+      why: Confirms it's Running and not CrashLoopBackOff — a memory limit set too low still earns Guaranteed and still gets OOM killed, so the class alone doesn't prove the number was realistic.
+    - do: kubectl get pod qos-demo -o jsonpath='{.status.qosClass}'
+      why: Confirms Kubernetes now actually computes Guaranteed from the new spec — the class is derived, never set directly, so this is the only way to know the fix took.
+hints:
+  - "kubectl get pod qos-demo -o jsonpath='{.status.qosClass}' reads the class Kubernetes actually assigned."
+  - "A container with no requests or limits at all is BestEffort. Any requests/limits set, but not equal, is Burstable. Every container's cpu AND memory requests exactly equal to its limits is Guaranteed."
+  - "A Pod's resources are immutable once created — delete and recreate it, you can't kubectl patch a running Pod's limits."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - "kubectl get pod qos-demo -o jsonpath='{.spec.containers[0].resources}' — right now there's nothing there at all."

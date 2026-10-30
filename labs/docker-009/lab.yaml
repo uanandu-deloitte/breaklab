@@ -1,0 +1,42 @@
+id: docker-009
+title: "Cgroup Ceilings: PIDs, Memory, CPU"
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, linux, configuration]
+type: guided
+path: docker-fundamentals
+module: resource-limits
+summary: top and ps never show a resource ceiling, only current usage — find out where the real limits live, and why the path to them depends on which cgroup version is mounted.
+objectives:
+  - confirm ps, top, and process counts show no sign of any resource ceiling, only current usage
+  - determine whether this host mounts cgroup v1 or v2 before assuming a path
+  - read the real pids, memory, and CPU ceilings directly from the container's cgroup files
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  pids_limit: 50
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: mount | grep cgroup
+      why: Shows exactly how cgroups are mounted here — a single unified mount means cgroup v2, several separate per-controller mounts means cgroup v1 — so you know which paths are even real before reading any of them.
+    - do: ps aux | wc -l
+      why: Confirms ps shows nothing about any resource ceiling at all — just a process count, with no hint a limit exists or how close you are to it.
+    - do: test -f /sys/fs/cgroup/cgroup.controllers && echo v2 || echo v1
+      why: The presence of a single cgroup.controllers file at the cgroup root is the quickest way to tell v2's unified hierarchy from v1's split one.
+    - do: cat /sys/fs/cgroup/pids.max 2>/dev/null || cat /sys/fs/cgroup/pids/pids.max
+      why: Reads the real process-count ceiling straight from the kernel's cgroup file — the number that actually makes fork() start failing, regardless of this host's mount layout.
+    - do: cat /sys/fs/cgroup/pids.current 2>/dev/null || cat /sys/fs/cgroup/pids/pids.current
+      why: Shows how many processes are charged against that ceiling right now, so you can tell how much headroom is actually left.
+    - do: cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
+      why: The same logic applies to memory — docker stats shows usage, but the hard ceiling itself only ever lives in this cgroup file, under a different filename depending on cgroup version.
+    - do: cat /sys/fs/cgroup/cpu.max 2>/dev/null || cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us
+      why: And again for CPU — this file, not top's %CPU column, is where an actual CPU ceiling would show up if one were set.
+hints:
+  - "A pids_limit, memory limit, or CPU quota never shows up in ps, top, or docker stats as a ceiling — only as usage. The limit itself only lives in a cgroup file."
+  - "Check mount | grep cgroup first. cgroup v2 uses one unified path (/sys/fs/cgroup/<file>); cgroup v1 splits each controller into its own subdirectory (/sys/fs/cgroup/<controller>/<file>) with a different filename."
+  - "pids.max / pids.limit, memory.max / memory.limit_in_bytes, and cpu.max / cpu.cfs_quota_us are the v2/v1 pairs for the same three ceilings."

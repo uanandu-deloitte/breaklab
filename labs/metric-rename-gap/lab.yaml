@@ -1,0 +1,61 @@
+id: metric-rename-gap
+title: The dashboard went quiet, not red
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, dashboards, scripting, chaos-engineering, blind-spots]
+prerequisites: [obs-006]
+summary: A dashboard panel shows "no data," even though the exporter behind it has perfectly good numbers.
+loop:
+  learn: >
+    A dashboard renders by resolving a name — the panel's config says which
+    metric key to look up, and the render step does a lookup against
+    whatever the exporter currently calls that metric. A rename anywhere in
+    that chain — the exporter changing its key, a compatibility alias
+    pointing at the wrong name, or the panel config never being updated —
+    breaks the lookup, not the exporter or the underlying service, so the
+    data is real and flowing but the panel renders "no data" instead of an
+    error. A quiet gap, rather than a red failure, almost always means a name
+    on one side of a lookup stopped matching the name on the other side.
+  guided:
+    - do: cat /etc/dashboards/overview.yaml
+      why: See exactly which metric name the panel is configured to look up.
+    - do: jq 'keys' /var/lib/metrics/exported.json
+      why: See every metric key the exporter is actually emitting right now, to compare against what the panel expects.
+    - do: cat /etc/dashboards/aliases.yaml 2>/dev/null || echo 'no alias file'
+      why: Check whether a rename-compat bridge exists at all, and if it does, what old name it maps to what new name.
+    - do: render-dashboard && cat /var/lib/dashboards/overview.rendered
+      why: Re-run the actual render step and read its output directly rather than guessing from config alone — "no-data" vs a real value tells you whether the lookup chain resolved at all.
+    - do: "diff <(sed -n 's/^metric: *//p' /etc/dashboards/overview.yaml) <(sed -n 's/^<old-key>: *//p' /etc/dashboards/aliases.yaml)"
+      why: Line up exactly which key the panel asks for against exactly which key the alias maps from — a typo in either one silently breaks the chain even though both files "look" correct.
+  practice:
+    task: >
+      Before touching the real incident, reason through how the lookup chain
+      resolves.
+    questions:
+      - prompt: The panel's config and the alias file both reference the old metric name, and the spelling looks identical at a glance. What's the first thing to verify before concluding they match?
+        answer: Diff them byte-for-byte rather than eyeballing — a single-character typo like a trailing "s" makes two names look alike but fail every exact-match lookup.
+      - prompt: If a metric was renamed by the exporter and no alias exists, what are the two possible fixes, and why might you pick one over the other?
+        answer: Either update the panel to reference the new name directly, or add an alias mapping old name to new name. Updating the panel is cleaner if nothing else depends on the old name; an alias is better when other dashboards still rely on the old name and can't all be updated at once.
+      - prompt: Why does this failure show up as "no data" rather than a dashboard error?
+        answer: The render script treats a missing key as an empty/absent value rather than throwing — a failed lookup degrades gracefully into "no-data" output instead of crashing, so nothing alerts; the panel just goes quiet.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run render-dashboard yourself and look at /var/lib/dashboards/overview.rendered.
+  - Compare the metric name in /etc/dashboards/overview.yaml against the keys actually in /var/lib/metrics/exported.json.
+variants:
+  - id: dashboard-not-updated
+    script: variants/dashboard-not-updated.sh
+    weight: 1
+    hints:
+      - The exporter's metric was renamed a while back. Does overview.yaml still reference the old name?
+  - id: broken-alias-bridge
+    script: variants/broken-alias-bridge.sh
+    weight: 1
+    hints:
+      - Check if /etc/dashboards/aliases.yaml exists, and whether its key actually matches what overview.yaml declares.

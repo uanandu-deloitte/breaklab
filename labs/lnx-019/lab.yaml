@@ -1,0 +1,35 @@
+id: lnx-019
+title: Why Did the Script Fail?
+stage: linux
+difficulty: 2
+estimated_minutes: 15
+tags: [linux, shell-scripting]
+type: break-fix
+path: linux-fundamentals
+module: shell-scripting
+summary: /opt/app/start.sh claims success every single time, even when it has nothing to start from — find the two bugs hiding that from you.
+objectives:
+  - recognize a missing precondition check for a required environment variable
+  - recognize a construct that masks a failing command's real exit status
+  - write a startup script that fails loudly and succeeds truthfully
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: 'env -u APP_CONFIG_PATH bash /opt/app/start.sh; echo "exit: $?"'
+      why: Running the script with the required variable unset and checking $? right after reveals it currently exits 0 even with nothing to start from — the first bug to fix.
+    - do: cat /opt/app/start.sh
+      why: Reading the source shows exactly where it uses APP_CONFIG_PATH without checking it first, and where a pipeline might be swallowing an earlier command's real exit status.
+    - do: 'if [ -z "${APP_CONFIG_PATH:-}" ]; then echo "ERROR: APP_CONFIG_PATH is not set" >&2; exit 1; fi'
+      why: Checking a required variable explicitly, before using it, is the fix for a missing precondition check.
+    - do: 'APP_CONFIG_PATH=/opt/app/config.yaml bash /opt/app/start.sh; echo "exit: $?"'
+      why: Confirms the genuine-success path still works and prints the real success marker once both bugs are fixed.
+hints:
+  - "Run env -u APP_CONFIG_PATH bash /opt/app/start.sh; echo \"exit: $?\" — the exit code tells you whether the script is being honest."
+  - A script that pipes a command into another command, or never inspects $?, can print a success message and exit 0 even when something upstream genuinely failed.
+  - A correct fix checks for the required variable explicitly, before using it, and lets a real failure propagate as a non-zero exit code.

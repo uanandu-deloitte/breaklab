@@ -1,0 +1,42 @@
+id: k8sf-006
+title: Labels, Selectors, and How Services Find Pods
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, networking]
+type: guided
+path: k8s-fundamentals
+module: labels-and-selectors
+summary: A reports Pod is Running and Ready, but its Service has no backends at all — a Service never targets a Pod by name, only by matching labels.
+objectives:
+  - confirm a Service has zero Endpoints when its selector doesn't match any Pod's labels
+  - compare a Service's live selector against a Pod's live labels directly, not a manifest file
+  - recognize that a selector/label mismatch produces no error anywhere, only empty Endpoints
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pods --show-labels
+      why: Shows every Pod's actual, live labels — the only thing a Service selector ever matches against, never a Pod's name.
+    - do: kubectl get svc reports -o jsonpath='{.spec.selector}'
+      why: Shows exactly what the Service is trying to match; line this up against the Pods' real labels from the previous step.
+    - do: kubectl describe svc reports
+      why: Prints the Service's selector and ports together with its Endpoints (or lack of them) in one view.
+    - do: kubectl get endpoints reports
+      why: An empty ADDRESSES column is the actual, direct symptom of the mismatch — confirmed independently of reading labels or the selector at all.
+    - do: kubectl get pods -l app=reports-old
+      why: "Proves the mismatch directly: filtering Pods by the Service's own selector value returns nothing, the same empty result the Service itself gets."
+hints:
+  - "kubectl get pods --show-labels shows every Pod's real labels; kubectl get svc <name> -o jsonpath='{.spec.selector}' shows what a Service is actually trying to match against them."
+  - "kubectl get endpoints <service> is the direct symptom — empty ADDRESSES means no Pod's labels currently satisfy the selector, with no error logged anywhere else."
+  - A Service never knows a Pod by name — only by whether the Pod's labels happen to match spec.selector right now.
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

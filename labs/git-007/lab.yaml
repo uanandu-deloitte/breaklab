@@ -1,0 +1,37 @@
+id: git-007
+title: Resolve the Conflict
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, merging]
+type: break-fix
+path: version-control
+module: merging
+summary: main and a feature branch both changed the same line of the same file differently — merge, resolve the real conflict by hand, and finish the merge commit.
+objectives:
+  - trigger and recognize a real merge conflict
+  - read and resolve git's conflict markers in a text file
+  - complete a merge with git add and git commit after resolving
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git checkout main
+      why: The merge must be completed from main, the branch the conflict resolution lands on.
+    - do: git merge feature/raise-timeout
+      why: Triggers the expected conflict, since both branches changed config.yaml's timeout line differently since their common ancestor.
+    - do: 'printf "service: acme-api\nport: 8080\ntimeout: 60\n" > config.yaml'
+      why: Replaces the half-finished, marker-filled file with the agreed final content — the longer timeout the team decided was correct — removing every <<<<<<<, =======, and >>>>>>> marker.
+    - do: git add config.yaml
+      why: Tells git this file's conflict is resolved.
+    - do: git commit
+      why: Finishes the merge using git's already-prepared merge commit message, creating a commit with two parents.
+hints:
+  - "git merge feature/raise-timeout will stop with a conflict in config.yaml — that's expected, not an error to work around."
+  - "Open config.yaml and look for <<<<<<<, =======, and >>>>>>> — everything between them is the two competing versions of the same line."
+  - "After editing the file to the agreed final content, git add config.yaml then git commit finishes the merge — git already has a merge commit message prepared."

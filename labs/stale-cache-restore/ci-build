@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+CACHE_DIR=/var/cache/ci/deps
+KEY_FILE=/var/cache/ci/.cache-key
+VENDOR_DIR=/srv/app/vendor
+LOCKFILE=/srv/app/requirements.lock
+
+# Bug: the cache key is derived from the cache directory's own mtime, not
+# from requirements.lock's content -- so bumping the lockfile alone never
+# invalidates the cache.
+current_key=$(stat -c %Y "$CACHE_DIR")
+stored_key=$(cat "$KEY_FILE" 2>/dev/null || echo "")
+
+if [ "$current_key" != "$stored_key" ]; then
+  echo "ci-build: cache key changed, refreshing dependency cache"
+  cp "$LOCKFILE" "$CACHE_DIR/requirements.lock"
+  echo "$current_key" > "$KEY_FILE"
+else
+  echo "ci-build: cache key unchanged, reusing cached dependencies"
+fi
+
+rm -rf "$VENDOR_DIR"
+mkdir -p "$VENDOR_DIR"
+cp "$CACHE_DIR/requirements.lock" "$VENDOR_DIR/requirements.lock"
+echo "ci-build: build complete"

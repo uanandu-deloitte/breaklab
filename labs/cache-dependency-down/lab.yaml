@@ -1,0 +1,65 @@
+id: cache-dependency-down
+title: Frontend is up but the user journey is broken
+stage: k8s-developer
+difficulty: 3
+estimated_minutes: 25
+tags: [kubernetes, containers, chaos-engineering, dependency-failure]
+summary: The frontend Pod has never restarted, but customers are hitting intermittent failures — the broken piece is a dependency, not the process you'd check first.
+prerequisites: [k8sd-004]
+loop:
+  learn: >
+    A Pod's own health (Running, zero restarts, passing readiness probe)
+    only tells you that one process is alive — it says nothing about
+    whether the things it calls out to are reachable. When a service relies
+    on a cache or backend behind its own Deployment and Service, that
+    dependency can lose all its ready endpoints — either because it was
+    scaled to zero, or because its replicas exist but keep crash-looping
+    before turning Ready — and every caller sees intermittent or total
+    failure while looking perfectly fine on paper. The fix is always to
+    trace the actual call path (what does the failing feature depend on?)
+    rather than re-checking the Pod that's merely reporting the symptom.
+  guided:
+    - do: kubectl get pods
+      why: Get the overview first — notice that everything can show Running here even when the real failure is elsewhere.
+    - do: kubectl logs deployment/frontend --tail=20
+      why: Frontend logs the result of its own dependency checks on every cycle — read what it's actually observing instead of assuming which dependency is at fault.
+    - do: kubectl get endpoints cache
+      why: Endpoints are the ground truth for whether anything is ready to serve traffic behind this Service — zero addresses means the frontend's calls have nowhere to land.
+    - do: kubectl get deployment cache
+      why: Compare DESIRED vs READY replicas — this tells you whether the dependency was deliberately scaled down or whether it has replicas that aren't becoming ready.
+    - do: kubectl describe pod -l app=cache
+      why: If replicas exist but aren't ready, check restart count and the Events section for why — e.g. a startup command that exits immediately.
+    - do: kubectl rollout undo deployment/cache
+      why: If a bad template change is the cause, undo the rollout to restore the previous known-good spec; a deliberate replica count of zero needs scaling back up instead.
+  practice:
+    task: >
+      Before touching the real incident below, reason through why "the Pod
+      never restarted" can be misleading here, then reveal the answer.
+    questions:
+      - prompt: Why does a frontend Pod with zero restarts and a passing readiness probe not rule out a broken dependency?
+        answer: Because the frontend's own readiness probe only checks that the frontend process itself is up — it says nothing about whether the services it calls (like cache) are reachable. Those are separate failure domains.
+      - prompt: kubectl get endpoints cache returns no addresses. What two different root causes can produce exactly this symptom?
+        answer: Either the cache Deployment was scaled to 0 replicas (nothing exists to be an endpoint), or it has replicas that are crash-looping and never pass their readiness check (they exist but are never marked Ready). Checking the Deployment's DESIRED vs READY replica counts tells them apart.
+      - prompt: Customers report checkout is "intermittently" failing rather than completely broken. What does intermittent, rather than total, failure suggest about the cache's state?
+        answer: It suggests the cache dependency isn't fully down for every request — e.g. some requests hit a code path that tolerates the cache being unreachable (falling through to a slower path) while others fail outright, or the cache was only partially unavailable (e.g. mid-rollout) rather than completely down the whole time.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - A healthy frontend Pod does not prove the whole request path works. Separate frontend process health from dependency health.
+  - kubectl logs deployment/frontend --tail=20 shows what frontend itself is observing on every cycle.
+variants:
+  - id: scaled-to-zero
+    script: variants/scaled-to-zero.sh
+    weight: 1
+    hints:
+      - Confirm the cache Service exists but has no ready endpoints. Check the cache Deployment's replica count.
+  - id: crash-looping
+    script: variants/crash-looping.sh
+    weight: 1
+    hints:
+      - The cache Deployment has replicas, but check their restart count and current phase.

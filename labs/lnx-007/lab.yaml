@@ -1,0 +1,35 @@
+id: lnx-007
+title: Inspect Configuration
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, filesystem]
+type: guided
+path: linux-fundamentals
+module: filesystem
+summary: Two versions of the same config file shipped — find exactly what changed between them before anything gets deployed.
+objectives:
+  - compare two versions of a config file with diff
+  - identify which specific keys changed between two files
+  - record a before/after value pair for each changed key
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: diff /workspace/config.old /workspace/config.new
+      why: Prints only the lines that differ — a < line is unique to config.old, a > line is unique to config.new, and lines that match in both don't appear at all.
+    - do: grep "DATABASE_HOST" /workspace/config.old /workspace/config.new
+      why: Isolating one key at a time in both files shows its old value in config.old and its new value in config.new side by side.
+    - do: grep "LOG_LEVEL" /workspace/config.old /workspace/config.new
+      why: Same technique for the second changed key — each changed line has a key:value shape, so grepping the key name finds it in both files.
+    - do: grep "TIMEOUT" /workspace/config.old /workspace/config.new
+      why: Same technique for the third changed key, completing the set of 3 keys diff flagged as different.
+hints:
+  - "diff /workspace/config.old /workspace/config.new shows exactly which lines differ between the two files."
+  - "Lines diff doesn't mention are identical in both files — ignore those keys."
+  - "Each changed line has a key:value shape — the key tells you which answers.env pair to fill in."

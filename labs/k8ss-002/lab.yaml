@@ -1,0 +1,50 @@
+id: k8ss-002
+title: Run as Non-Root
+stage: k8s-security
+path: k8s-security
+module: pod-hardening
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, security, pod-hardening]
+type: guided
+summary: A Pod runs fine with no securityContext at all — root user, writable root filesystem. Harden it without breaking the one thing it actually needs to do.
+objectives:
+  - add a Pod-level securityContext that forces a container to run as a specific non-root uid
+  - set readOnlyRootFilesystem on a container and understand why it has no Pod-level equivalent
+  - add an emptyDir volume so a hardened, read-only container can still write to the one path its job actually requires
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pod scratch-writer -o yaml | grep -A5 securityContext
+      why: Confirms there's no securityContext at all yet — this is why the container currently runs as root with a fully writable filesystem.
+    - do: Edit /manifests/pod.yaml to add spec.securityContext (runAsNonRoot, runAsUser 10001), the container's own readOnlyRootFilesystem, and an emptyDir volume mounted at /data.
+      why: securityContext can't be patched onto a running Pod, so the fix has to be in the manifest before it's reapplied — and the emptyDir keeps /data writable once the rest of the filesystem locks down.
+    - do: kubectl delete pod scratch-writer
+      why: securityContext is set at creation and can't be edited in place on a live Pod — it has to be deleted before the fixed manifest can take effect.
+    - do: kubectl apply -f /manifests/pod.yaml
+      why: Recreates the Pod from the hardened manifest.
+    - do: kubectl get pod scratch-writer -o yaml | grep -A5 securityContext
+      why: Confirms runAsNonRoot, runAsUser, and readOnlyRootFilesystem all landed in the live spec, not just the file on disk.
+    - do: kubectl exec scratch-writer -- id -u
+      why: Confirms the container is actually running as uid 10001, not merely configured to — this is the live process, not the spec.
+    - do: kubectl exec scratch-writer -- sh -c 'echo hi > /data/t && cat /data/t'
+      why: Confirms the container can still do its real job — writing through the emptyDir volume — despite the rest of its filesystem being locked down.
+    - do: kubectl exec scratch-writer -- sh -c 'touch /nope'
+      why: Confirms the root filesystem really is read-only everywhere outside /data, not just read-only on paper.
+hints:
+  - "A running Pod's securityContext can't be edited in place — edit /manifests/pod.yaml, then kubectl delete pod scratch-writer and kubectl apply -f /manifests/pod.yaml to recreate it with the fix."
+  - "runAsNonRoot and runAsUser belong in spec.securityContext (Pod-level); readOnlyRootFilesystem only exists on a container's own securityContext — there's no Pod-level field for it."
+  - "Making the root filesystem read-only breaks anything that still tries to write to it. The container writes to /data — give it a volume there before you flip readOnlyRootFilesystem on."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - The Pod currently has no securityContext at all. Figure out what it needs to write to before you lock the rest down.

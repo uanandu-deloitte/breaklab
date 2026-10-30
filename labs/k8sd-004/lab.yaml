@@ -1,0 +1,49 @@
+id: k8sd-004
+title: Tracing a Failure Across a Service Dependency
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, containers]
+type: guided
+path: k8s-developer
+module: dependencies
+summary: The frontend Pod is Running and Ready, but a feature is broken because the backend it calls has zero ready endpoints — figure out which of two different failures that actually is.
+objectives:
+  - explain why a Pod being Running and Ready says nothing about the health of the services it depends on
+  - use a Service's Endpoints, not a Deployment's replica count alone, as the ground truth for whether anything is actually ready to serve traffic
+  - distinguish a dependency deliberately scaled to zero from one whose replicas exist but are crash-looping, by comparing DESIRED against READY
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pods
+      why: The frontend Pod shows Running and 1/1 Ready — this is the trap. Nothing here hints that the problem lives one hop away, in a different Deployment entirely.
+    - do: kubectl logs deployment/frontend --tail=20
+      why: Frontend checks its dependency on a loop and logs the result every cycle — this names which dependency it thinks is unreachable, instead of you guessing.
+    - do: kubectl get endpoints backend
+      why: Endpoints are the ground truth for "is anything actually ready to serve traffic." An empty address list means zero ready pods behind the Service, regardless of what the Deployment object claims about replica count.
+    - do: kubectl get deployment backend
+      why: Compare the DESIRED and READY columns specifically. Zero desired replicas (deliberately scaled down) and zero ready replicas out of several desired (crash-looping) both produce the exact same empty Endpoints list, but they are different root causes needing different fixes.
+    - do: kubectl describe pod -l app=backend
+      why: When DESIRED is greater than zero but READY is zero, replicas exist but aren't passing their readiness probe — the Events and restart count here show whether they're actually crash-looping and why.
+hints:
+  - "kubectl get endpoints backend shows whether anything is actually ready to serve traffic — an empty list means zero ready pods either way."
+  - "kubectl get deployment backend's DESIRED and READY columns are the only way to tell apart 'scaled to zero' (DESIRED is 0) from 'replicas exist but aren't ready' (DESIRED > 0, READY is 0)."
+  - "kubectl logs deployment/frontend --tail=20 names which dependency frontend itself considers unreachable, on its own, without you guessing."
+variants:
+  - id: scaled-to-zero
+    script: variants/scaled-to-zero.sh
+    weight: 1
+    hints:
+      - Confirm the backend Service exists but has no ready endpoints, then check the backend Deployment's DESIRED replica count specifically.
+  - id: crash-looping
+    script: variants/crash-looping.sh
+    weight: 1
+    hints:
+      - The backend Deployment has DESIRED replicas greater than zero. Check their restart count and current phase with kubectl describe pod -l app=backend.

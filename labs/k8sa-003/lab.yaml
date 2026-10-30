@@ -1,0 +1,44 @@
+id: k8sa-003
+title: Taints, Tolerations, and Scheduling
+stage: k8s-admin
+path: k8s-admin
+module: scheduling
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, scheduling, taints]
+type: guided
+summary: The cluster's single node was tainted for a dedicated workload pool — a Pod with no matching toleration sits Pending forever as a result.
+objectives:
+  - read a node's taints and a Pod's scheduling Events to diagnose a Pending Pod
+  - add a toleration that matches a taint's key, value, and effect exactly
+  - recreate a Pod to apply a scheduling-relevant spec change that can't be patched in place
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pod tainted-workload -o wide
+      why: Shows the Pod is Pending with no node assigned — the scheduler never placed it anywhere.
+    - do: kubectl describe pod tainted-workload
+      why: The Events section names the exact taint blocking scheduling — this is the only place the reason is recorded, since the Pod never started.
+    - do: kubectl describe node $(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+      why: Confirms the node's taint key, value, and effect exactly — a toleration has to match all three.
+    - do: kubectl delete pod tainted-workload --wait=true
+      why: Tolerations are fixed at creation time, so the only way to add one is deleting and recreating the Pod.
+    - do: kubectl apply -f /workspace/tainted-workload.yaml
+      why: Recreates the Pod with a toleration matching the node's taint exactly, letting the scheduler place it this time.
+    - do: kubectl get pod tainted-workload -o wide
+      why: Confirms it's now Running on the node instead of stuck Pending.
+hints:
+  - "kubectl describe pod tainted-workload — the Events section names the exact taint blocking it."
+  - "kubectl describe node <name> shows every taint currently applied to it; a toleration must match key, value, and effect exactly."
+  - "A Pod's tolerations are fixed at creation time — delete and recreate rather than trying to patch a running Pod's spec."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

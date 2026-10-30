@@ -1,0 +1,65 @@
+id: backend-dependency-down
+title: Orders stop completing but nothing looks crashed
+stage: k8s-developer
+difficulty: 3
+estimated_minutes: 25
+tags: [kubernetes, containers, chaos-engineering, dependency-failure]
+summary: Orders stop completing, but every Pod kubectl can show you looks fine — the broken thing is one hop away.
+prerequisites: [k8sd-004]
+loop:
+  learn: >
+    In a microservice chain, a Pod being Running tells you nothing about the
+    services it depends on. Kubernetes tracks whether a Deployment has
+    replicas that are ready via its Service's Endpoints — if a dependency
+    has zero ready endpoints, every caller downstream fails even though
+    nothing in its own Pod spec changed. The failure can come from either
+    direction: the dependency was deliberately scaled to zero, or it has
+    replicas that keep crashing before they turn Ready. Both look identical
+    from the caller's side ("unreachable"), so you have to check the
+    dependency itself, not just the service that's complaining.
+  guided:
+    - do: kubectl get pods
+      why: Get the overview first — this often looks deceptively healthy, which is exactly the trap in this kind of incident.
+    - do: kubectl logs deployment/frontend --tail=20
+      why: Frontend actively checks its dependencies on a loop and logs the result — this tells you which dependency it thinks is unreachable, instead of guessing.
+    - do: kubectl get endpoints backend
+      why: Endpoints are the ground truth for "is anything actually ready to serve traffic" — an empty address list means the Service has no healthy backend regardless of what the Deployment object claims.
+    - do: kubectl get deployment backend
+      why: Compare DESIRED vs READY. Zero desired replicas and zero ready replicas are two different root causes requiring different fixes.
+    - do: kubectl describe pod -l app=backend
+      why: If replicas exist but aren't ready, the Events and restart count here show whether it's crash-looping and why — e.g. a bad command that exits immediately.
+    - do: kubectl rollout undo deployment/backend
+      why: If a bad change (bad command, bad config) was just rolled out, undoing the rollout restores the previous known-good spec; a replica count stuck at zero needs a scale back up instead.
+  practice:
+    task: >
+      Before touching the real incident below, reason through two scenarios
+      that look identical from the frontend's point of view, then reveal
+      the answer.
+    questions:
+      - prompt: kubectl get endpoints backend returns no addresses. Does that tell you whether the backend Deployment has 0 replicas or N replicas that are all unready?
+        answer: "No — an empty endpoints list means zero ready pods either way. You have to check kubectl get deployment backend's DESIRED and READY columns separately to tell apart \"scaled to zero\" from \"crash-looping.\""
+      - prompt: Why does kubectl get pods showing nothing crashed or restarting not rule out a dependency failure?
+        answer: Because the Pod that's actually broken might belong to a different Deployment (the dependency), not the one reporting the symptom — the frontend Pod itself can be perfectly healthy while just failing its calls to a dependency with zero ready replicas.
+      - prompt: When would kubectl rollout undo be the wrong fix for a dependency with zero ready replicas?
+        answer: When the replica count was deliberately set to 0 (e.g. by kubectl scale) rather than by a bad template rollout — there's no bad revision to undo, so you need kubectl scale back up instead.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Identify which components are directly dependent on the backend and which ones can keep running without it.
+  - kubectl logs deployment/frontend --tail=20 shows what frontend itself is observing on every cycle.
+variants:
+  - id: scaled-to-zero
+    script: variants/scaled-to-zero.sh
+    weight: 1
+    hints:
+      - Confirm the backend Service exists but has no ready endpoints. Check the backend Deployment's replica count.
+  - id: crash-looping
+    script: variants/crash-looping.sh
+    weight: 1
+    hints:
+      - The backend Deployment has replicas, but check their restart count and current phase.

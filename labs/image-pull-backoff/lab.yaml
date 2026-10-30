@@ -1,0 +1,62 @@
+id: image-pull-backoff
+title: New catalog release never rolled out
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, containers, chaos-engineering, blast-radius]
+summary: A routine image update never finished rolling out, and the old Pod quietly kept serving the whole time.
+prerequisites: [k8sf-004]
+loop:
+  learn: >
+    When a Deployment's rollout can't get a new Pod to Ready — most often
+    because its image can't be pulled — the default rolling update strategy
+    won't tear down the last known-good Pod until a replacement is Ready.
+    That's by design, so you don't lose availability, but it also means
+    "the Deployment never updated" can hide behind pods that still look
+    perfectly healthy. The fix for a bad image reference isn't to guess a
+    corrected tag; it's to roll back to the last revision that's known to
+    actually work.
+  guided:
+    - do: kubectl get rs,pods -l app=catalog -o wide
+      why: Shows which ReplicaSet is newest and whether its Pods ever reached Ready — the Deployment can report fine while its latest ReplicaSet is stuck at 0 ready replicas.
+    - do: kubectl describe pod -l app=catalog
+      why: The Events section names the exact pull failure (ErrImagePull, ImagePullBackOff) and the registry or tag it tried, instead of leaving you to guess.
+    - do: kubectl get events --sort-by=.metadata.creationTimestamp
+      why: Puts the pull failures in chronological order relative to everything else, confirming this is what actually started the incident.
+    - do: kubectl rollout history deployment/catalog
+      why: Confirms there's a prior revision that worked, which is what you'll roll back to rather than hand-editing the image reference.
+    - do: kubectl rollout undo deployment/catalog
+      why: Reverts to the last known-good revision directly — safer than guessing at a corrected tag or registry address when you don't know what the right one actually is.
+    - do: kubectl rollout status deployment/catalog --timeout=30s
+      why: Confirms the rollback actually reached a ready state, not just that the undo command was accepted.
+  practice:
+    task: >
+      Work through these before revealing the answer.
+    questions:
+      - prompt: kubectl get deployment catalog shows the Deployment as healthy, but customers never got tonight's update. How is that possible?
+        answer: The Deployment's own status can reflect the old ReplicaSet still having its required Ready Pods, even while the newest ReplicaSet is stuck failing to pull its image — healthy here describes availability, not that the latest rollout succeeded.
+      - prompt: Why doesn't a rolling update remove the old Pod automatically once the new image fails to pull?
+        answer: The rolling update strategy only scales down the old ReplicaSet as the new one becomes Ready, to avoid a gap in availability. If the new Pods never become Ready, the old ones are never removed — which is also why the symptom hides behind apparently healthy Pods.
+      - prompt: Why roll back to the previous revision instead of correcting the image tag or registry address directly?
+        answer: You may not actually know the correct tag or a working registry address from inside the incident — rolling back returns to a configuration that's already proven to work, rather than guessing at a fix for the broken one.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - kubectl get rs,pods -l app=catalog -o wide shows which ReplicaSet is newest.
+  - kubectl describe pods -l app=catalog and kubectl get events --sort-by=.metadata.creationTimestamp will show the exact pull error.
+variants:
+  - id: bad-tag
+    script: variants/bad-tag.sh
+    weight: 1
+    hints:
+      - Compare the image tag on the newest ReplicaSet against what the registry actually has.
+  - id: unreachable-registry
+    script: variants/unreachable-registry.sh
+    weight: 1
+    hints:
+      - Where is this image actually being pulled from? Confirm the registry host is reachable from inside the cluster.

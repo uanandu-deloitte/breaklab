@@ -1,0 +1,36 @@
+id: k8sd-008
+title: Helm Rendered the Wrong Port
+stage: k8s-developer
+path: k8s-developer
+module: helm
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, helm]
+type: guided
+summary: The chart's Service hardcodes targetPort 8080, but the container actually listens on port 80 -- the Deployment is Ready, the Service has endpoints, and nothing reaches it.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get deployment web-web
+      why: Confirms the Deployment itself is healthy -- this isn't a crashing app, which rules out half the usual suspects immediately.
+    - do: helm get manifest web
+      why: Shows the real rendered YAML Helm actually applied -- the source templates can look fine while the rendered output doesn't.
+    - do: kubectl get pods -l app=web-web -o jsonpath='{.items[0].spec.containers[0].ports}'
+      why: Shows the container's real listening port straight from the Pod spec -- compare it against the Service's targetPort you just read.
+    - do: Edit /chart/templates/service.yaml so targetPort matches the container's real port, then helm upgrade web /chart
+      why: Fixes the actual mismatch and re-applies the chart through Helm's normal upgrade path, not a one-off kubectl patch.
+hints:
+  - "A Ready Deployment and a Service with real Endpoints can still route to nowhere -- targetPort isn't verified against anything."
+  - "helm get manifest shows what was actually applied, which is what matters -- not just what the chart's source templates say."
+  - "Template targetPort from the same value the Deployment uses for containerPort, so they can't drift apart again."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

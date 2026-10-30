@@ -1,0 +1,34 @@
+id: docker-007
+title: Where docker logs Actually Comes From
+stage: docker
+difficulty: 1
+estimated_minutes: 15
+tags: [containers, linux, logging]
+type: guided
+path: docker-fundamentals
+module: logging
+summary: The app writes to stdout and to a file on disk at the same time — find out which one docker logs actually shows, and which one it never sees.
+objectives:
+  - confirm docker logs only ever captures what PID 1 writes to stdout/stderr
+  - observe that a file written to disk inside a container is invisible to docker logs no matter how real or current it is
+  - locate the on-disk log file directly, since docker logs can never reveal it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: docker logs breaklab-docker-007 --tail 20
+      why: Shows exactly what docker logs captures right now — only the heartbeat lines this app writes to its own stdout, run from the host where docker logs actually works.
+    - do: docker exec -it breaklab-docker-007 bash
+      why: Opens a shell inside the container so the next checks can look at its filesystem directly, which docker logs can never do.
+    - do: tail -n 5 /var/log/app/app.log
+      why: Shows the separate file the same app is writing to, on disk, at the same time — this file is just as real and current as the stdout output, but docker logs never touches it.
+    - do: ps -p 1 -o pid,comm
+      why: Confirms which process is actually PID 1 in this container — docker logs only ever follows PID 1's own stdout/stderr file descriptors, nothing else running alongside it.
+hints:
+  - docker logs only ever shows what PID 1 writes to stdout/stderr — never a file, no matter how real or current that file is.
+  - "Get a shell and look directly at the filesystem: a log file can exist, grow, and be perfectly healthy while docker logs stays completely silent about it."

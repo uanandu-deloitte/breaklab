@@ -1,0 +1,41 @@
+id: git-011
+title: Stash Your Work
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, version-control, stashing]
+type: guided
+path: version-control
+module: stashing
+summary: Park a tracked change and a brand-new file off to the side without committing either, then bring them both back exactly as they were.
+objectives:
+  - stash both tracked modifications and untracked files in one entry
+  - confirm a clean working tree after stashing
+  - restore a stash and remove it from the stack in one step
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git status
+      why: Shows the tracked app.py modification and the untracked notes.txt both sitting in the working tree before stashing.
+    - do: git stash push -u
+      why: Captures the tracked change and the untracked file in one entry — plain git stash would leave notes.txt behind.
+    - do: git status
+      why: Confirms the working tree is now completely clean, proving the stash really captured everything.
+    - do: git stash list
+      why: Shows exactly one stash entry sitting on the stack.
+    - do: git stash pop
+      why: Re-applies the most recent stash entry and removes it from the stack in one step.
+    - do: git stash list
+      why: An empty list confirms the stash was consumed by the pop, not left sitting there as a leftover duplicate.
+    - do: 'printf "STASH_COMMAND=push\nSTASH_INCLUDE_UNTRACKED_FLAG=-u\nPOP_COMMAND=pop\n" > /workspace/answers.env'
+      why: Records the exact subcommand and flag used, matching what was just run.
+hints:
+  - "Plain git stash leaves untracked files behind -- there's a flag that includes them too."
+  - "git status after stashing should show a completely clean working tree if everything was captured."
+  - "git stash pop both re-applies and removes the entry; git stash apply only does the first part."

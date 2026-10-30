@@ -1,0 +1,61 @@
+id: umask-mismatch
+title: The export nobody else can read
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, permissions]
+summary: Two processes share a group and a group-writable directory, yet one still can't read what the other just wrote.
+loop:
+  learn: >
+    Directory permissions and group membership only control who can create
+    or traverse files — the permission bits on a newly created file itself
+    are decided separately, at the instant of creation, by the writing
+    process's umask. A umask masks bits off whatever the program asked for
+    (usually 666 for a plain file), so a umask of 077 silently produces a
+    file only its owner can read, no matter how permissive the directory
+    around it is or how many users share its group. Because the directory
+    looks fine, it's easy to check the wrong layer first — the fix is always
+    in whatever shell environment was active when the file was created, not
+    in the directory's own permissions.
+  guided:
+    - do: ls -ld /var/lib/appdata
+      why: Confirm the shared directory itself really is group-writable with the right group and setgid bit, ruling out the directory as the cause before looking elsewhere.
+    - do: id producer; id consumer
+      why: Confirm both users are actually in the same group the directory expects — if group membership itself were wrong, that would be a different, simpler bug.
+    - do: su -s /bin/bash producer -c 'umask'
+      why: Read the umask actually in effect for the producer's own writing process, not what you'd assume from reading the script alone.
+    - do: ls -l /var/lib/appdata/export.json
+      why: Look at the permission bits on the file the producer just wrote — a result like -rw------- confirms a restrictive umask stripped the group-read bit at creation time.
+    - do: cat /etc/default/producer; for f in /etc/profile.d/*.sh; do echo "== $f =="; cat "$f"; done
+      why: Walk the exact chain of files run-producer.sh sources before writing anything — a umask set in any one of them (including a shared, unrelated profile snippet) silently overrides what the service itself expects.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: A directory is drwxrwsr-x with the right group, yet a file written into it ends up -rw-------. What's the only thing that could have caused that, given the directory is fine?
+        answer: The writing process's umask at the moment of creation — a umask of 077 strips all group and other bits off every new file regardless of the directory's own permissions or setgid bit.
+      - prompt: Why does the setgid bit on the directory not help here even though it correctly assigns the right group to new files?
+        answer: Setgid only controls which group a new file inherits, not which permission bits it gets — a restrictive umask can still mask off the read bit for that correctly-assigned group, so the file has the right group but the wrong permissions for it.
+      - prompt: Two separate places can set a umask for the same script — a service's own env file and a shell profile snippet it also sources. If both set different values, which one wins?
+        answer: Whichever one runs last in the script's actual execution order — umask is just a shell builtin that overwrites the previous value, so a later-sourced file (even an unrelated, shared one) silently wins over an earlier, correct one.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - producer and consumer are both in the appdata group, and /var/lib/appdata is group-writable with the setgid bit set. The directory isn't the problem.
+  - A restrictive umask strips permission bits at file-creation time, even inside a directory whose own permissions look fine. Check what umask is actually in effect when producer writes its export.
+variants:
+  - id: service-env-umask
+    script: variants/service-env-umask.sh
+    weight: 1
+    hints:
+      - Check /etc/default/producer, which run-producer.sh sources before it writes anything.
+  - id: shared-profile-umask
+    script: variants/shared-profile-umask.sh
+    weight: 1
+    hints:
+      - /etc/default/producer on its own looks fine. Check what else run-producer.sh sources afterward.

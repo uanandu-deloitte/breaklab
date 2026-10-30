@@ -1,0 +1,62 @@
+id: swallowed-signal
+title: Deploys hang waiting for this container to stop
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, linux, signals]
+summary: docker stop never exits cleanly on its own — something between PID 1 and the app is swallowing the signal.
+prerequisites: [docker-003]
+loop:
+  learn: >
+    `docker stop` sends SIGTERM to whatever process is PID 1 inside the
+    container, waits a grace period, then SIGKILLs everything if PID 1 hasn't
+    exited. If PID 1 is a shell or supervisor, the signal only reaches the
+    real application if something explicitly forwards it — a shell running a
+    pipeline (`a | b`) spawns an extra process just to hold the pipe
+    together, and a wrapper script that calls the app as a plain command
+    instead of `exec`-ing it keeps itself as the running process in the
+    app's place. In both cases the app never sees SIGTERM at all, so it never
+    gets the chance to shut down gracefully — it just gets killed outright
+    once the timeout expires.
+  guided:
+    - do: docker exec <container> cat /etc/app/launch-cmd
+      why: See exactly what command PID 1 is actually launching — this is the chain the signal has to travel down before it reaches the app.
+    - do: docker exec <container> ps -eo pid,ppid,cmd
+      why: Map out the real process tree — confirm what PID 1 is, what its direct child is, and whether the app process is that direct child or buried another layer down.
+    - do: docker kill -s TERM <container>
+      why: Send the same signal docker stop eventually sends, directly and immediately, so you can observe the result without waiting out a full stop timeout.
+    - do: docker exec <container> test -f /var/run/app/graceful-shutdown.marker && echo seen || echo not-seen
+      why: Check whether the app's own SIGTERM handler actually ran — this is the ground truth for whether the signal reached the app at all, not just whether the container stopped.
+    - do: grep -n 'exec\|tee\|&&\|;' /etc/app/launch-cmd /usr/local/bin/run-app.sh 2>/dev/null
+      why: Look for the two usual culprits — a pipeline that inserts an extra shell process, or a launcher that runs the app as a plain command instead of `exec`-ing into it and replacing itself.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: Why does piping a process's output through `tee` change which process receives SIGTERM?
+        answer: A shell pipeline needs a shell process alive to hold both ends of the pipe open, so that shell — not the app on the far end — becomes PID 1's direct child; SIGTERM sent to PID 1's child reaches the shell, which has no reason to forward it to the app.
+      - prompt: A wrapper script runs `python3 app.py` as its last line instead of `exec python3 app.py`. What's the practical difference for signal delivery?
+        answer: Without `exec`, the wrapper script's own shell process keeps running and stays as the process the supervisor's signal gets delivered to, with the app as a separate child underneath it; `exec` replaces the wrapper's process image with the app itself, so the app inherits the wrapper's PID and receives signals directly.
+      - prompt: The app has a correct SIGTERM handler. Why isn't that enough on its own to guarantee graceful shutdown in a container?
+        answer: A correct handler only matters if the signal actually reaches that process — if something upstream (a shell pipe, a non-exec wrapper, a supervisor that doesn't forward signals) intercepts or absorbs SIGTERM first, the handler never runs regardless of how correctly it's written.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - "`docker kill -s TERM <container>` sends the signal straight to PID 1 inside the container. Check what's actually running as PID 1 and whether it's forwarding anything to the app."
+  - "cat /etc/app/launch-cmd shows exactly how the app process gets started."
+variants:
+  - id: piped-through-tee
+    script: variants/piped-through-tee.sh
+    weight: 1
+    hints:
+      - "cat /etc/app/launch-cmd and look closely at how the app's output is being handled. A pipeline always needs an extra shell process to hold it together."
+  - id: wrapper-script-no-exec
+    script: variants/wrapper-script-no-exec.sh
+    weight: 1
+    hints:
+      - /etc/app/launch-cmd itself looks completely correct here. Check what it actually launches, and whether that in turn launches the app correctly.

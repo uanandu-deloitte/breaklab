@@ -1,0 +1,23 @@
+---
+import "@astryxdesign/core/reset.css";
+import "@astryxdesign/core/astryx.css";
+import LabDetail from "../../components/LabDetail";
+
+// One physical shell file, built from a single placeholder id — Go
+// serves this same file for any real /labs/{id} request
+// (frontendShellHandler) and the client resolves the real id from
+// window.location.pathname. See design.md "Astro builds shells, not
+// content": no lab's data is ever baked in at build time.
+export function getStaticPaths() {
+  return [{ params: { id: "_" } }];
+}
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BreakLab — lab</title>
+  </head>
+  <body>
+    <LabDetail client:load />
+  </body>
+</html>

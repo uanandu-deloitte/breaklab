@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<title>BreakLab — Local DevOps Training Command Center</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #0b0c0e;
+      }
+      body {
+        overscroll-behavior: none;
+      }
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            // Minimalist neutral base
+            surface: "#0b0c0e",
+            "surface-subtle": "#111215",
+            "surface-card": "#15171b",
+            "surface-card-hover": "#1c1f24",
+            "surface-border": "#23262d",
+            "surface-border-subtle": "#1c1e24",
+            
+            // Text hierarchy (monochrome high-contrast)
+            "content-primary": "#ffffff",
+            "content-secondary": "#a1a1aa", // zinc-400
+            "content-tertiary": "#71717a",  // zinc-500
+            "content-subtle": "#52525b",    // zinc-600
+
+            // Semantic Badges & Indicators Only
+            emerald: {
+              400: "#34d399",
+              500: "#10b981",
+              900: "#064e3b",
+              950: "#022c22"
+            },
+            amber: {
+              400: "#fbbf24",
+              500: "#f59e0b",
+              900: "#78350f",
+              950: "#451a03"
+            },
+            rose: {
+              400: "#fb7185",
+              500: "#f43f5e",
+              900: "#881337",
+              950: "#4c0519"
+            },
+            sky: {
+              400: "#38bdf8",
+              500: "#0ea5e9",
+              900: "#0c4a6e",
+              950: "#082f49"
+            }
+          },
+          fontFamily: {
+            sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+            mono: ["JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-surface font-sans text-content-secondary antialiased selection:bg-white selection:text-black min-h-screen flex flex-col justify-between">
+<!-- Minimalist App Bar -->
+<header class="sticky top-0 z-50 bg-surface/90 backdrop-blur-md border-b border-surface-border">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+<!-- Brand & Navigation -->
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<img alt="BreakLab Logo" class="h-6 w-auto object-contain filter brightness-110" src="https://lh3.googleusercontent.com/aida/AEtjO1XBPrHX5XxRLIlA2gi0Wy03Uayp0MN7uuRjO0BHKm0mPGMu1PTqDkgnqJw9pegQl2tUCzQKSeMlTZhM4Yv2Sk7gmfcmIvH7R7a_5YT5x-u_UY6U9JJbIfjAuXeCv4fOGj6zzbqjdaAk4H9diH23zcDE0wXostfHaZjr1L5O71Y-W9rIVe1VcxB6KMbcCFwwaA9gCiSRv7yNLx63v7l_63eAUhm3DokVcmg6A7IFF9gp5Kq6v9bMYhCI_Q"/>
+<span class="font-semibold text-content-primary tracking-tight text-base">BreakLab</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-mono bg-surface-subtle border border-surface-border text-content-secondary ml-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            daemon 4182
+          </span>
+</div>
+<nav class="hidden md:flex items-center gap-1">
+<a class="px-3 py-1.5 rounded-md text-sm font-medium text-content-primary bg-surface-card border border-surface-border" href="#">Dashboard</a>
+<a class="px-3 py-1.5 rounded-md text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-surface-subtle transition-colors" href="#">Roadmap</a>
+<a class="px-3 py-1.5 rounded-md text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-surface-subtle transition-colors" href="#">Challenges</a>
+<a class="px-3 py-1.5 rounded-md text-sm font-medium text-content-secondary hover:text-content-primary hover:bg-surface-subtle transition-colors" href="#">Lab Detail</a>
+</nav>
+</div>
+<!-- Right Header Telemetry & Profile -->
+<div class="flex items-center gap-3">
+<div class="hidden lg:flex items-center gap-3 text-xs font-mono text-content-tertiary mr-2">
+<span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Docker 26.1</span>
+<span>•</span>
+<span class="text-content-secondary">2h 45m uptime</span>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-subtle border border-surface-border px-2 py-1 rounded text-xs font-mono text-content-tertiary">
+<kbd class="text-content-secondary font-medium">⌘K</kbd>
+</div>
+<div class="h-8 w-8 rounded-full bg-surface-card border border-surface-border flex items-center justify-center text-content-primary font-medium text-xs">
+          OP
+        </div>
+</div>
+</div>
+</header>
+<!-- Main Content Space -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 flex flex-col gap-8">
+<!-- Active Learning Drill (Hero Card) -->
+<section class="bg-surface-card border border-surface-border rounded-xl p-6 sm:p-7 relative overflow-hidden transition-all shadow-sm">
+<div class="flex flex-col gap-6">
+<!-- Header status row -->
+<div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-surface-border-subtle">
+<div class="flex items-center gap-3 flex-wrap">
+<span class="text-xs uppercase tracking-wider font-mono text-content-tertiary font-semibold">Current Drill</span>
+<span class="text-content-subtle">/</span>
+<span class="px-2 py-0.5 rounded font-mono text-xs bg-surface-subtle border border-surface-border text-content-secondary">bl-lab-k8s-dns-04</span>
+<span class="text-xs font-mono text-content-tertiary">TKT-4091</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-rose-950/60 text-rose-400 border border-rose-900/40">
+<span class="material-symbols-outlined text-[13px]">error</span>
+              Failing State
+            </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono text-content-secondary bg-surface-subtle border border-surface-border">
+<span class="material-symbols-outlined text-[14px] text-content-tertiary">timer</span>
+<span id="incident-timer">00:23:41</span>
+</span>
+</div>
+</div>
+<!-- Main Title & Objective -->
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+<div class="max-w-3xl">
+<h1 class="text-xl sm:text-2xl font-semibold text-content-primary tracking-tight">
+              DNS Resolution Cascade Failure in CoreDNS Pods
+            </h1>
+<p class="mt-2 text-sm text-content-secondary leading-relaxed">
+<strong class="text-content-primary font-medium">Objective:</strong> Isolate intermittent NXDOMAIN responses dropping 89% of cluster ingress routing. Restore internal service discovery without bouncing downstream ingress pods.
+            </p>
+</div>
+<div class="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-2 shrink-0">
+<div class="flex items-center gap-2 text-xs font-mono text-content-tertiary">
+<span>HINTS:</span>
+<span class="text-amber-400 font-semibold">1 of 3 unlocked</span>
+</div>
+<button class="text-xs font-medium text-content-secondary hover:text-content-primary underline underline-offset-4 decoration-content-subtle transition-colors">
+              Inspect unlocked hint
+            </button>
+</div>
+</div>
+<!-- Technical Specification Bar -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3.5 bg-surface-subtle border border-surface-border-subtle rounded-lg text-xs font-mono">
+<div>
+<div class="text-content-tertiary uppercase text-[10px] tracking-wider mb-0.5">Port Mapping</div>
+<div class="text-content-primary font-medium">127.0.0.1:1053 → 53/udp</div>
+</div>
+<div>
+<div class="text-content-tertiary uppercase text-[10px] tracking-wider mb-0.5">Target Scope</div>
+<div class="text-content-primary font-medium truncate">kube-system / coredns</div>
+</div>
+<div>
+<div class="text-content-tertiary uppercase text-[10px] tracking-wider mb-0.5">Assertion Status</div>
+<div class="text-rose-400 font-medium">resolv.conf timeout</div>
+</div>
+<div>
+<div class="text-content-tertiary uppercase text-[10px] tracking-wider mb-0.5">Quick Verify</div>
+<button class="text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1 truncate" onclick="navigator.clipboard.writeText('breaklab verify --target TKT-4091')">
+<span class="truncate">breaklab verify</span>
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Action Controls -->
+<div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+<div class="flex flex-wrap items-center gap-2.5">
+<button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-white text-black hover:bg-zinc-200 transition-all shadow-sm active:scale-[0.98]">
+<span class="material-symbols-outlined text-[15px]">play_circle</span>
+              Run Verification
+            </button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono font-medium bg-surface-subtle hover:bg-surface-border text-content-primary border border-surface-border transition-colors">
+<span class="material-symbols-outlined text-[15px] text-content-tertiary">terminal</span>
+              Attach Terminal
+            </button>
+<button class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono text-content-secondary hover:text-content-primary hover:bg-surface-subtle transition-colors">
+<span class="material-symbols-outlined text-[15px] text-content-tertiary">history_edu</span>
+              View Stderr Logs
+            </button>
+</div>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-content-tertiary hover:text-rose-400 hover:bg-rose-950/20 transition-colors">
+<span class="material-symbols-outlined text-[14px]">refresh</span>
+            Reset Sandbox State
+          </button>
+</div>
+</div>
+</section>
+<!-- Key Metrics / Progress Snapshot -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Metric 1 -->
+<div class="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono text-content-tertiary uppercase tracking-wider">Curriculum Solved</span>
+<span class="text-xs font-mono text-emerald-400 font-medium">56.6%</span>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="text-2xl font-semibold text-content-primary tracking-tight">34</span>
+<span class="text-xs text-content-tertiary font-mono">/ 60 labs complete</span>
+</div>
+<div class="space-y-2">
+<div class="w-full bg-surface-subtle h-1.5 rounded-full overflow-hidden flex">
+<div class="bg-emerald-400 h-full" style="width: 56.6%"></div>
+<div class="bg-amber-400 h-full" style="width: 15%"></div>
+</div>
+<div class="flex justify-between text-[11px] font-mono text-content-tertiary">
+<span>34 Passed</span>
+<span>9 Active</span>
+<span>17 Remaining</span>
+</div>
+</div>
+</div>
+<!-- Metric 2 -->
+<div class="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono text-content-tertiary uppercase tracking-wider">Debug Streak</span>
+<span class="text-xs font-mono text-amber-400 font-medium">Active</span>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="text-2xl font-semibold text-content-primary tracking-tight">7 Days</span>
+<span class="text-xs text-content-tertiary">continuous drills</span>
+</div>
+<div class="text-[11px] font-mono text-content-tertiary flex items-center justify-between border-t border-surface-border-subtle pt-2">
+<span>Last passed lab:</span>
+<span class="text-content-secondary">Today, 14:12 UTC</span>
+</div>
+</div>
+<!-- Metric 3 -->
+<div class="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono text-content-tertiary uppercase tracking-wider">Avg Resolution Time</span>
+<span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-1.5 py-0.2 rounded">-3m faster</span>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="text-2xl font-semibold text-content-primary tracking-tight">18m 45s</span>
+<span class="text-xs text-content-tertiary">per ticket</span>
+</div>
+<div class="w-full text-[11px] font-mono text-content-tertiary flex items-center justify-between border-t border-surface-border-subtle pt-2">
+<span>Target baseline:</span>
+<span class="text-content-secondary">22m 00s</span>
+</div>
+</div>
+<!-- Metric 4 -->
+<div class="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono text-content-tertiary uppercase tracking-wider">Postmortem Records</span>
+<span class="text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-900/50 px-1.5 py-0.2 rounded">5 drafts</span>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="text-2xl font-semibold text-content-primary tracking-tight">29</span>
+<span class="text-xs text-content-tertiary">published logs</span>
+</div>
+<div class="text-[11px] font-mono text-content-tertiary flex items-center justify-between border-t border-surface-border-subtle pt-2">
+<span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 24 peer-ready</span>
+<span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> 5 in review</span>
+</div>
+</div>
+</section>
+<!-- Main Content Section: Hands-on Labs & Diagnostic Sandbox -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column (7 cols): Hands-on Labs & Postmortems -->
+<section class="lg:col-span-7 bg-surface-card border border-surface-border rounded-xl overflow-hidden flex flex-col shadow-sm">
+<div class="px-5 py-4 border-b border-surface-border flex items-center justify-between">
+<div>
+<h2 class="text-sm font-semibold text-content-primary tracking-tight">Recent Hands-on Labs &amp; Postmortems</h2>
+<p class="text-xs text-content-tertiary mt-0.5">Track your debugging evidence and peer review status</p>
+</div>
+<span class="text-xs font-mono text-content-tertiary">4 of 34</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs">
+<thead class="bg-surface-subtle text-content-tertiary font-mono uppercase text-[10px] tracking-wider border-b border-surface-border">
+<tr>
+<th class="py-3 px-4">Ticket</th>
+<th class="py-3 px-3">Lab / Domain</th>
+<th class="py-3 px-3">Status</th>
+<th class="py-3 px-3">Postmortem</th>
+<th class="py-3 px-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-border-subtle text-content-secondary">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-subtle/60 transition-colors">
+<td class="py-3.5 px-4 font-mono font-medium text-content-primary">TKT-3982</td>
+<td class="py-3.5 px-3">
+<div class="font-medium text-content-primary">Zombie Process Leak in PID Cgroup</div>
+<div class="flex items-center gap-2 mt-1 text-[11px] text-content-tertiary font-mono">
+<span class="px-1.5 py-0.2 rounded bg-surface-subtle border border-surface-border">Linux</span>
+<span>pid_max overflow</span>
+</div>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[11px] font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-900/50">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Completed
+                  </span>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1 font-mono text-[11px] text-content-secondary">
+<span class="material-symbols-outlined text-[13px] text-emerald-400">check_circle</span>
+                    Published
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right font-mono">
+<div class="inline-flex items-center gap-2">
+<a class="text-content-primary hover:underline" href="#">View</a>
+<span class="text-surface-border">|</span>
+<a class="text-content-tertiary hover:text-content-secondary" href="#">Replay</a>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-subtle/60 transition-colors">
+<td class="py-3.5 px-4 font-mono font-medium text-content-primary">TKT-3940</td>
+<td class="py-3.5 px-3">
+<div class="font-medium text-content-primary">PostgreSQL TCP Syn Backlog Drop</div>
+<div class="flex items-center gap-2 mt-1 text-[11px] text-content-tertiary font-mono">
+<span class="px-1.5 py-0.2 rounded bg-surface-subtle border border-surface-border">Network</span>
+<span>somaxconn</span>
+</div>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[11px] font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-900/50">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Completed
+                  </span>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1.5 font-mono text-[11px] text-amber-400">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    Draft (3/5)
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right font-mono">
+<div class="inline-flex items-center gap-2">
+<a class="text-amber-400 hover:underline" href="#">Edit</a>
+<span class="text-surface-border">|</span>
+<a class="text-content-tertiary hover:text-content-secondary" href="#">Replay</a>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-subtle/60 transition-colors">
+<td class="py-3.5 px-4 font-mono font-medium text-content-primary">TKT-3891</td>
+<td class="py-3.5 px-3">
+<div class="font-medium text-content-primary">Nginx KeepAlive Timeout in Upstream</div>
+<div class="flex items-center gap-2 mt-1 text-[11px] text-content-tertiary font-mono">
+<span class="px-1.5 py-0.2 rounded bg-surface-subtle border border-surface-border">Ingress</span>
+<span>502 gateway</span>
+</div>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[11px] font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-900/50">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Completed
+                  </span>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1 font-mono text-[11px] text-content-secondary">
+<span class="material-symbols-outlined text-[13px] text-emerald-400">check_circle</span>
+                    Published
+                  </span>
+</td>
+<td class="py-3.5 px-4 text-right font-mono">
+<div class="inline-flex items-center gap-2">
+<a class="text-content-primary hover:underline" href="#">View</a>
+<span class="text-surface-border">|</span>
+<a class="text-content-tertiary hover:text-content-secondary" href="#">Replay</a>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-subtle/60 transition-colors">
+<td class="py-3.5 px-4 font-mono font-medium text-content-primary">TKT-3822</td>
+<td class="py-3.5 px-3">
+<div class="font-medium text-content-primary">OOMKilled Worker in Node Pool 2</div>
+<div class="flex items-center gap-2 mt-1 text-[11px] text-content-tertiary font-mono">
+<span class="px-1.5 py-0.2 rounded bg-surface-subtle border border-surface-border">K8s</span>
+<span>cgroup clamp</span>
+</div>
+</td>
+<td class="py-3.5 px-3">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[11px] font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-900/50">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Completed
+                  </span>
+</td>
+<td class="py-3.5 px-3">
+<button class="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded border border-surface-border bg-surface-subtle text-content-tertiary hover:text-content-primary hover:border-zinc-500 transition-colors">
+                    + Write Postmortem
+                  </button>
+</td>
+<td class="py-3.5 px-4 text-right font-mono">
+<a class="text-content-tertiary hover:text-content-secondary" href="#">Replay</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-auto px-5 py-3 border-t border-surface-border bg-surface-subtle/40 flex items-center justify-between text-xs font-mono">
+<span class="text-content-tertiary">CLI sync: <span class="text-content-secondary">breaklab export --all</span></span>
+<a class="text-content-primary hover:underline inline-flex items-center gap-1" href="#">
+            Browse All Records
+            <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</div>
+</section>
+<!-- Right Column (5 cols): Local Sandbox Diagnostics & Live Activity -->
+<section class="lg:col-span-5 flex flex-col gap-6">
+<!-- Local Daemon Environment -->
+<div class="bg-surface-card border border-surface-border rounded-xl p-5 shadow-sm">
+<div class="flex items-center justify-between pb-3 mb-3 border-b border-surface-border-subtle">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+<h3 class="text-xs font-semibold uppercase font-mono tracking-wider text-content-primary">Sandbox Environment</h3>
+</div>
+<span class="text-xs font-mono text-emerald-400">READY</span>
+</div>
+<div class="space-y-2.5 text-xs font-mono">
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded bg-surface-subtle border border-surface-border-subtle">
+<span class="text-content-tertiary">Docker Host</span>
+<span class="text-content-primary truncate ml-2">unix:///var/run/docker.sock</span>
+</div>
+<div class="p-2.5 rounded bg-surface-subtle border border-surface-border-subtle space-y-1.5">
+<div class="flex items-center justify-between">
+<span class="text-content-tertiary">Memory Bound</span>
+<span class="text-content-primary">4.1 GB <span class="text-content-tertiary">/ 16.0 GB (25%)</span></span>
+</div>
+<div class="w-full bg-surface-border h-1 rounded-full overflow-hidden">
+<div class="bg-zinc-400 h-full rounded-full" style="width: 25.6%"></div>
+</div>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded bg-surface-subtle border border-surface-border-subtle">
+<span class="text-content-tertiary">CPU Throttling</span>
+<span class="text-content-primary">0.0% <span class="text-content-tertiary">(cgroup v2)</span></span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2.5 rounded bg-surface-subtle border border-surface-border-subtle">
+<span class="text-content-tertiary">Isolated Mesh</span>
+<span class="text-content-primary">br-breaklab0 (172.28.0.0/16)</span>
+</div>
+</div>
+</div>
+<!-- Clean Diagnostic Feed / Activity -->
+<div class="bg-surface-card border border-surface-border rounded-xl overflow-hidden flex flex-col flex-1 shadow-sm">
+<div class="px-5 py-3 border-b border-surface-border flex items-center justify-between bg-surface-subtle/50">
+<span class="text-xs font-mono text-content-tertiary uppercase tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+              Diagnostic Feed
+            </span>
+<span class="text-[11px] font-mono text-content-tertiary flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Live Tail
+            </span>
+</div>
+<div class="p-4 bg-surface-subtle text-xs font-mono space-y-2 overflow-y-auto max-h-[160px] text-content-secondary select-text">
+<div class="flex items-start gap-2">
+<span class="text-content-subtle shrink-0">14:22:08</span>
+<span class="text-rose-400 shrink-0">[coredns]</span>
+<span class="text-content-secondary">SERVFAIL querying cluster.local (udp:53)</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-content-subtle shrink-0">14:22:15</span>
+<span class="text-sky-400 shrink-0">[probe]</span>
+<span class="text-content-secondary">test-connection to host coredns.kube-system</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-content-subtle shrink-0">14:23:01</span>
+<span class="text-amber-400 shrink-0">[assertion]</span>
+<span class="text-content-secondary">1 failure: resolv.conf nameserver unreachable</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-content-subtle shrink-0">14:23:41</span>
+<span class="text-emerald-400 shrink-0">[daemon]</span>
+<span class="text-content-primary font-medium">Awaiting terminal interaction on tty1</span>
+</div>
+</div>
+<div class="px-4 py-2.5 border-t border-surface-border bg-surface-subtle/30 flex items-center justify-between text-xs font-mono text-content-tertiary">
+<button class="hover:text-content-primary transition-colors flex items-center gap-1" onclick="navigator.clipboard.writeText('breaklab attach')">
+<span>$ breaklab attach</span>
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+</button>
+<span class="text-[11px] text-content-subtle">Ctrl+C to detach</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Clean Minimalist Footer -->
+<footer class="border-t border-surface-border py-4 mt-8 bg-surface">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-content-tertiary">
+<div>
+<span>BREAKLAB // LOCAL DEVOPS ACCELERATOR // WORKSPACE: </span>
+<span class="text-content-secondary">~/.breaklab/labs/prod-sim-04</span>
+</div>
+<div class="flex items-center gap-4">
+<span>IO: 0.12 MB/s</span>
+<span>CPU: 4.2%</span>
+<span class="text-emerald-400 font-medium">LOCAL MESH ACTIVE</span>
+</div>
+</div>
+</footer>
+<script>
+    // Self-ticking timer simulation
+    (function() {
+      let seconds = 23 * 60 + 41;
+      const timerElem = document.getElementById('incident-timer');
+      if (timerElem) {
+        setInterval(() => {
+          seconds++;
+          const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+          const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+          const secs = String(seconds % 60).padStart(2, '0');
+          timerElem.textContent = `${hrs}:${mins}:${secs}`;
+        }, 1000);
+      }
+    })();
+  </script>
+</body></html>

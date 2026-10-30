@@ -1,0 +1,39 @@
+id: git-009
+title: Push Rejected
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, version-control, remotes]
+type: break-fix
+path: version-control
+module: remotes
+summary: A plain git push gets rejected as non-fast-forward — a teammate pushed while you were working, and you've made a commit of your own that origin has never seen.
+objectives:
+  - diagnose a non-fast-forward push rejection
+  - reconcile diverged local and remote history without discarding either side's commit
+  - push successfully once the histories are reconciled
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git push
+      why: Shows the non-fast-forward rejection — origin already has a commit (the teammate's) that your local branch never fetched.
+    - do: git fetch origin
+      why: Updates your knowledge of origin without touching your own branch, so you can compare both sides before deciding anything.
+    - do: git log main..origin/main --oneline
+      why: Shows the teammate's commit that's on origin but missing from your local main.
+    - do: git log origin/main..main --oneline
+      why: Shows your own local commit that origin doesn't have yet — confirming the histories have genuinely diverged, not just fallen behind.
+    - do: git pull --rebase
+      why: Replays your local commit on top of origin's updated history, keeping both commits present without a force-push that would overwrite the teammate's work.
+    - do: git push
+      why: Now succeeds as a fast-forward, since your local main is rebased on top of origin's current history.
+hints:
+  - "git push will tell you it was rejected because the remote contains work you don't have locally yet — read the message, it says exactly what to do next."
+  - "git fetch origin lets you see what's on origin/main without touching your own branch yet — compare it to your local main with git log main..origin/main and git log origin/main..main."
+  - "git pull --rebase (or a fetch followed by a merge) brings both histories together without losing either commit."

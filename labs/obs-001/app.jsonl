@@ -1,0 +1,11 @@
+{"timestamp":"2026-01-15T09:00:01Z","level":"INFO","message":"service started","request_id":"-"}
+{"timestamp":"2026-01-15T09:05:12Z","level":"INFO","message":"request received","request_id":"req-3001"}
+{"timestamp":"2026-01-15T09:05:12Z","level":"INFO","message":"request completed","request_id":"req-3001"}
+{"timestamp":"2026-01-15T09:12:44Z","level":"WARN","message":"slow query detected (312ms)","request_id":"req-3002"}
+{"timestamp":"2026-01-15T09:12:45Z","level":"INFO","message":"request completed","request_id":"req-3002"}
+{"timestamp":"2026-01-15T09:18:03Z","level":"ERROR","message":"failed to charge card: issuer declined","request_id":"req-3003"}
+{"timestamp":"2026-01-15T09:24:50Z","level":"INFO","message":"request received","request_id":"req-3004"}
+{"timestamp":"2026-01-15T09:24:50Z","level":"INFO","message":"request completed","request_id":"req-3004"}
+{"timestamp":"2026-01-15T09:31:19Z","level":"ERROR","message":"upstream inventory service timed out","request_id":"req-3005"}
+{"timestamp":"2026-01-15T09:40:07Z","level":"ERROR","message":"could not write order to database: connection refused","request_id":"req-3006"}
+{"timestamp":"2026-01-15T09:45:00Z","level":"INFO","message":"service healthy","request_id":"-"}

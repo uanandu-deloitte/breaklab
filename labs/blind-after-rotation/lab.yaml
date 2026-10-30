@@ -1,0 +1,61 @@
+id: blind-after-rotation
+title: Metrics stopped updating after last night's log rotation
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, linux, scripting]
+prerequisites: [obs-005]
+summary: The app is still logging fine, but the metrics agent has been frozen on yesterday's numbers since the last log rotation.
+loop:
+  learn: >
+    A metrics agent that reads a log file by path is only as current as that
+    path. Log rotation renames or replaces files out from under long-running
+    readers, so any config that hardcodes a path — rather than always
+    reading the active log — will silently keep reporting whatever that
+    path pointed to at rotation time, or break outright if the config
+    itself got corrupted in the process. The agent not crashing doesn't mean
+    it's reading the right file; you have to check both that the config is
+    syntactically valid and that it points at what's actually being written
+    to right now.
+  guided:
+    - do: collect-metrics
+      why: Run the agent yourself and see what it does — a crash versus silent stale output are two very different failure modes to distinguish first.
+    - do: cat /etc/agent/agent.conf
+      why: Read the config exactly as the agent will source it — look for both a stale path and any line that isn't valid shell syntax.
+    - do: ls -la /var/log/app/
+      why: See what log files actually exist right now — compare this against what the config's LOGFILE path points to.
+    - do: wc -l /var/log/app/app.log
+      why: Get the true current line count directly from the active log, independent of the agent, so you have a known-correct number to check the agent's output against.
+    - do: sed -i 's#LOGFILE=.*#LOGFILE=/var/log/app/app.log#' /etc/agent/agent.conf && collect-metrics
+      why: Point the config at the actively-written log (fixing any syntax error in the file too) and re-run the agent so it picks up current data, rather than waiting for the next scheduled collection.
+  practice:
+    task: >
+      Before touching the real incident below, reason through what each
+      failure mode actually looks like, then reveal the answer.
+    questions:
+      - prompt: "LOGFILE=/var/log/app/app.log.1 and app.log.1 is yesterday's rotated-away file. Will collect-metrics error out, or just report a stale number?"
+        answer: It reports a stale number — app.log.1 still exists and is readable, so wc -l succeeds against it. There's no error, just metrics frozen at whatever that file's line count was when it stopped growing.
+      - prompt: "A config file has `BAD LINE WITHOUT EQUALS` on its own line and the agent sources it with `. \"$conf\"`. What happens?"
+        answer: Sourcing a line that isn't valid shell assignment syntax causes the shell to try to run it as a command, which fails — the agent errors out instead of silently collecting the wrong number, which is actually easier to diagnose than a stale path.
+      - prompt: Why doesn't "the app is definitely still logging" rule out the metrics pipeline as the cause?
+        answer: Because the application writing logs and the agent reading them are two independent processes connected only by a config'd file path — the app can log correctly forever while the agent reads nothing new, if that path stopped matching the file actually being written to.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run collect-metrics yourself and read what it prints.
+  - Check LOGFILE in /etc/agent/agent.conf against what's actually in /var/log/app/.
+variants:
+  - id: stale-path
+    script: variants/stale-path.sh
+    weight: 1
+    hints:
+      - app.log.1 is yesterday's rotated-away log. Is the agent still pointed at it?
+  - id: malformed-config
+    script: variants/malformed-config.sh
+    weight: 1
+    hints:
+      - Try sourcing /etc/agent/agent.conf yourself and see what happens.

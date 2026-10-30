@@ -1,0 +1,64 @@
+id: shipper-buffer-drop
+title: The shipper never complained, it just stopped
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, logging, scripting]
+prerequisites: [obs-004]
+summary: ship-logs runs clean every time and exits zero, but new log lines have quietly stopped reaching the aggregator.
+loop:
+  learn: >
+    A producer/consumer pipeline can go silent without ever raising an
+    error if the producer is written to "fail open" — stopping work
+    quietly on a guard condition (a full buffer, a lock file) instead of
+    raising one. An exit code of 0 only proves the script didn't crash;
+    it says nothing about whether it actually moved any data on that run.
+    Diagnosing a quiet pipeline means stepping past the exit code
+    entirely and inspecting the state it's supposed to be moving through:
+    is new data arriving at the intermediate buffer, is the buffer
+    actually draining, and is anything — a cap, a flag file — blocking
+    either side from doing its job.
+  guided:
+    - do: echo probe-line >> /var/log/app.log && ship-logs
+      why: Proves right now, not just historically, that a fresh line fails to make it through — establishes the live symptom before digging further.
+    - do: ls /var/spool/shipper/queue/ | wc -l
+      why: A buffer that's empty, growing, or pinned at a fixed count tells you immediately whether the producer or the consumer side is the stuck one.
+    - do: cat $(command -v ship-logs)
+      why: Read the producer's own guard conditions — what makes it stop enqueueing without printing an error.
+    - do: ls -la /var/spool/shipper/
+      why: Checks for a marker file the producer silently respects (like a read-only flag) that wouldn't show up just by looking at the queue contents.
+    - do: cat $(command -v drain-queue)
+      why: Confirms what's actually responsible for making room in the queue — if this hasn't run recently, the queue fills and stays full no matter how healthy the producer is.
+    - do: <clear whichever block you found — drain the backlog, or remove the stale marker> && ship-logs && drain-queue
+      why: A clean exit on the next run still isn't proof — only confirming a genuinely new line reaches shipped-final.log closes the loop.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: ship-logs exits 0 with no error output, but shipped-final.log hasn't grown in a while. Does a zero exit code mean the pipeline is healthy?
+        answer: No — exit 0 only means the script didn't hit an unhandled error. A script that deliberately breaks out of its main loop on a guard condition (queue full, read-only flag) exits cleanly while doing nothing, which is exactly what happened here.
+      - prompt: The queue directory holds exactly 5 files (its cap) and stays at 5 across multiple runs. What does that tell you about where the real problem is?
+        answer: It tells you the producer is working and trying to enqueue, but something downstream — the consumer responsible for draining the queue — isn't running or isn't keeping up, so the buffer stays permanently saturated.
+      - prompt: Why is a bounded queue (a fixed capacity) a deliberate design choice here rather than a flaw?
+        answer: An unbounded queue would let a stalled consumer accumulate unlimited backlog silently; a cap turns that same failure into a visible, finite state (a full buffer) — the tradeoff is that the producer needs a loud way to signal "I'm blocked," which this version doesn't do well enough.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run ship-logs yourself. Does anything new actually show up in /var/log/shipped-final.log?
+  - Check how full /var/spool/shipper/queue/ is, and whether drain-queue has run recently.
+variants:
+  - id: consumer-stopped
+    script: variants/consumer-stopped.sh
+    weight: 1
+    hints:
+      - The queue is at capacity. What's supposed to be draining it?
+  - id: queue-readonly
+    script: variants/queue-readonly.sh
+    weight: 1
+    hints:
+      - Check for anything in /var/spool/shipper/ marking it read-only.

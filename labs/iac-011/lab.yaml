@@ -1,0 +1,40 @@
+id: iac-011
+title: The Playbook That's Never Actually Done
+stage: iac
+difficulty: 2
+estimated_minutes: 15
+tags: [iac, ansible, idempotency]
+type: practice
+path: iac-fundamentals
+module: configuration-management
+summary: playbook.yml reports changed on every single run -- a shell task keeps appending the same line instead of a module that checks first.
+objectives:
+  - recognize shell/command tasks as non-idempotent by default, unlike Ansible's purpose-built modules
+  - replace a shell task with the real module that matches the actual intent (lineinfile)
+  - confirm idempotency the only way that counts -- run it twice and check for changed=0
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/playbook.yml
+      why: Shows the shell task appending a line every run -- nothing here ever checks whether the line is already there.
+    - do: cd /infra && ansible-playbook -i inventory playbook.yml
+      why: Run it once and read the recap -- changed=1 is expected the first time.
+    - do: ansible-playbook -i inventory playbook.yml
+      why: Run it again immediately -- a correct, idempotent task should report changed=0 here. A shell append never will.
+    - do: cat /etc/app/app.conf
+      why: Shows the real damage -- every run so far has added another duplicate line.
+  practice:
+    task: Replace the shell task with ansible.builtin.lineinfile so the line is ensured, not appended.
+    questions:
+      - prompt: What does lineinfile check before deciding whether to report changed?
+        answer: Whether a line already in the file matches the given regexp/line -- it only edits the file (and reports changed) when the real content doesn't already match.
+hints:
+  - "shell: and command: tasks run unconditionally every time -- they have no concept of \"already done.\""
+  - "ansible.builtin.lineinfile ensures a line exists (or matches a pattern), checking the real file first -- that's what makes it idempotent."
+  - "Prove it with two runs in a row: the second ansible-playbook invocation should report changed=0 in its recap."

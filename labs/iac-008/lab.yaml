@@ -1,0 +1,41 @@
+id: iac-008
+title: State Files Only Know What You Told Them
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+type: guided
+path: iac-fundamentals
+module: state-tracking
+summary: Two resources are declared, infra-apply runs clean, and only one of them has ever actually been written — because only one of them is in state.
+objectives:
+  - confirm a resource can be fully declared in source config and still never get applied
+  - compare a resource's declared path against an apply tool's state file to find the one that isn't tracked
+  - import the missing resource into state and confirm the next apply actually writes it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: infra-apply
+      why: Run it and read its exact output for each declared resource — one reports "applied", the other reports a skip, and those are two different situations.
+    - do: ls /infra/resources/
+      why: Shows every resource this config declares — not just the one that's actually being managed.
+    - do: cat /infra/state.json
+      why: Shows the exact list of paths infra-apply is allowed to touch — a resource has to be on this list before anything else about it matters.
+    - do: cat /etc/cache/cache.conf
+      why: Confirms the real file's content has never matched its declaration — proof infra-apply has never actually written this resource, not even once.
+    - do: infra-apply --import /etc/cache/cache.conf
+      why: Adds the missing path to state.json's managed list — the only thing that makes the next apply actually touch it.
+    - do: infra-apply
+      why: Now that the path is tracked, this run finally writes the declared content to the real resource.
+    - do: cat /etc/cache/cache.conf
+      why: Confirms the resource now matches its declaration, for the first time.
+hints:
+  - "infra-apply isn't erroring — read exactly what it prints for each resource before assuming anything is broken."
+  - "infra-apply only ever touches a resource whose exact path is listed in /infra/state.json's managed array."
+  - "infra-apply --import <path> adds a path to the managed list — that's the only thing that gets a never-imported resource applied."

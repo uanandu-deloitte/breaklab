@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR=/var/lib/ship-logs
+SOURCE=""
+DEST=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --source)
+      SOURCE="$2"
+      shift 2
+      ;;
+    --destination)
+      DEST="$2"
+      shift 2
+      ;;
+    *)
+      echo "ship-logs: unknown argument '$1'" >&2
+      exit 1
+      ;;
+  esac
+done
+
+: "${SOURCE:?--source is required}"
+: "${DEST:?--destination is required}"
+
+[ -f "$SOURCE" ] || { echo "ship-logs: source '$SOURCE' does not exist" >&2; exit 1; }
+
+mkdir -p "$STATE_DIR"
+state_file="$STATE_DIR/$(echo "$SOURCE" | tr '/' '_').offset"
+
+last_line=0
+if [ -f "$state_file" ]; then
+  last_line=$(cat "$state_file")
+fi
+
+total_lines=$(wc -l < "$SOURCE")
+
+touch "$DEST"
+
+if [ "$total_lines" -gt "$last_line" ]; then
+  tail -n "+$((last_line + 1))" "$SOURCE" >> "$DEST"
+fi
+
+echo "$total_lines" > "$state_file"

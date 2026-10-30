@@ -1,0 +1,37 @@
+id: iac-001
+title: Declarative vs Imperative
+stage: iac
+difficulty: 1
+estimated_minutes: 15
+tags: [iac, orientation]
+type: guided
+path: iac-fundamentals
+module: orientation
+summary: A tiny apply tool reconciles a real file to match a declared config — edit the declaration, not the file, and watch which one wins.
+objectives:
+  - distinguish a declarative source of truth from the real resource it produces
+  - predict that re-running an apply tool overwrites manual edits to the resource it manages
+  - change a declared value, apply it, and confirm the real resource now reflects the new declaration
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/resources.yaml
+      why: Shows the declared `content:` value — this is the source of truth, not /etc/banner.txt.
+    - do: cat /etc/banner.txt
+      why: Shows the real file infra-apply last wrote — confirm it currently matches resources.yaml's declared content.
+    - do: Edit the `content:` line in /infra/resources.yaml to a new value
+      why: Changing the declaration, not the real file, is the only edit that survives the next infra-apply run.
+    - do: infra-apply
+      why: Reconciles the real file to match the newly declared content — this is the step that actually makes the change happen.
+    - do: cat /etc/banner.txt
+      why: Confirms the real resource now reflects the new declaration — proof the tool, not a manual edit, produced this change.
+hints:
+  - "/infra/resources.yaml is the declared, desired state. /etc/banner.txt is just whatever infra-apply last wrote there."
+  - "Edit the 'content:' line in /infra/resources.yaml, then run infra-apply — don't edit /etc/banner.txt directly."
+  - "cat /etc/banner.txt before and after infra-apply to see the real resource change to match the new declaration."

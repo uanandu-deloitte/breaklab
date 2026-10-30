@@ -1,0 +1,29 @@
+id: lnx-023
+title: Find the Failure in the Logs
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, logs, troubleshooting]
+type: practice
+path: linux-fundamentals
+module: logs
+summary: A single user-visible error touched three services. Correlate timestamps and request IDs across their logs to find the true cause.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: grep ERROR /var/log/*.log
+      why: Surfaces every error line across all three services at once — but the chain has more than one, so this alone doesn't tell you which is the root cause.
+    - do: grep <request-id> /var/log/*.log
+      why: Once you've isolated a request ID from the frontend's error, grepping it across every log collapses the noise down to just the lines that matter for that one request.
+    - do: sort -k1 /var/log/payments.log
+      why: Reading payments.log in timestamp order shows whether its own upstream call failed — the first ERROR in timestamp order across all files, not the one closest to the user, is the root cause.
+hints:
+  - Start from the user-visible error in frontend.log, then follow its request ID backward through api.log and payments.log.
+  - The request ID is the thread that ties all three logs together — timestamps alone aren't unique enough.
+  - "Useful commands: grep <request-id> /var/log/*.log; grep ERROR /var/log/*.log; sort -k1 /var/log/payments.log."

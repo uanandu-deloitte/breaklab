@@ -1,0 +1,60 @@
+id: bloated-data
+title: The data directory is over its storage budget
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, scripting]
+summary: A directory blew past its storage budget, but the overage could be one giant file or a thousand tiny ones — and the cleanup is different either way.
+loop:
+  learn: >
+    Disk usage problems come in two shapes that look identical from the top
+    level number but need opposite diagnosis: a single runaway file (a log
+    left in verbose mode, a core dump) or a large count of small files
+    (temp files a cleanup job stopped clearing). du's --max-depth flag lets
+    you walk down the tree one level at a time until you find which shape
+    you're dealing with, instead of guessing from the total alone. Knowing
+    the shape also tells you the safe fix: truncating a runaway log is very
+    different from confirming a pile of files is genuinely disposable
+    before deleting it.
+  guided:
+    - do: du -sh /var/app/data
+      why: Confirm the actual total size and how far over budget it is, rather than trusting the alert's number alone.
+    - do: du -sh --max-depth=1 /var/app/data
+      why: Break the total down by immediate subdirectory and file — this tells you where the bulk of the space actually is in one step.
+    - do: du -sh --max-depth=1 /var/app/data/tmp
+      why: If a subdirectory stands out, drill one level further into it — a thousand small files and one huge file look completely different even at the same total size.
+    - do: ls -la /var/app/data/app.log
+      why: If a single file is the culprit, check its exact size directly — this distinguishes "normal log that grew over time" from "something clearly abnormal happened."
+    - do: 'find /var/app/data/tmp -type f | wc -l'
+      why: If it's many small files instead, count them — a huge count in a directory literally named tmp is a strong signal the nightly cleanup job stopped running.
+  practice:
+    task: >
+      Before touching the real incident below, reason through the two
+      shapes this kind of problem takes, then reveal the answer.
+    questions:
+      - prompt: du -sh --max-depth=1 shows one subdirectory using 45MB out of a 48MB total. Is the next step the same whether that's one file or a thousand small ones?
+        answer: "No — go one level deeper first (du -sh --max-depth=1 on that subdirectory, or ls -la) to see which shape it is. A single oversized file usually gets truncated or rotated; many small files usually get bulk-deleted, but only after confirming they're genuinely disposable (e.g. a tmp/ directory)."
+      - prompt: Why is it unsafe to always respond to "directory over budget" by deleting the largest file you find?
+        answer: Because the largest file might be legitimate data the app needs, not an accidental runaway — you need to identify what the file actually is (a log that can be truncated, versus real application data) before deleting or truncating anything.
+      - prompt: What does du -sb (bytes) give you that du -sh (human-readable) doesn't, when a check script needs an exact threshold comparison?
+        answer: An exact byte count that a script can compare numerically against a budget — human-readable output like "45M" needs extra parsing and loses precision, which is why automated checks use -sb instead of -sh.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - du -sh --max-depth=1 /var/app/data will show you where the space went.
+  - A huge single file and a pile of small files look very different in du's output.
+variants:
+  - id: runaway-log
+    script: variants/runaway-log.sh
+    weight: 1
+    hints:
+      - Check the size of /var/app/data/app.log specifically.
+  - id: stale-temp-files
+    script: variants/stale-temp-files.sh
+    weight: 1
+    hints:
+      - Look inside /var/app/data/tmp/. Temp files are safe to clear.

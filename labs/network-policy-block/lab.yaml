@@ -1,0 +1,62 @@
+id: network-policy-block
+title: Cache looks healthy but frontend still can't reach it
+stage: k8s-security
+difficulty: 4
+estimated_minutes: 30
+tags: [kubernetes, networking, chaos-engineering, dependency-failure]
+summary: Every Pod shows healthy, but the frontend still reports the cache as unreachable.
+loop:
+  learn: >
+    NetworkPolicies are additive and default-deny-once-selected — the instant
+    any NetworkPolicy selects a Pod for a direction (ingress or egress),
+    every connection in that direction is dropped unless some policy
+    explicitly allows it. Pod health checks and readiness probes never see
+    this, because they don't test cross-Pod network paths, so a Pod can be
+    perfectly healthy and still be unreachable from elsewhere in the
+    cluster. Diagnosing this means treating "everything looks healthy" as
+    uninformative and instead inventorying every NetworkPolicy whose
+    selector could possibly match the destination, then checking whether its
+    rules actually allow the traffic you expect.
+  guided:
+    - do: kubectl get pods -o wide
+      why: Confirm every Pod is Running and has an IP — rules out a scheduling or crash problem before looking at networking.
+    - do: kubectl exec <frontend-pod> -- wget -q -T 2 -O- http://cache:6379/
+      why: Reproduce the actual symptom directly — a hang or connection failure here, with a healthy destination Pod, is the signature of a policy block rather than an application bug.
+    - do: kubectl get networkpolicy -A -o yaml
+      why: List every NetworkPolicy in the namespace and read its full podSelector and ingress rules — a policy's name or stated intent doesn't tell you what it actually matches.
+    - do: kubectl get pod <cache-pod> --show-labels
+      why: Compare the destination Pod's actual labels against each policy's podSelector — an empty selector matches every Pod, and a selector with a typo'd label matches none of the Pods it was meant to.
+    - do: kubectl describe networkpolicy <name>
+      why: Check the resolved ingress rules — an empty ingress list on a selected Pod means deny everything, even if the policy was only meant to restrict, not fully block.
+  practice:
+    task: >
+      Before touching the real incident, reason through how NetworkPolicy
+      selection works.
+    questions:
+      - prompt: A NetworkPolicy has an empty podSelector and policyTypes [Ingress] with no ingress rules. Which Pods does it block, and from what traffic?
+        answer: Every Pod in the namespace (an empty podSelector matches all Pods) — all incoming traffic to those Pods is denied, since there are zero ingress rules to allow anything.
+      - prompt: Pod health checks and kubectl get pods all report healthy even though a NetworkPolicy is blocking traffic to that Pod. Why don't they catch it?
+        answer: Readiness/liveness probes and the Pod's Running status reflect the container's own process state, not reachability from other Pods — a NetworkPolicy only affects traffic crossing the network between Pods, which health checks running inside or against localhost never exercise.
+      - prompt: If a second NetworkPolicy exists that allows traffic from frontend to cache, does that override a separate deny-everything policy on cache?
+        answer: "Yes — NetworkPolicy rules are additive: once any policy selects a Pod for a given direction, the traffic allowed is the union of every matching policy's rules. A separate policy with zero ingress rules doesn't override an allow somewhere else; it only guarantees it isn't the one doing the allowing."
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Healthy endpoints do not disprove a policy block. Identify every NetworkPolicy that selects the destination.
+  - kubectl get networkpolicy -A -o yaml shows every policy's podSelector and whether it actually matches what you think it matches.
+variants:
+  - id: deny-all-ingress
+    script: variants/deny-all-ingress.sh
+    weight: 1
+    hints:
+      - A NetworkPolicy with an empty ingress list and no matching allow rule denies everything to its selected Pods.
+  - id: overbroad-selector
+    script: variants/overbroad-selector.sh
+    weight: 1
+    hints:
+      - Check what the policy's podSelector actually matches, not what its name or intent suggests it matches.

@@ -1,0 +1,38 @@
+id: k8ss-004
+title: A Policy Engine That Isn't Enforcing Anything
+stage: k8s-security
+path: k8s-security
+module: policy-as-code
+difficulty: 3
+estimated_minutes: 25
+tags: [kubernetes, security, kyverno, policy-as-code]
+type: guided
+summary: disallow-privileged-containers is set to validationFailureAction Audit, so a real privileged Pod was admitted despite violating it -- Kyverno, Audit, Enforce, all real.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get clusterpolicy disallow-privileged-containers -o yaml
+      why: Shows the real policy's validationFailureAction -- Audit reports violations but never blocks them, which is exactly why bad-pod exists.
+    - do: kubectl get pod bad-pod
+      why: Confirms the real, currently-running proof that this policy never actually stopped anything.
+    - do: "sed -i 's/validationFailureAction: Audit/validationFailureAction: Enforce/' /manifests/policy.yaml && kubectl apply -f /manifests/policy.yaml"
+      why: Switches the policy to actually reject violating resources at admission time, instead of only reporting them.
+    - do: kubectl delete pod bad-pod
+      why: Enforce only affects future admission attempts -- it never retroactively removes a Pod that already got through under Audit.
+    - do: kubectl apply -f /manifests/bad-pod.yaml
+      why: Proves the fix for real -- this should now be rejected by Kyverno's actual admission webhook, not just theoretically blocked.
+hints:
+  - "Audit and Enforce both evaluate the policy -- the difference is entirely in what happens next. Audit always admits the resource anyway."
+  - "A currently-running Pod that violates the policy is the real tell that it's in Audit mode, not Enforce."
+  - "Flipping to Enforce doesn't clean up what already got through -- delete bad-pod separately, then prove a new attempt is actually rejected."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

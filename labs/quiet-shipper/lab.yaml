@@ -1,0 +1,62 @@
+id: quiet-shipper
+title: Logs never reached the aggregator
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [scripting, linux]
+prerequisites: [obs-004]
+summary: Ten lines sat in app.log all day, but the shipper's own destination file never got them — and it exited clean every time.
+loop:
+  learn: >
+    A script that depends on an external binary and an external config
+    value can fail in two very different ways: the binary it calls can
+    disappear from PATH, or the config value that tells it where to write
+    can quietly point somewhere wrong. Neither failure mode is a bug in
+    the script's own logic, so "the script works, it's the inputs that
+    changed" is usually the right first instinct — confirm the dependency
+    exists and the config points at a real, writable path before assuming
+    the script's code itself needs fixing.
+  guided:
+    - do: wc -l /var/log/app.log
+      why: Confirms the source really has all 10 lines before you suspect anything downstream.
+    - do: cat /var/log/shipped.log 2>/dev/null | wc -l
+      why: Confirms the destination really is short the lines, matching the reported symptom rather than assuming it.
+    - do: ship-logs
+      why: Run the shipper directly and read what it actually prints — a missing-dependency or bad-path error will show up immediately instead of staying buried in a cron log.
+    - do: command -v jq
+      why: ship-logs hard-depends on jq being runnable from PATH; confirm it's really there rather than assuming a package is still installed.
+    - do: cat /etc/log-shipper.conf
+      why: DEST is read from here — confirm it's a path that actually exists and is writable, not a directory that was renamed or never created.
+    - do: ship-logs
+      why: Whichever cause you found (missing jq, wrong DEST), fixing it doesn't retroactively ship the lines that already failed — only re-running the shipper writes them.
+  practice:
+    task: >
+      Before touching the real incident below, work through what each
+      signal would mean on a healthy host, then reveal the answer.
+    questions:
+      - prompt: Why does `command -v jq` catch a renamed jq binary better than a hardcoded check like `[ -f /usr/bin/jq ]`?
+        answer: command -v searches PATH the same way the shell does when it actually runs jq, so it reflects whether invoking jq will truly work — a fixed-path check can pass even though the real binary moved, or fail even though a working jq exists elsewhere on PATH.
+      - prompt: DEST in /etc/log-shipper.conf points at a directory that was never created. What happens when ship-logs tries to truncate that path?
+        answer: The redirection itself fails with "No such file or directory," and since the script runs under set -euo pipefail, it exits immediately on that line — no lines get shipped, and the only sign is the script stopping, not a dedicated "wrong destination" message.
+      - prompt: After restoring jq or fixing DEST, is the incident actually resolved?
+        answer: Not until ship-logs is run again — correcting the dependency or the config only means the next run can succeed; the 10 lines that failed to ship earlier still need an actual run to land in the destination file.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run ship-logs yourself and read what it prints.
+  - Check /etc/log-shipper.conf and whether jq is actually on PATH.
+variants:
+  - id: missing-jq
+    script: variants/missing-jq.sh
+    weight: 1
+    hints:
+      - ship-logs parses each line with jq. Is jq still where it's expected?
+  - id: wrong-destination
+    script: variants/wrong-destination.sh
+    weight: 1
+    hints:
+      - Check DEST in /etc/log-shipper.conf.

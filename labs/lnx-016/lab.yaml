@@ -1,0 +1,35 @@
+id: lnx-016
+title: Fix Unsafe Defaults
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, permissions]
+type: practice
+path: linux-fundamentals
+module: identity
+summary: This shell's default umask leaves every new file wide open — fix the umask for your session, then prove it with a real file.
+objectives:
+  - explain how umask subtracts from a file's requested permission bits at creation time
+  - set a umask that grants a group collaborative access while denying "other" entirely
+  - prove the fix by creating a real file and reading back its resulting mode
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: umask
+      why: Prints the mask currently in effect for this shell, which you need to know before deciding whether it's safe.
+    - do: umask 007
+      why: Applied to a plain file's default request of 666, 007 removes nothing from owner or group but strips everything from other, yielding 660 — group can read and write, other gets nothing.
+    - do: touch /srv/team/newfile.txt
+      why: Creates a real file while the new umask is active, so its resulting mode actually reflects the fix rather than being asserted.
+    - do: stat -c '%a' /srv/team/newfile.txt
+      why: Reads back the file's actual resulting mode to confirm the umask produced exactly the permissions intended.
+hints:
+  - "umask alone, with no arguments, prints the mask currently in effect for your shell."
+  - A plain file is requested at mode 666 (rw-rw-rw-) before any umask is applied — work out which umask subtracts down to "group can read and write, other gets nothing."
+  - "umask 007 leaves owner and group both able to read and write a new file, and strips every bit from other."

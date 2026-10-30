@@ -1,0 +1,23 @@
+rule_files:
+  - rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      # error_rate sits at a healthy 2 for 2m, then jumps to 8 (a real
+      # breach of a 5% threshold) at t=3m and stays there.
+      - series: 'error_rate'
+        values: '2 2 2 8 8 8 8 8 8 8'
+    alert_rule_test:
+      # By t=9m the breach (starting at t=3m) has held continuously for
+      # 6m, well past the rule's `for: 5m` -- HighErrorRate must be
+      # firing by now.
+      - eval_time: 9m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Checkout error rate is high"

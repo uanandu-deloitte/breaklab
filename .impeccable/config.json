@@ -1,0 +1,347 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-21T15:37:35.442Z",
+        "reason": "user confirmed: pinned direction carries Geist across both templates/web and templates/site (shared font-face block); already disclosed and suppressed for templates/web earlier this session"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          ".verify-shots/gallery.html"
+        ],
+        "createdAt": "2026-10-21T15:43:37.321Z",
+        "reason": "confirmed false positive: checker evaluates text colors against an assumed #ffffff/#000000 background, but this page is a deliberate single-theme dark report (html/body background: var(--bg) = #0a0a0d, no light-mode override) — actual computed contrast verified by hand (fg-subtle #86868f clears 4.5:1 against both #0a0a0d and #141418)"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "templates/web/style.css"
+        ],
+        "createdAt": "2026-10-21T16:00:31.313Z",
+        "reason": "confirmed intentional across two sessions: a functional status-signal pattern (lab-card/check-result/hint-reveal/incident-banner/guided-steps left-borders predate this redesign and carry real meaning, not decoration), plus .sidebar-nav-current's left bar, which directly replicates the user's pinned Codecademy-style reference image (dark vertical bar beside the active nav item)"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "templates/web/*.html"
+        ],
+        "createdAt": "2026-10-21T16:11:39.010Z",
+        "reason": "user confirmed: pinned via a concrete reference screenshot, pixel-sampled (#fff0e5) not guessed, and recorded in DESIGN.md as the Bright Progress direction's canvas — not a reflex default"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "templates/web/*.html"
+        ],
+        "createdAt": "2026-10-21T16:11:39.048Z",
+        "reason": "same confirmed pattern as templates/web/style.css (already suppressed there): functional status-signal left borders (.guided-steps, .lab-card, etc.) predating this session, now also attributed to the template files that render them"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "templates/web/*.html"
+        ],
+        "createdAt": "2026-10-21T16:11:39.085Z",
+        "reason": "same confirmed pattern as reviewed earlier: .sidebar-dot-live and .live-dot mark a genuinely live, state-changing indicator (an actually-running container / an actual SSE log stream), never decorative; pre-existing, now attributed per-template via the shared sidebar partial"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "files": [
+          "templates/web/*.html"
+        ],
+        "createdAt": "2026-10-21T16:11:39.122Z",
+        "reason": "static-analysis artifact: the detector reads raw template source where dynamic modifier classes (badge-{{.Status}}, badge-{{.Type}}) are unresolved Go template syntax, so currentColor on .badge's dot/border falls back to the CSS initial black instead of the real per-status hue; confirmed correct (no black dots) via actual headless-browser screenshots"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "templates/site/*.html"
+        ],
+        "createdAt": "2026-10-21T16:12:18.599Z",
+        "reason": "same pinned-reference palette as templates/web (shared tokens, byte-identical block) — pixel-sampled from the user's reference screenshot, recorded in DESIGN.md"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/site/*.html"
+        ],
+        "createdAt": "2026-10-21T16:12:18.678Z",
+        "reason": "confirmed false positive: detect's own stderr warning says it could not resolve templates/site/style.css's ../style.css link, so every role fell back to the unresolved default (16px) instead of the real var(--text-xl)/var(--text-lg) sizes (1.75rem/1.25rem) — verified correct hierarchy via headless-browser screenshots"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "files": [
+          "templates/site/*.html"
+        ],
+        "createdAt": "2026-10-21T16:12:18.715Z",
+        "reason": "same stylesheet-resolution failure as flat-type-hierarchy above: with ../style.css unreadable, every CSS custom property (including real badge/difficulty colors) reads back as the unresolved black default — confirmed correct real colors via headless-browser screenshots"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "templates/site/index.html"
+        ],
+        "createdAt": "2026-10-21T16:13:49.743Z",
+        "reason": "same pinned-reference palette as templates/web — pixel-sampled from the user's reference screenshot, recorded in DESIGN.md"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "templates/site/index.html"
+        ],
+        "createdAt": "2026-10-21T16:14:17.380Z",
+        "reason": "same pinned Geist direction as templates/web; this page-level summary finding only appears because ../style.css fails to resolve from this invocation path (see stderr), bypassing the normal per-declaration match"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "files": [
+          "templates/site/index.html"
+        ],
+        "createdAt": "2026-10-21T16:14:17.418Z",
+        "reason": "stylesheet-resolution failure (../style.css unreadable) makes every custom property read back as black; confirmed correct real colors via headless-browser screenshots"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "files": [
+          "templates/site/postmortem.html"
+        ],
+        "createdAt": "2026-10-21T16:14:17.457Z",
+        "reason": "stylesheet-resolution failure (../style.css unreadable) makes every custom property read back as black; confirmed correct real colors via headless-browser screenshots"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "files": [
+          "templates/site/postmortems.html"
+        ],
+        "createdAt": "2026-10-21T16:14:17.493Z",
+        "reason": "stylesheet-resolution failure (../style.css unreadable) makes every custom property read back as black; confirmed correct real colors via headless-browser screenshots"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "templates/site/postmortem.html"
+        ],
+        "createdAt": "2026-10-21T16:14:17.533Z",
+        "reason": "confirmed false positive: ../style.css fails to resolve from this invocation path (see stderr), so every role falls back to an unresolved 16px default instead of the real var(--text-xl)/var(--text-lg) sizes — verified correct hierarchy via headless-browser screenshots"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/topology.html"
+        ],
+        "createdAt": "2026-10-25T22:47:06.444Z",
+        "reason": "Agent: user supplied a reference image for this exact topology redesign explicitly showing glowing colored node borders on a dark canvas; it is the literal pinned brief, not decorative AI-cliché"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/topology.html"
+        ],
+        "createdAt": "2026-10-25T22:47:06.472Z",
+        "reason": "Agent: user's reference image for this redesign shows a grid-line canvas background; this is an actual pan/zoom graph canvas, the domain-appropriate case the rule itself carves out an exception for"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "templates/web/topology.html"
+        ],
+        "createdAt": "2026-10-25T22:47:06.498Z",
+        "reason": "Agent: .topo-world is a JS-positioned infinite pan/zoom canvas, not a padded static container - node cards are inset via computed centering (topology.js centerView()) at runtime, not CSS padding, which would break panning semantics"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "templates/web/topology.html"
+        ],
+        "createdAt": "2026-10-25T22:47:06.525Z",
+        "reason": "Agent: traced every text-bearing descendant of .topo-canvas (.topo-gnode, .topo-ctrl, .topo-edge-label, .topo-status-*) and each has an explicit terminal-safe color override verified at 7:1+; could not find any element where --fg text actually renders on --terminal-bg"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/lab.html"
+        ],
+        "createdAt": "2026-10-25T22:48:21.996Z",
+        "reason": "Agent: box-shadow: 0 0 0 2px var(--accent-subtle) is a zero-blur focus ring (DESIGN.md's documented focus-visible pattern), not a colored glow halo - pre-existing pattern, recolored by this session's accent-token swap but not introduced by it"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/style.css"
+        ],
+        "createdAt": "2026-10-25T22:57:03.943Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/style.css"
+        ],
+        "createdAt": "2026-10-25T22:57:03.971Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/dashboard.html"
+        ],
+        "createdAt": "2026-10-25T22:57:03.998Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/dashboard.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.026Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/challenges.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.053Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/challenges.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.081Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/chaos.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.111Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/chaos.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.144Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/postmortem.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.176Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/postmortem.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.207Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/postmortems.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.237Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/postmortems.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.267Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/roadmap.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.298Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/roadmap.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.329Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "templates/web/capstone.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.358Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/capstone.html"
+        ],
+        "createdAt": "2026-10-25T22:57:04.388Z",
+        "reason": "Agent: same .topo-canvas/.topo-gnode rules already disclosed and justified for topology.html (user's pinned reference image for the topology redesign shows glowing node borders + grid canvas); this page just links the shared stylesheet those rules live in"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "templates/web/lab.html"
+        ],
+        "createdAt": "2026-10-25T22:57:20.332Z",
+        "reason": "Agent: same .topo-canvas grid-background rule already disclosed for topology.html; lab.html just links the shared stylesheet it lives in"
+      }
+    ]
+  }
+}

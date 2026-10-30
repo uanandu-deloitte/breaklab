@@ -1,0 +1,11 @@
+{"timestamp":"2026-01-15 10:21:40","level":"INFO","message":"starting checkout for order ord-5521","order_id":"ord-5521"}
+{"timestamp":"2026-01-15 10:22:01","level":"INFO","message":"connecting to db (attempt 1)","order_id":"ord-5521","attempt":1}
+{"timestamp":"2026-01-15 10:22:01","level":"ERROR","message":"could not connect to db (attempt 1)","order_id":"ord-5521","attempt":1}
+{"timestamp":"2026-01-15 10:22:03","level":"INFO","message":"connecting to db (attempt 2)","order_id":"ord-5521","attempt":2}
+{"timestamp":"2026-01-15 10:22:03","level":"ERROR","message":"could not connect to db (attempt 2)","order_id":"ord-5521","attempt":2}
+{"timestamp":"2026-01-15 10:22:07","level":"INFO","message":"connecting to db (attempt 3)","order_id":"ord-5521","attempt":3}
+{"timestamp":"2026-01-15 10:22:07","level":"ERROR","message":"could not connect to db (attempt 3)","order_id":"ord-5521","attempt":3}
+{"timestamp":"2026-01-15 10:22:07","level":"ERROR","message":"checkout failed for order ord-5521: db unavailable after 3 attempts","order_id":"ord-5521"}
+{"timestamp":"2026-01-15 10:25:00","level":"INFO","message":"starting checkout for order ord-5522","order_id":"ord-5522"}
+{"timestamp":"2026-01-15 10:25:00","level":"INFO","message":"connecting to db (attempt 1)","order_id":"ord-5522","attempt":1}
+{"timestamp":"2026-01-15 10:25:00","level":"INFO","message":"checkout completed for order ord-5522","order_id":"ord-5522"}

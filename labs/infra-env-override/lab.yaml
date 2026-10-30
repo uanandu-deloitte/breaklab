@@ -1,0 +1,61 @@
+id: infra-env-override
+title: The file says one thing, the apply does another
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+summary: infra-apply runs clean and the source file was updated, but the deployed config still shows an old message nobody can find written anywhere.
+prerequisites: [iac-006]
+loop:
+  learn: >
+    A script that silently prefers an environment variable over its
+    declared config file creates an invisible override: the same command
+    behaves differently depending on who runs it and how, with nothing on
+    disk telling you that's happening. The config file can be completely
+    correct and the apply can run with zero errors, and the result still
+    won't match the file — because something earlier in the shell's
+    environment (a login shell's rc file, a wrapper script) quietly won the
+    precedence fight before the apply logic ever ran.
+  guided:
+    - do: "cat /etc/site/deployed.conf; sed -n 's/^message: *//p' /infra/site.yaml"
+      why: Confirms the actual mismatch directly — the deployed output doesn't match the declared source, which is the real symptom.
+    - do: grep -n SITE_MESSAGE "$(command -v infra-apply)"
+      why: Reads the apply script itself to confirm it checks an environment variable before falling back to the file — this is the mechanism that makes the file alone insufficient.
+    - do: env | grep SITE_MESSAGE
+      why: Shows whether the variable happens to be set in your current shell right now — but an empty result here doesn't clear it, since other invocation paths may set it differently.
+    - do: grep -rn SITE_MESSAGE /etc/bash.bashrc /usr/local/bin/apply-site
+      why: Checks the two most common places an override like this gets silently reintroduced — a global shell rc file sourced by every interactive login, and a wrapper script that everyone actually runs instead of calling infra-apply directly.
+    - do: Remove the stray export (or the hardcoded value in the wrapper), then run infra-apply directly in a clean shell.
+      why: The fix has to remove the override at its source — patching the output by hand or exporting a correct value just creates the next invisible override.
+    - do: cat /etc/site/deployed.conf
+      why: Confirms the deployed config now actually matches /infra/site.yaml, not just that infra-apply exited without error.
+  practice:
+    task: >
+      Work through these before revealing the answer.
+    questions:
+      - prompt: infra-apply exits cleanly and the config file is definitely correct, yet the deployed output is wrong. What class of bug does that point to?
+        answer: Something other than the file is influencing the result — most likely a precedence bug where the script prefers an environment variable over the file whenever that variable happens to be set, so the file being correct is irrelevant if the override wins.
+      - prompt: Why might env | grep SITE_MESSAGE in your own shell show nothing, even though the override is real?
+        answer: The override might only apply in specific invocation paths — a login or interactive shell that sources a global rc file, or a wrapper script that sets it just before calling the real command — neither of which is necessarily your current shell's environment.
+      - prompt: Why is removing the stray export a better fix than just setting SITE_MESSAGE correctly everywhere it's needed?
+        answer: Keeping the override in place, even with a currently-correct value, preserves the same invisible precedence bug — the next time the file changes, the stale exported value wins again. Removing the override is what makes the file actually authoritative going forward.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - infra-apply isn't broken — it's doing exactly what it's told. Check what it's actually being told.
+  - infra-apply prefers $SITE_MESSAGE over /infra/site.yaml whenever that variable happens to be set.
+variants:
+  - id: stray-bashrc-export
+    script: variants/stray-bashrc-export.sh
+    weight: 1
+    hints:
+      - Open a fresh shell and run `env | grep SITE_MESSAGE`. Then check where that could be coming from — /etc/bash.bashrc is sourced by every interactive shell.
+  - id: wrapper-hardcodes-it
+    script: variants/wrapper-hardcodes-it.sh
+    weight: 1
+    hints:
+      - Is anyone actually running infra-apply directly, or always through a wrapper? Check /usr/local/bin/apply-site.

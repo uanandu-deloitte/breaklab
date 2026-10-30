@@ -1,0 +1,37 @@
+id: lnx-014
+title: Permission Playground
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, permissions]
+type: guided
+path: linux-fundamentals
+module: identity
+summary: Three files, three different permission modes, one unprivileged user — predict which ones that user can actually read, then verify every prediction.
+objectives:
+  - read permission triplets (owner/group/other) from ls -l and stat
+  - reason about which triplet applies to a given user
+  - verify a prediction by testing access as that user, not as root
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ls -l /workspace/playground
+      why: Shows owner, group, and mode for each file — the exact triplets needed to predict tester's access before testing anything.
+    - do: id tester
+      why: Shows which groups tester actually belongs to, which determines whether the group triplet or the other triplet applies to them for each file.
+    - do: su -s /bin/bash -c "test -r /workspace/playground/owner-only.txt && echo yes || echo no" tester
+      why: Tests read access as tester specifically, not as root — root bypasses permission checks entirely and would tell you nothing real.
+    - do: su -s /bin/bash -c "test -r /workspace/playground/group-readable.txt && echo yes || echo no" tester
+      why: Same real test for the group-owned file — tester isn't in opsgroup, so the group triplet, not the other triplet, decides this one.
+    - do: su -s /bin/bash -c "test -r /workspace/playground/world-readable.txt && echo yes || echo no" tester
+      why: Same real test for the world-readable file, completing verification of all three predictions.
+hints:
+  - "ls -l /workspace/playground shows owner, group, and mode for each file; id tester shows which groups tester actually belongs to."
+  - "A user's access to a file is decided by exactly one triplet: owner bits if they own it, group bits if they're in the owning group, otherwise the other bits."
+  - "su -s /bin/bash -c \"test -r <file> && echo yes || echo no\" tester tests read access as tester specifically, not as root (root can read anything regardless of permissions)."

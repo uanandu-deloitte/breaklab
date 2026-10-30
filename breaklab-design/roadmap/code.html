@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BreakLab — Local DevOps Curriculum Roadmap</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: {
+              DEFAULT: "#090A0B",
+              50: "#181A1D",
+              100: "#131518",
+              200: "#0F1114",
+              300: "#090A0B",
+            },
+            border: {
+              subtle: "#1F2328",
+              strong: "#2B3037",
+              light: "#343A42"
+            },
+            status: {
+              complete: "#10B981",     /* Emerald */
+              progress: "#F59E0B",     /* Amber */
+              broken: "#F43F5E",       /* Coral Red */
+              locked: "#64748B"        /* Muted Slate */
+            }
+          },
+          fontFamily: {
+            sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+            mono: ["JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      html, body {
+        background-color: #090A0B;
+        color: #EDEDED;
+      }
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #262B32; border-radius: 9999px; }
+      ::-webkit-scrollbar-thumb:hover { background: #343B45; }
+    }
+  </style>
+</head>
+<body class="bg-surface font-sans antialiased text-[#EDEDED] min-h-screen flex flex-col selection:bg-emerald-500/20 selection:text-emerald-300">
+<!-- Presentation-Grade Minimalist Header -->
+<header class="border-b border-border-subtle bg-surface/90 backdrop-blur-md sticky top-0 z-40">
+<div class="max-w-[1720px] mx-auto px-6 h-14 flex items-center justify-between gap-6">
+<!-- Brand & Status Beacon -->
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-md bg-white flex items-center justify-center text-surface font-mono font-bold text-sm tracking-tighter">
+            BL
+          </div>
+<div class="flex items-center gap-2">
+<span class="text-base font-semibold tracking-tight text-white">BreakLab</span>
+<span class="text-xs text-[#71767B] font-mono">v1.4</span>
+</div>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            daemon: online (4182)
+          </span>
+</div>
+<!-- Navigation Tabs -->
+<nav class="hidden md:flex items-center gap-1">
+<a class="px-3 py-1.5 rounded-md text-xs font-medium text-[#99A1AB] hover:text-white hover:bg-surface-50 transition-colors" href="#">Dashboard</a>
+<a class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-surface-50 border border-border-strong transition-colors" href="#">Roadmap</a>
+<a class="px-3 py-1.5 rounded-md text-xs font-medium text-[#99A1AB] hover:text-white hover:bg-surface-50 transition-colors" href="#">Challenges</a>
+<a class="px-3 py-1.5 rounded-md text-xs font-medium text-[#99A1AB] hover:text-white hover:bg-surface-50 transition-colors" href="#">Postmortems</a>
+</nav>
+</div>
+<!-- Quick Metrics & Command Strip -->
+<div class="flex items-center gap-4 text-xs font-mono">
+<div class="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded border border-border-subtle bg-surface-100 text-[#9DA4AE]">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          Docker Engine: <span class="text-white font-medium">v26.1.1 healthy</span>
+</div>
+<div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded border border-border-subtle bg-surface-100 text-[#9DA4AE]">
+<span>Uptime:</span> <span class="text-white font-medium">2h 45m</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-50 border border-border-strong rounded px-2.5 py-1 text-[#C9D1D9]">
+<kbd class="text-[10px] bg-surface-200 border border-border-subtle px-1.5 py-0.5 rounded text-[#8B949E]">⌘K</kbd>
+<span class="text-[11px] text-[#8B949E]">palette</span>
+</div>
+<div class="w-7 h-7 rounded-full bg-surface-50 border border-border-strong flex items-center justify-center text-xs font-semibold text-white">
+          A
+        </div>
+</div>
+</div>
+</header>
+<main class="flex-1 max-w-[1720px] w-full mx-auto px-6 py-8 flex flex-col gap-8">
+<!-- Top Action / Milestone Overview -->
+<section class="flex flex-col gap-6">
+<!-- Primary Title + Stats Row -->
+<div class="flex flex-col xl:flex-row xl:items-end justify-between gap-6 pb-6 border-b border-border-subtle">
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-white text-[22px]">alt_route</span>
+<h1 class="text-2xl font-semibold tracking-tight text-white">Curriculum Roadmap</h1>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider text-[#99A1AB] bg-surface-50 border border-border-subtle">
+              4 Stages · 60 Scenarios
+            </span>
+</div>
+<p class="text-sm text-[#8B949E] max-w-2xl">
+            Deterministic systems debugging curriculum. Complete progressive architectural incident simulations from single-node Linux internals to distributed cloud-native recovery.
+          </p>
+</div>
+<!-- Clearance Metric Gauge -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-surface-100 border border-border-subtle p-3.5 rounded-lg">
+<div class="flex flex-col gap-1.5 min-w-[240px]">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-[#8B949E]">Curriculum Clearance</span>
+<span class="text-white font-semibold">34/60 <span class="text-emerald-400 font-normal">(56.6%)</span></span>
+</div>
+<!-- Tri-color segmented subtle gauge bar -->
+<div class="h-1.5 w-full bg-surface-200 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full" style="width: 56.6%" title="Completed"></div>
+<div class="bg-amber-400 h-full" style="width: 6.6%" title="In Progress"></div>
+<div class="bg-rose-500 h-full" style="width: 3.3%" title="Active Broken Drills"></div>
+</div>
+</div>
+<div class="h-8 w-px bg-border-subtle hidden sm:block"></div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded bg-surface-50 hover:bg-surface-200 border border-border-strong text-xs font-mono text-[#D2D9E1] transition-all hover:border-white/30 active:scale-95" onclick="navigator.clipboard.writeText('breaklab status --sync')">
+<span class="material-symbols-outlined text-[15px] text-emerald-400">sync</span>
+              breaklab status --sync
+            </button>
+<button class="px-3 py-1.5 rounded bg-surface-50 hover:bg-surface-200 border border-border-strong text-xs font-mono text-[#99A1AB] hover:text-white transition-colors">
+              Export PDF
+            </button>
+</div>
+</div>
+</div>
+<!-- Linear Stage Progression Track -->
+<div class="bg-surface-100 border border-border-subtle rounded-xl p-5">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+<!-- Stage Track 1: Completed -->
+<div class="flex items-center gap-3.5 p-2 rounded-lg transition-colors">
+<div class="w-8 h-8 rounded-full bg-emerald-950/70 border border-emerald-500/60 text-emerald-400 flex items-center justify-center font-mono text-xs font-bold shrink-0">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-mono tracking-wider uppercase text-emerald-400 font-semibold">Stage 01</span>
+<span class="text-[11px] text-[#71767B] font-mono">12/12</span>
+</div>
+<span class="text-sm font-medium text-white truncate">Linux Basics &amp; OS</span>
+</div>
+</div>
+<!-- Stage Track 2: In Progress -->
+<div class="flex items-center gap-3.5 p-2 rounded-lg transition-colors">
+<div class="w-8 h-8 rounded-full bg-amber-950/60 border border-amber-500/60 text-amber-300 flex items-center justify-center font-mono text-xs font-semibold shrink-0">
+              02
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-mono tracking-wider uppercase text-amber-300 font-semibold">Stage 02</span>
+<span class="text-[11px] text-[#71767B] font-mono">14/16 (87%)</span>
+</div>
+<span class="text-sm font-medium text-white truncate">Networking &amp; Protocols</span>
+</div>
+</div>
+<!-- Stage Track 3: In Progress -->
+<div class="flex items-center gap-3.5 p-2 rounded-lg transition-colors">
+<div class="w-8 h-8 rounded-full bg-amber-950/60 border border-amber-500/60 text-amber-300 flex items-center justify-center font-mono text-xs font-semibold shrink-0">
+              03
+            </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-mono tracking-wider uppercase text-amber-300 font-semibold">Stage 03</span>
+<span class="text-[11px] text-[#71767B] font-mono">8/18 (44%)</span>
+</div>
+<span class="text-sm font-medium text-white truncate">Container Runtimes</span>
+</div>
+</div>
+<!-- Stage Track 4: Locked Drill -->
+<div class="flex items-center gap-3.5 p-2 rounded-lg opacity-75">
+<div class="w-8 h-8 rounded-full bg-surface-200 border border-border-strong text-slate-400 flex items-center justify-center font-mono text-xs shrink-0">
+<span class="material-symbols-outlined text-[15px]">lock</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-mono tracking-wider uppercase text-slate-400">Stage 04</span>
+<span class="text-[11px] text-rose-400 font-mono">1 Active Triage</span>
+</div>
+<span class="text-sm font-medium text-[#C9D1D9] truncate">Kubernetes Systems</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters & Presentation Controls -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<!-- Minimal Filter Pills -->
+<div class="inline-flex items-center p-1 bg-surface-100 border border-border-subtle rounded-lg gap-1">
+<button class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-surface-50 border border-border-strong shadow-sm transition-all" id="filter-all" onclick="filterRoadmap('all')">
+            All Stages
+          </button>
+<button class="px-3 py-1.5 rounded-md text-xs font-medium text-[#8B949E] hover:text-white hover:bg-surface-50 transition-all" id="filter-inprogress" onclick="filterRoadmap('inprogress')">
+            In Progress
+          </button>
+<button class="px-3 py-1.5 rounded-md text-xs font-medium text-[#8B949E] hover:text-white hover:bg-surface-50 transition-all" id="filter-completed" onclick="filterRoadmap('completed')">
+            Completed
+          </button>
+<button class="px-3 py-1.5 rounded-md text-xs font-medium text-[#8B949E] hover:text-white hover:bg-surface-50 transition-all" id="filter-prereqs" onclick="filterRoadmap('prereqs')">
+            Prerequisites Met
+          </button>
+</div>
+<!-- Legend Ribbon with Purposeful Color Accents -->
+<div class="flex flex-wrap items-center gap-4 text-xs font-mono text-[#8B949E]">
+<span class="text-[11px] uppercase tracking-wider text-[#636C76]">Indicators:</span>
+<span class="inline-flex items-center gap-1.5 text-emerald-400">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Completed
+          </span>
+<span class="inline-flex items-center gap-1.5 text-amber-400">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span> In Progress
+          </span>
+<span class="inline-flex items-center gap-1.5 text-rose-400">
+<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Active Broken Drill
+          </span>
+<span class="inline-flex items-center gap-1.5 text-slate-400">
+<span class="w-2 h-2 rounded-full bg-slate-500"></span> Locked
+          </span>
+</div>
+</div>
+</section>
+<!-- 4 Stage Columns Grid (Spacious, Minimalist, High-Contrast) -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+<!-- ========================================== -->
+<!-- STAGE 01: LINUX BASICS & OS INTERNALS      -->
+<!-- ========================================== -->
+<div class="stage-col flex flex-col bg-surface-100 border border-border-subtle rounded-xl overflow-hidden" data-stage="1">
+<!-- Stage Header -->
+<div class="p-5 border-b border-border-subtle bg-surface-200/50 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-mono uppercase tracking-wider font-semibold text-emerald-400">Stage 01</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/50">
+<span class="material-symbols-outlined text-[13px]">check_circle</span> Mastered
+            </span>
+</div>
+<div>
+<h2 class="text-base font-semibold text-white tracking-tight">Linux Basics &amp; OS</h2>
+<p class="text-xs text-[#8B949E] mt-0.5">Kernel interfaces, procfs, init &amp; signals</p>
+</div>
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-[#8B949E]">12 of 12 Complete</span>
+<span class="text-emerald-400 font-semibold">100%</span>
+</div>
+<div class="h-1 w-full bg-surface-50 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-full"></div>
+</div>
+</div>
+</div>
+<!-- Stage 01 Cards -->
+<div class="p-4 flex flex-col gap-3.5">
+<!-- Card TKT-101 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-101</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Corrupted fstab Read-Only Mount Lock</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-[#99A1AB] text-[11px]">Beginner</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 9m
+              </span>
+</div>
+</div>
+<!-- Card TKT-102 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-102</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Procfs /proc/sys fd Exhaustion</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 14m
+              </span>
+</div>
+</div>
+<!-- Card TKT-103 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-103</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Signal Trapping &amp; Zombie Reaping in init</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 19m
+              </span>
+</div>
+</div>
+<!-- Card TKT-104 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-104</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Systemd Unit Cyclic Dependency Loop</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-[#99A1AB] text-[11px]">Beginner</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 8m
+              </span>
+</div>
+</div>
+<!-- Solved Labs Summary Footer -->
+<div class="py-2.5 px-3 rounded-lg border border-border-subtle bg-surface-200/30 text-center font-mono text-xs text-[#8B949E] flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>
+            + 8 Additional Solved Labs
+          </div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- STAGE 02: NETWORKING & PROTOCOLS           -->
+<!-- ========================================== -->
+<div class="stage-col flex flex-col bg-surface-100 border border-border-subtle rounded-xl overflow-hidden" data-stage="2">
+<!-- Stage Header -->
+<div class="p-5 border-b border-border-subtle bg-surface-200/50 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400">Stage 02</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-amber-300 bg-amber-950/50 border border-amber-800/50">
+<span class="material-symbols-outlined text-[13px]">pending</span> In Progress
+            </span>
+</div>
+<div>
+<h2 class="text-base font-semibold text-white tracking-tight">Networking &amp; Protocols</h2>
+<p class="text-xs text-[#8B949E] mt-0.5">Iptables, MTU blackholes, DNS &amp; sockets</p>
+</div>
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-[#8B949E]">14 of 16 Complete</span>
+<span class="text-amber-400 font-semibold">87.5%</span>
+</div>
+<div class="h-1 w-full bg-surface-50 rounded-full overflow-hidden">
+<div class="h-full bg-amber-400" style="width: 87.5%"></div>
+</div>
+</div>
+</div>
+<!-- Stage 02 Cards -->
+<div class="p-4 flex flex-col gap-3.5">
+<!-- Card TKT-201 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-201</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Iptables NAT Prerouting Packet Drop</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 22m
+              </span>
+</div>
+</div>
+<!-- Card TKT-202 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-202</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">MTU Mismatch &amp; Silent TCP Blackhole</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-rose-400 text-[11px]">Advanced</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 31m
+              </span>
+</div>
+</div>
+<!-- Card TKT-203 (Active / In Progress) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200 border border-amber-500/40 hover:border-amber-400/80 transition-all flex flex-col gap-3 shadow-lg shadow-amber-950/10 relative overflow-hidden" data-status="inprogress">
+<div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400"></div>
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-amber-300">TKT-203</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-amber-300 bg-amber-950/60 border border-amber-700/60">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                In Progress
+              </span>
+</div>
+<h3 class="text-sm font-semibold text-white leading-snug">TIME_WAIT Ephemeral Port Exhaustion</h3>
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-emerald-400 text-[11px] font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> container ready
+              </span>
+</div>
+<!-- Monospace Action Box -->
+<div class="pt-2 border-t border-border-subtle/80 flex items-center justify-between gap-2">
+<code class="text-[11px] font-mono text-[#D2D9E1] truncate">breaklab attach tkt-203</code>
+<button class="px-2 py-1 rounded bg-surface-50 hover:bg-white hover:text-surface text-[10px] font-mono text-[#99A1AB] transition-colors border border-border-strong shrink-0" onclick="navigator.clipboard.writeText('breaklab attach tkt-203')">
+                copy
+              </button>
+</div>
+</div>
+<!-- Card TKT-204 (Unstarted) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/50 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="unstarted">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-204</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-slate-400 bg-surface-50 border border-border-subtle">
+                Unstarted
+              </span>
+</div>
+<h3 class="text-sm font-medium text-[#D2D9E1] leading-snug">DNS Search Domain Loopback Degradation</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#71767B] text-[11px]">Ready to queue</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- STAGE 03: CONTAINER RUNTIMES & CGROUPS     -->
+<!-- ========================================== -->
+<div class="stage-col flex flex-col bg-surface-100 border border-border-subtle rounded-xl overflow-hidden" data-stage="3">
+<!-- Stage Header -->
+<div class="p-5 border-b border-border-subtle bg-surface-200/50 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-mono uppercase tracking-wider font-semibold text-amber-400">Stage 03</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-amber-300 bg-amber-950/50 border border-amber-800/50">
+<span class="material-symbols-outlined text-[13px]">pending</span> In Progress
+            </span>
+</div>
+<div>
+<h2 class="text-base font-semibold text-white tracking-tight">Container Runtimes</h2>
+<p class="text-xs text-[#8B949E] mt-0.5">Cgroups v2, OverlayFS, namespaces &amp; OOM</p>
+</div>
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-[#8B949E]">8 of 18 Complete</span>
+<span class="text-amber-400 font-semibold">44.4%</span>
+</div>
+<div class="h-1 w-full bg-surface-50 rounded-full overflow-hidden">
+<div class="h-full bg-amber-400" style="width: 44.4%"></div>
+</div>
+</div>
+</div>
+<!-- Stage 03 Cards -->
+<div class="p-4 flex flex-col gap-3.5">
+<!-- Card TKT-301 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-301</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">OOMKilled via JVM Heap Misconfiguration</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 15m
+              </span>
+</div>
+</div>
+<!-- Card TKT-302 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/70 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="completed">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-302</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40">
+                Completed
+              </span>
+</div>
+<h3 class="text-sm font-medium text-white leading-snug">Daemon Socket Permission &amp; Rootless Trap</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-[#99A1AB] text-[11px]">Beginner</span>
+<span class="text-[#8B949E] flex items-center gap-1 text-[11px]">
+<span class="material-symbols-outlined text-[13px]">schedule</span> 11m
+              </span>
+</div>
+</div>
+<!-- Card TKT-303 (In Progress / Paused) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200 border border-amber-500/30 hover:border-amber-400/70 transition-all flex flex-col gap-3" data-status="inprogress">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-amber-300">TKT-303</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-amber-300 bg-amber-950/50 border border-amber-700/50">
+                Paused (Saved)
+              </span>
+</div>
+<h3 class="text-sm font-semibold text-white leading-snug">OverlayFS Layer Corruption &amp; Inode Spike</h3>
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-rose-400 text-[11px]">Advanced</span>
+<span class="text-amber-400/90 text-[11px]">Snapshot cached</span>
+</div>
+<div class="pt-2 border-t border-border-subtle/80 flex items-center justify-between gap-2">
+<code class="text-[11px] font-mono text-[#D2D9E1] truncate">breaklab resume tkt-303</code>
+<button class="px-2 py-1 rounded bg-surface-50 hover:bg-white hover:text-surface text-[10px] font-mono text-[#99A1AB] transition-colors border border-border-strong shrink-0" onclick="navigator.clipboard.writeText('breaklab resume tkt-303')">
+                copy
+              </button>
+</div>
+</div>
+<!-- Card TKT-304 -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/50 hover:bg-surface-50 border border-border-subtle hover:border-border-strong transition-all flex flex-col gap-3 group" data-status="unstarted">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#8B949E] group-hover:text-white transition-colors">TKT-304</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-slate-400 bg-surface-50 border border-border-subtle">
+                Unstarted
+              </span>
+</div>
+<h3 class="text-sm font-medium text-[#D2D9E1] leading-snug">PID Namespace PID 1 Zombie Accumulation</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/60 text-xs font-mono">
+<span class="text-amber-400/90 text-[11px]">Intermediate</span>
+<span class="text-[#71767B] text-[11px]">Queue pos #4</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- STAGE 04: KUBERNETES & DISTRIBUTED SYSTEMS -->
+<!-- ========================================== -->
+<div class="stage-col flex flex-col bg-surface-100 border border-border-subtle rounded-xl overflow-hidden" data-stage="4">
+<!-- Stage Header -->
+<div class="p-5 border-b border-border-subtle bg-surface-200/50 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-mono uppercase tracking-wider font-semibold text-slate-400">Stage 04</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-slate-400 bg-surface-50 border border-border-subtle">
+<span class="material-symbols-outlined text-[13px]">lock</span> Locked Stage
+            </span>
+</div>
+<div>
+<h2 class="text-base font-semibold text-white tracking-tight">Kubernetes Systems</h2>
+<p class="text-xs text-[#8B949E] mt-0.5">Control plane, CNI, PLEG &amp; etcd consensus</p>
+</div>
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-[#8B949E]">Prereqs: 10/16 Networking</span>
+<span class="text-slate-400 font-semibold">0 / 14</span>
+</div>
+<div class="h-1 w-full bg-surface-50 rounded-full overflow-hidden">
+<div class="h-full bg-slate-600 w-0"></div>
+</div>
+</div>
+</div>
+<!-- Stage 04 Cards -->
+<div class="p-4 flex flex-col gap-3.5">
+<!-- Card TKT-401 (ACTIVE BROKEN DRILL - HIGH ATTENTION) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200 border-2 border-rose-500/70 hover:border-rose-400 transition-all flex flex-col gap-3 shadow-xl shadow-rose-950/20 relative" data-status="broken">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-rose-400">TKT-401</span>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold text-rose-300 bg-rose-950/70 border border-rose-600/70">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                Active Drill
+              </span>
+</div>
+<h3 class="text-sm font-semibold text-white leading-snug">CoreDNS CrashLoopBackOff via Host Loop</h3>
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-rose-400 text-[11px]">Advanced</span>
+<span class="text-rose-400 text-[11px] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">error</span>
+                Active in daemon
+              </span>
+</div>
+<!-- Action Strip -->
+<div class="pt-2 border-t border-border-subtle/80 flex items-center justify-between gap-2">
+<code class="text-[11px] font-mono text-rose-300 truncate">breaklab triage tkt-401</code>
+<a class="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-mono font-medium transition-colors shrink-0" href="#">
+                Triage Lab →
+              </a>
+</div>
+</div>
+<!-- Card TKT-402 (Locked) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/30 border border-border-subtle/60 flex flex-col gap-3 opacity-60 hover:opacity-80 transition-opacity" data-status="locked">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#71767B]">TKT-402</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase text-slate-400 bg-surface-50 border border-border-subtle">
+<span class="material-symbols-outlined text-[12px]">lock</span> Locked
+              </span>
+</div>
+<h3 class="text-sm font-medium text-[#8B949E] leading-snug">Ingress Controller Flapping on Stale Endpoints</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/40 text-xs font-mono">
+<span class="text-rose-400/70 text-[11px]">Advanced</span>
+<span class="text-[#71767B] text-[11px]">Requires TKT-203</span>
+</div>
+</div>
+<!-- Card TKT-403 (Locked) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/30 border border-border-subtle/60 flex flex-col gap-3 opacity-60 hover:opacity-80 transition-opacity" data-status="locked">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#71767B]">TKT-403</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase text-slate-400 bg-surface-50 border border-border-subtle">
+<span class="material-symbols-outlined text-[12px]">lock</span> Locked
+              </span>
+</div>
+<h3 class="text-sm font-medium text-[#8B949E] leading-snug">StatefulSet PVC Volume Mount Deadlock</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/40 text-xs font-mono">
+<span class="text-purple-400/70 text-[11px]">Expert</span>
+<span class="text-[#71767B] text-[11px]">Requires Stage 03</span>
+</div>
+</div>
+<!-- Card TKT-404 (Locked) -->
+<div class="lab-card p-4 rounded-lg bg-surface-200/30 border border-border-subtle/60 flex flex-col gap-3 opacity-60 hover:opacity-80 transition-opacity" data-status="locked">
+<div class="flex items-center justify-between">
+<span class="font-mono text-xs font-semibold text-[#71767B]">TKT-404</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase text-slate-400 bg-surface-50 border border-border-subtle">
+<span class="material-symbols-outlined text-[12px]">lock</span> Locked
+              </span>
+</div>
+<h3 class="text-sm font-medium text-[#8B949E] leading-snug">Kubelet PLEG Unhealthy Under High Cgroup Pressure</h3>
+<div class="flex items-center justify-between pt-2 border-t border-border-subtle/40 text-xs font-mono">
+<span class="text-purple-400/70 text-[11px]">Expert</span>
+<span class="text-[#71767B] text-[11px]">Requires Stage 03</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Clean Minimalist Footer / Presentation Action Strip -->
+<footer class="border-t border-border-subtle bg-surface-100/60 mt-auto">
+<div class="max-w-[1720px] mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono text-[#8B949E]">
+<div class="flex items-center gap-3">
+<span class="text-[#D2D9E1] font-medium">WORKSPACE:</span>
+<code class="text-emerald-400 bg-surface-200 px-2 py-0.5 rounded border border-border-subtle">~/.breaklab/labs/prod-sim-04</code>
+<span class="text-[#565C64] hidden sm:inline">|</span>
+<span class="text-[#71767B] hidden sm:inline">SHA: 7a8f3c2-stable</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-[11px]">
+<span>IO: <strong class="text-white font-normal">0.12 MB/s</strong></span>
+<span>CPU: <strong class="text-white font-normal">4.2%</strong></span>
+<span>NET: <strong class="text-emerald-400 font-normal">LOCALHOST MESH</strong></span>
+</div>
+<div class="h-3.5 w-px bg-border-subtle"></div>
+<div class="flex items-center gap-2 text-white">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>CLI Synced</span>
+</div>
+</div>
+</div>
+</footer>
+<!-- Filter Pill Switcher Logic -->
+<script>
+    function filterRoadmap(type) {
+      const btnAll = document.getElementById('filter-all');
+      const btnInProgress = document.getElementById('filter-inprogress');
+      const btnCompleted = document.getElementById('filter-completed');
+      const btnPrereqs = document.getElementById('filter-prereqs');
+
+      const buttons = [btnAll, btnInProgress, btnCompleted, btnPrereqs];
+      const inactiveClass = "px-3 py-1.5 rounded-md text-xs font-medium text-[#8B949E] hover:text-white hover:bg-surface-50 transition-all";
+      const activeClass = "px-3 py-1.5 rounded-md text-xs font-medium text-white bg-surface-50 border border-border-strong shadow-sm transition-all";
+
+      buttons.forEach(b => { if (b) b.className = inactiveClass; });
+
+      const allCards = document.querySelectorAll('.lab-card');
+      const stage4Col = document.querySelector('[data-stage="4"]');
+
+      if (type === 'all') {
+        btnAll.className = activeClass;
+        allCards.forEach(card => card.style.display = 'flex');
+        if (stage4Col) stage4Col.style.opacity = '1';
+      } else if (type === 'inprogress') {
+        btnInProgress.className = activeClass;
+        allCards.forEach(card => {
+          const st = card.getAttribute('data-status');
+          if (st === 'inprogress' || st === 'broken') {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+        if (stage4Col) stage4Col.style.opacity = '1';
+      } else if (type === 'completed') {
+        btnCompleted.className = activeClass;
+        allCards.forEach(card => {
+          if (card.getAttribute('data-status') === 'completed') {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+        if (stage4Col) stage4Col.style.opacity = '0.35';
+      } else if (type === 'prereqs') {
+        btnPrereqs.className = activeClass;
+        allCards.forEach(card => {
+          if (card.getAttribute('data-status') === 'locked') {
+            card.style.display = 'none';
+          } else {
+            card.style.display = 'flex';
+          }
+        });
+        if (stage4Col) stage4Col.style.opacity = '1';
+      }
+    }
+  </script>
+</body></html>

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# A rough stand-in for `df`: real bytes under /var/log plus any bytes
+# still held open in files that have been unlinked (rm'd) but are kept
+# alive by a process that still has them open — the classic case where
+# `du`/`ls` look clean but the space isn't actually free yet.
+set -u
+
+live=$(du -sb /var/log 2>/dev/null | awk '{print $1}')
+live=${live:-0}
+
+leaked=0
+leaked_by=""
+for fd in /proc/[0-9]*/fd/*; do
+  [ -e "$fd" ] || continue
+  target=$(readlink "$fd" 2>/dev/null) || continue
+  case "$target" in
+    *"(deleted)"*)
+      size=$(stat -c %s "$fd" 2>/dev/null || echo 0)
+      leaked=$((leaked + size))
+      pid=$(basename "$(dirname "$(dirname "$fd")")")
+      leaked_by="${leaked_by}  pid ${pid}: ${target} (${size} bytes)\n"
+      ;;
+  esac
+done
+
+echo "live bytes under /var/log:      ${live}"
+echo "leaked (deleted-but-open) bytes: ${leaked}"
+echo "reported total:                 $((live + leaked))"
+if [ "$leaked" -gt 0 ]; then
+  printf "\nheld open by:\n${leaked_by}"
+fi

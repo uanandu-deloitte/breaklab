@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p /etc/site
+if [ -n "${SITE_MESSAGE:-}" ]; then
+  message="$SITE_MESSAGE"
+else
+  message=$(sed -n 's/^message: *//p' /infra/site.yaml)
+fi
+echo "$message" > /etc/site/deployed.conf
+echo "applied: $message"

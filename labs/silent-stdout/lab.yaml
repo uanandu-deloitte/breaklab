@@ -1,0 +1,65 @@
+id: silent-stdout
+title: docker logs is empty for a service that's supposedly running
+stage: docker
+difficulty: 1
+estimated_minutes: 15
+tags: [containers, linux, logging]
+summary: The app is alive and actively producing output, but docker logs shows nothing — its output is being routed somewhere Docker never sees it.
+prerequisites: [docker-007]
+loop:
+  learn: >
+    docker logs only ever shows what a container's PID 1 (and whatever
+    inherits its file descriptors) writes to stdout/stderr — those are
+    the only streams Docker captures. A process can be completely
+    healthy and continuously producing output while docker logs stays
+    empty, if that output gets redirected to a file at any layer: in the
+    command that launched it, or inside the application's own logic,
+    independent of how the shell invoked it. Diagnosing "alive but silent
+    in docker logs" means tracing where the output actually goes, one
+    layer at a time, from the entrypoint down into the app's own
+    configuration — fixing only one layer when both are misdirected still
+    leaves you with empty logs.
+  guided:
+    - do: docker exec <container> ps aux
+      why: Confirms the app process is genuinely running before assuming it crashed — rules out the simplest explanation for empty logs.
+    - do: docker logs <container> --tail 20
+      why: Confirms directly that nothing recent is showing up, establishing the real symptom instead of relying on a secondhand report.
+    - do: docker exec <container> cat /etc/app/launch-cmd
+      why: This is the literal command PID 1 executes — a redirect here sends the app's stdout somewhere other than the container's own stdout before Docker ever sees it.
+    - do: docker exec <container> cat /etc/app/logging.conf
+      why: Even with a clean launch command, the app may have its own separate idea of where to log, entirely independent of shell redirection.
+    - do: docker exec <container> find /var/log -newer /etc/app/launch-cmd
+      why: If output is being redirected, it has to land somewhere — a recently-growing file under /var/log corroborates exactly where.
+    - do: docker kill -s HUP <container>
+      why: Both launch-cmd and the app's own logging config are only re-read when the supervisor respawns the child — editing either file on disk has no effect until this signal is sent.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: The app process is confirmed alive and writing heartbeat lines somewhere. Why does docker logs show nothing?
+        answer: docker logs only captures what's written to the container's stdout/stderr file descriptors — if the app's output is redirected to a file, by the launch command or by the app's own logging config, Docker never sees it no matter how healthy the process is.
+      - prompt: launch-cmd no longer redirects to a file, but logging.conf still points at a file path. Will docker logs show output now?
+        answer: No — the app reads its own log target from logging.conf and opens that file directly inside its own code, bypassing the launch command's stdout entirely. Both layers need to point at stdout.
+      - prompt: Why does sending SIGHUP to PID 1 matter here, rather than just editing the config files and waiting?
+        answer: The supervisor only re-reads launch-cmd and respawns the child process on SIGHUP; editing files on disk has no effect on an already-running child until the supervisor is told to restart it.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Confirm the app process is actually alive (docker exec in and check ps aux) before assuming it crashed, then figure out where its output is really going.
+  - Containers are supposed to log to stdout/stderr, not a file. Something here is routing output away from that.
+variants:
+  - id: log-to-file
+    script: variants/log-to-file.sh
+    weight: 1
+    hints:
+      - "cat /etc/app/launch-cmd — is the app's output being redirected somewhere on that line?"
+  - id: app-config-log-target
+    script: variants/app-config-log-target.sh
+    weight: 1
+    hints:
+      - The launch command itself looks completely normal here. Check whether the app has its own separate idea of where to log.

@@ -1,0 +1,61 @@
+id: unexpanded-template
+title: A template variable leaked into production config
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+summary: A rendered config file still has a literal ${...} in it instead of a real value.
+prerequisites: [iac-004]
+loop:
+  learn: >
+    Template rendering with tools like envsubst only substitutes variables
+    that appear in both the template and the substitution step's own
+    explicit list (or environment) — if a name is misspelled in the template,
+    or dropped from the list of variables the apply script tells envsubst to
+    substitute, that one placeholder is silently left as literal text while
+    everything else renders fine. The bug can live in either file: the
+    template that defines what placeholder to look for, or the script that
+    defines which placeholders actually get replaced — they have to agree on
+    the exact same variable name for the substitution to catch it.
+  guided:
+    - do: cat /etc/worker/worker.env
+      why: See the actual rendered output and find exactly which placeholder is still unexpanded — this tells you which variable name to chase.
+    - do: cat /infra/templates/worker.env.tmpl
+      why: Check what placeholder name the template actually uses for that value — compare it character-for-character against what you expect.
+    - do: cat /usr/local/bin/infra-apply-worker
+      why: Read the apply script's explicit substitution list and see which variable names it actually passes to envsubst — a name present in the template but missing from this list is left untouched.
+    - do: cat /infra/worker.yaml
+      why: Confirm the source of truth actually has the value you expect — rules out a missing or wrong source value before blaming the template or the apply script.
+    - do: diff <(grep -o '\${[A-Z_]*}' /infra/templates/worker.env.tmpl) <(grep -oP "(?<=VARS=').*(?=')" /usr/local/bin/infra-apply-worker)
+      why: Directly compare every placeholder the template defines against every name the apply script is actually told to substitute — any mismatch here is the bug.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: envsubst is given an explicit list of variables to substitute, and the template uses a placeholder not on that list. What happens to that one placeholder in the output?
+        answer: It's left exactly as-is, as literal `${NAME}` text — envsubst only replaces names it's told to look for; anything outside that explicit list passes through untouched while the rest of the file renders normally.
+      - prompt: A template uses ${QUEUE_NAME} but the apply script only ever sets and substitutes QUEUE. Is this a problem with the template, the apply script, or the source data?
+        answer: It's a mismatch between the template and the apply script's variable names specifically — the source data (worker.yaml) and the substitution mechanism are both fine, they just disagree on what to call the same value.
+      - prompt: Why is grep -q '\${' on the rendered output file a reliable way to catch this entire class of bug in a check script?
+        answer: A fully and correctly rendered template should never contain a literal `${` sequence — any remaining one is proof that something failed to substitute, regardless of which specific variable or which layer (template vs. apply script) caused it.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Compare /infra/worker.yaml, /infra/templates/worker.env.tmpl, and /etc/worker/worker.env.
+  - A literal ${...} left in a rendered file means something never got substituted.
+variants:
+  - id: bad-template
+    script: variants/bad-template.sh
+    weight: 1
+    hints:
+      - Check the variable names in /infra/templates/worker.env.tmpl against infra-apply-worker.
+  - id: bad-apply-script
+    script: variants/bad-apply-script.sh
+    weight: 1
+    hints:
+      - Check infra-apply-worker's substitution list against what the template actually uses.

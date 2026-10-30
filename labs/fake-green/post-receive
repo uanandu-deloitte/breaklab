@@ -1,0 +1,17 @@
+#!/bin/bash
+# deploy automation -- written years ago to never block a push, so it
+# does not check whether any of its own steps actually worked
+. /etc/deploy/deploy.conf 2>/dev/null
+
+WORKDIR=$(mktemp -d)
+GIT_WORK_TREE="$WORKDIR" git --git-dir=/srv/deploy.git checkout -f main -- . >/tmp/deploy.log 2>&1
+
+sha=$(git --git-dir=/srv/deploy.git rev-parse --short main)
+release="$RELEASES_DIR/$sha"
+mkdir -p "$release" >>/tmp/deploy.log 2>&1
+cp -r "$WORKDIR"/. "$release"/ >>/tmp/deploy.log 2>&1
+
+ln -sfn "$release" /srv/app/current
+
+echo "Deploy succeeded: $(cat /srv/app/current/VERSION 2>/dev/null || echo unknown)"
+rm -rf "$WORKDIR"

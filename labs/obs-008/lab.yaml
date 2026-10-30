@@ -1,0 +1,33 @@
+id: obs-008
+title: HighErrorRate Has Never Once Fired
+stage: observability
+difficulty: 2
+estimated_minutes: 15
+tags: [observability, prometheus, alerting]
+type: break-fix
+path: observability-fundamentals
+module: real-alerting
+summary: HighErrorRate's real PromQL expression checks the wrong direction, so it's never fired during any of checkout's real breaches.
+objectives:
+  - read a real Prometheus alerting rule (expr, for, labels, annotations)
+  - unit-test an alerting rule offline with promtool test rules, no live Prometheus server needed
+  - fix a PromQL comparison operator so the rule fires on an actual breach instead of the healthy case
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/rules.yml
+      why: Shows the real rule -- read expr carefully against what "high error rate" should actually mean.
+    - do: cat /infra/rules_test.yml
+      why: Shows the real test -- a synthetic error_rate series that breaches at t=3m and should be firing by t=9m.
+    - do: promtool test rules /infra/rules_test.yml
+      why: Runs the real unit test against the real rule, entirely offline -- read exactly what it expected versus what it got.
+hints:
+  - "promtool test rules doesn't need a running Prometheus server -- it evaluates the real rule against the synthetic series in rules_test.yml directly."
+  - "error_rate < 5 is true when things are fine. Read the comparison operator against what a real breach of this metric looks like."
+  - "The test's input series breaches (jumps to 8) at t=3m and expects HighErrorRate firing by t=9m -- well past the rule's for: 5m."

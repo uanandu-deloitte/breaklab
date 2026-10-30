@@ -1,0 +1,36 @@
+id: lnx-006
+title: Repair the Application Layout
+stage: linux
+difficulty: 1
+estimated_minutes: 20
+tags: [linux, filesystem]
+type: break-fix
+path: linux-fundamentals
+module: filesystem
+summary: A failed deployment copied an app's files into the wrong directories under /opt/acme-app — figure out where each one actually belongs and move it there.
+objectives:
+  - infer a file's correct location from its name, content, and purpose
+  - move files between directories without losing or truncating content
+  - restore an executable's permissions after relocating it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - "Inspect every file under /opt/acme-app with cat or file — each one's content gives away what kind of file it is and where it should live."
+  - "mv moves a file without copying its content twice; it does not change the file's permission bits by itself."
+  - "The executable needs its +x bit restored once it's in bin/ — check with ls -l after moving it."
+lesson: lesson.md
+loop:
+  guided:
+    - do: find /opt/acme-app -type f
+      why: Lists every file currently under the layout before deciding where anything actually belongs.
+    - do: 'for f in $(find /opt/acme-app -type f); do echo "== $f =="; cat "$f"; done'
+      why: A config file reads like recognizable settings, an executable starts with a shebang line, and a data file reads like the app's own data format — content reveals what a file is, independent of where it currently sits or what it's named.
+    - do: ls -l /opt/acme-app/bin
+      why: mv does not guarantee a relocated file's permission bits still make sense in its new location, so the executable bit needs to be checked directly.
+    - do: chmod +x /opt/acme-app/bin/acme-app
+      why: Restores the +x bit on the executable once it's sitting in bin/, since mv preserves content but not necessarily correct permissions.
+

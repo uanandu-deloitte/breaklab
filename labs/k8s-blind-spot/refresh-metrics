@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# This is the wrapper a periodic job is supposed to invoke to keep
+# /var/lib/metrics/current.json current. It just delegates to the real
+# probe — which makes it exactly the kind of thing that can quietly start
+# pointing at the wrong binary after a rename and nobody notices for a
+# long time, because it fails silently in a cron context.
+exec /usr/local/bin/metrics-agent

@@ -1,0 +1,50 @@
+id: k8ss-001
+title: Least Privilege with RBAC
+stage: k8s-security
+path: k8s-security
+module: rbac
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, security, rbac]
+type: guided
+summary: A ServiceAccount's Role grants pods the wrong permissions in both directions — missing what it needs, and holding what it shouldn't. Fix the rules to match an exact least-privilege matrix.
+objectives:
+  - read a live Role's rules and compare them against an intended permission matrix, rather than assuming a Role does what its name suggests
+  - correct a Role so a ServiceAccount has exactly the verbs it needs on exactly the resources it needs, no more and no less
+  - verify RBAC with kubectl auth can-i --as=<serviceaccount>, the same way the API server itself evaluates an incoming request
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get role pod-reader-role -n default -o yaml
+      why: Reads the Role's actual live rules — its name says "pod-reader", but the API server only ever looks at the rules themselves.
+    - do: kubectl edit role pod-reader-role -n default
+      why: Fixes the rules in place so they grant exactly get and list on pods, nothing else — the fix belongs in the Role, not the RoleBinding.
+    - do: kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Asks the API server's own SubjectAccessReview check whether get is allowed now — the same question it answers for a real request.
+    - do: kubectl auth can-i list pods --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Verifies list is also allowed — get and list are separate verbs, so neither implies the other.
+    - do: kubectl auth can-i create pods --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Confirms create was never granted — too broad a Role would give this identity a blast radius it doesn't need.
+    - do: kubectl auth can-i delete pods --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Confirms delete is denied too — a Role that's accidentally too permissive looks identical to a correct one unless you check the verbs that should fail.
+    - do: kubectl auth can-i update pods --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Confirms update is denied, completing the check against every verb in the intended matrix.
+    - do: kubectl auth can-i get secrets --as=system:serviceaccount:default:pod-reader-sa -n default
+      why: Confirms the fix didn't leave access to any other resource type — least privilege means the rule only ever named pods.
+hints:
+  - "kubectl get role pod-reader-role -n default -o yaml shows the live rules — don't trust the Role's name, read its actual verbs and resources."
+  - "kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa -n default answers the only question that matters: what can this identity actually do, right now."
+  - "The fix is the Role's rules list, not the RoleBinding — the binding already points at the right ServiceAccount."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - Compare the Role's verbs list against exactly what the ServiceAccount is supposed to be allowed to do.

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ -f /var/run/supervisor.pid ]; then
+  restart-supervisor
+elif [ -f /var/run/worker_pool.pid ]; then
+  restart-worker-pool
+else
+  echo "no known worker process is running" >&2
+  exit 1
+fi

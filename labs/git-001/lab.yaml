@@ -1,0 +1,37 @@
+id: git-001
+title: Identify Repo State
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, orientation]
+type: guided
+path: version-control
+module: orientation
+summary: You've been handed shell access to a repo someone else was working in — read its state before you touch anything, the same way you'd read a host's identity before debugging it.
+objectives:
+  - read the currently checked-out branch and HEAD commit with git status and git branch
+  - read commit history with git log --oneline
+  - distinguish a branch that exists from a branch that's actually checked out
+  - distinguish tracked, untracked, and modified files in the working tree
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git status
+      why: Prints the checked-out branch on its first line, then separates staged changes, unstaged changes to tracked files, and untracked files into their own sections.
+    - do: git branch
+      why: Lists every local branch and marks the checked-out one with a * — read off a branch name that isn't marked for OTHER_BRANCH_NAME.
+    - do: git log --oneline
+      why: Prints commit history newest-first; the top line's short SHA is exactly what HEAD points at, for HEAD_COMMIT_SHORT_SHA.
+    - do: git status
+      why: Re-reading it, count the files listed under "Changes not staged for commit" — that count (not the Untracked files section) is MODIFIED_FILE_COUNT.
+hints:
+  - "git status prints the checked-out branch at the top, plus which tracked files are modified and which files are untracked."
+  - "git branch (no arguments) lists every local branch and marks the checked-out one with *."
+  - "git log --oneline lists commits newest first, each with its short SHA."
+  - "A file git status lists under 'Untracked files' was never committed; a file under 'Changes not staged for commit' is tracked but has uncommitted edits."

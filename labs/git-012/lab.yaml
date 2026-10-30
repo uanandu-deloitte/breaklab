@@ -1,0 +1,39 @@
+id: git-012
+title: Tag a Release, Cherry-Pick a Fix
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, version-control, tags-and-pick]
+type: practice
+path: version-control
+module: tags-and-pick
+summary: A hotfix landed on main buried between two unrelated commits — bring only that one fix onto the release branch and tag the result.
+objectives:
+  - identify a specific commit by its content and message, not its SHA
+  - cherry-pick a single commit without bringing along unrelated history
+  - create an annotated release tag
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git log --oneline main
+      why: Lists main's commits since it diverged from release — read the messages to spot the one about the null-pointer crash.
+    - do: git show <sha>
+      why: Confirms that commit's diff touches handler.py with the null-pointer fix, and not the other two unrelated commits, before picking it.
+    - do: git checkout release
+      why: Cherry-pick replays the commit onto whatever branch is currently checked out, so release must be checked out first.
+    - do: git cherry-pick <sha>
+      why: Replays just that one commit's diff as a new commit on release, without bringing the other two commits' unrelated work along.
+    - do: 'git tag -a v1.0.1 -m "Release v1.0.1: null-pointer hotfix"'
+      why: Creates a real annotated tag object with its own message, not just a lightweight name pointing at a commit.
+    - do: git cat-file -t v1.0.1
+      why: Confirms the tag's object type is "tag" (annotated), not "commit" (what a lightweight tag would resolve straight through to).
+hints:
+  - "git log --oneline main shows every commit main has that release doesn't -- read the messages to find the one about the null-pointer crash."
+  - "git cherry-pick <sha> replays just that one commit's change onto whatever branch you currently have checked out."
+  - "git tag -a <name> -m <message> creates an annotated tag; git tag <name> alone creates a lightweight one -- git cat-file -t <tag> tells them apart."

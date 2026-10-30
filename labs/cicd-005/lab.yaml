@@ -1,0 +1,35 @@
+id: cicd-005
+title: Lockfiles and Crash Safety
+stage: cicd
+difficulty: 1
+estimated_minutes: 15
+tags: [cicd, scripting, deployment]
+type: guided
+path: cicd-fundamentals
+module: locking
+summary: A lock file left behind by a dead deploy still looks like it's protecting something — until you check whether the process it names is actually running.
+objectives:
+  - read a lock file's own metadata (a recorded PID and timestamp) instead of just checking whether the file exists
+  - confirm whether a recorded PID is actually a live process before trusting what a lock claims to be guarding
+  - recognize that a lock only protects a genuinely in-progress run — once its owning process is gone, the lock itself carries no information at all
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /var/run/deploy/deploy.lock
+      why: Shows exactly what this lock claims about itself — a PID and when it was written — not just that the file exists.
+    - do: "ps -p <the PID shown in the lock>"
+      why: Confirms live whether that PID is an actual running process in this container, rather than assuming a lock file always means something is in flight.
+    - do: date -u
+      why: Compare today against the lock's STARTED timestamp — it's weeks old, far longer than any real deploy would still be running.
+    - do: Write /workspace/answers.env recording the lock's PID, whether that PID is running, and your conclusion about the lock's status
+      why: Turns the diagnosis into a durable record check.sh can verify against the lock file's real, live content.
+hints:
+  - "cat /var/run/deploy/deploy.lock — read what it actually records, not just that it exists."
+  - "ps -p <PID> tells you whether a given PID is a real running process. Try it with the PID the lock names."
+  - "A lock naming a PID that isn't running isn't protecting an in-progress deploy — it's just a leftover file from one that didn't clean up after itself."

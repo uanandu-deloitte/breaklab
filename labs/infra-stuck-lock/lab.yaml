@@ -1,0 +1,62 @@
+id: infra-stuck-lock
+title: infra-apply refuses to run
+stage: iac
+difficulty: 1
+estimated_minutes: 15
+tags: [iac, scripting, linux]
+summary: infra-apply has been refusing to run outright for over an hour, and nobody's sure if that's a safety feature working or something stuck.
+prerequisites: [iac-005]
+loop:
+  learn: >
+    A lock file is a common way to stop two instances of the same script
+    from running at once — but it only works safely if whatever creates it
+    also reliably removes it, and if the process managing it can actually
+    write to where the lock lives. When a script crashes mid-run, it can
+    leave a lock behind that no process is actually holding; when
+    permissions on the lock's directory get tightened too far, the script
+    can't even create or remove the lock to begin with. Both look identical
+    from the outside — "it just refuses to run" — but one is stale state to
+    clean up and the other is an access problem to restore.
+  guided:
+    - do: infra-apply
+      why: Running it directly surfaces its actual error message instead of guessing — the script explicitly reports why it refused, rather than failing silently.
+    - do: ls -la /var/run/infra
+      why: Shows both whether the lock file exists and the ownership and permissions of the directory it lives in — either one alone can explain a refusal.
+    - do: ps aux | grep infra-apply
+      why: Rules out the lock's stated reason at face value — if nothing is actually running, the lock is stale, not legitimate.
+    - do: stat /var/run/infra/apply.lock
+      why: The lock's modification time tells you how old it is; a lock from a run that should have finished minutes ago, still sitting there, is the signature of a crash that skipped its cleanup.
+    - do: Remove the stale lock, or restore correct ownership and permissions on /var/run/infra — whichever the evidence actually points to — then run infra-apply again.
+      why: The two causes need opposite fixes; deleting a lock that's legitimately protecting a real in-progress run would be unsafe, and fixing permissions on a directory that already has a stale lock in it won't help on its own.
+    - do: curl -s http://localhost:8082/
+      why: Confirms the actual deployed content now reflects the current /infra/site.yaml, not just that infra-apply exited without printing an error.
+  practice:
+    task: >
+      Reason through these before revealing the answer.
+    questions:
+      - prompt: infra-apply refuses to run and says the lock file already exists. Is it always safe to just delete the lock and retry?
+        answer: No — first confirm nothing is actually mid-apply, by checking running processes and the lock's age. Deleting a lock while a real apply is genuinely in progress reintroduces the exact race condition the lock exists to prevent.
+      - prompt: The lock directory is owned by root with mode 700, and infra-apply runs as a different user. What error would you expect, and is it the same incident as a stale lock?
+        answer: A permission-denied style error trying to create the lock file, rather than "another apply is already in progress" — a different failure mode, an access problem rather than stale state, even though both present as infra-apply refusing to run.
+      - prompt: Why does the script use a lock file at all instead of just letting two applies run concurrently?
+        answer: Two concurrent applies could interleave writes to the same deployed config, producing a corrupted or inconsistent result. The lock enforces that only one apply proceeds at a time, at the cost of needing careful handling so it doesn't itself become a blocker.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8082:80"]
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run infra-apply yourself and read exactly what it prints.
+  - infra-apply refuses to run if /var/run/infra/apply.lock exists, or if it can't write there at all.
+variants:
+  - id: stale-lock
+    script: variants/stale-lock.sh
+    weight: 1
+    hints:
+      - Is anything actually still applying, or is that lock left over from a crash?
+  - id: bad-lock-dir-perms
+    script: variants/bad-lock-dir-perms.sh
+    weight: 1
+    hints:
+      - Check the ownership and permissions on /var/run/infra itself.

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_NAME="${1:-}"
+TMPL=/infra/resources.yaml.tmpl
+VARS="/infra/vars/${ENV_NAME}.env"
+DEST=/etc/app/config.yaml
+
+if [ -z "$ENV_NAME" ]; then
+  echo "usage: infra-apply <environment>" >&2
+  exit 1
+fi
+if [ ! -f "$VARS" ]; then
+  echo "no such environment: $ENV_NAME (no $VARS)" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+set -a
+source "$VARS"
+set +a
+
+mkdir -p "$(dirname "$DEST")"
+sed -e "s/{{ *ENVIRONMENT *}}/${ENVIRONMENT}/g" \
+    -e "s/{{ *REPLICA_COUNT *}}/${REPLICA_COUNT}/g" \
+    "$TMPL" > "$DEST"
+
+echo "applied $ENV_NAME to $DEST"

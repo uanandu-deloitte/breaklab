@@ -1,0 +1,48 @@
+id: lnx-900
+title: The Unavailable Web Service
+stage: linux
+difficulty: 4
+estimated_minutes: 40
+tags: [linux, incident, web-servers, networking]
+type: incident
+summary: The customer portal is failing. Narrow down which hop between nginx and the backend application broke, and restore it without touching protected data.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Start with the symptom. What does curl against the exposed port actually return?
+  - The request path is client -> nginx -> backend application -> local data. Narrow down which hop is broken before changing anything.
+variants:
+  - id: backend-not-running
+    script: variants/backend-not-running.sh
+    weight: 1
+    hints:
+      - Is the backend application process actually running? Check with ps or pgrep.
+      - nginx can be perfectly healthy and still fail every request if nothing is listening on its upstream port.
+  - id: invalid-nginx-upstream
+    script: variants/invalid-nginx-upstream.sh
+    weight: 1
+    hints:
+      - Check what port the backend application is actually listening on, then compare it against nginx's own configured upstream.
+      - "cat /etc/nginx/sites-available/default — does proxy_pass point at the backend's real address?"
+  - id: config-permission-error
+    script: variants/config-permission-error.sh
+    weight: 1
+    hints:
+      - Try starting the backend by hand, as the identity it actually runs as, and read the error it prints.
+      - Compare the backend's service account against the ownership and permissions of its own config file.
+  - id: port-collision
+    script: variants/port-collision.sh
+    weight: 1
+    hints:
+      - Something may already be bound to the port the backend needs. Check with ss -ltnp or lsof.
+      - A process owning the port doesn't mean it's the right process — look closely at what's actually listening there.
+  - id: disk-full
+    script: variants/disk-full.sh
+    weight: 1
+    hints:
+      - Check how much space the backend's local data directory is using.
+      - Not everything in that directory is safe to remove — look for anything marked as retained before deleting.

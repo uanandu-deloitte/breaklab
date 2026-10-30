@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T17:30:41Z",
+  "title": "Design System: BreakLab",
+  "extensions": {
+    "colorMeta": {
+      "bg": { "role": "neutral", "displayName": "Lavender-Gray Canvas", "canonical": "#f2f1f7", "tonalRamp": ["#1f1c31", "#373156", "#4f467b", "#675ba0", "#897fb6", "#aba5cb", "#cdcae1", "#f0eff6"] },
+      "fg": { "role": "neutral", "displayName": "Ink", "canonical": "#17171c", "tonalRamp": ["#22222a", "#3d3d4a", "#57576a", "#71718a", "#9191a5", "#b1b1bf", "#d1d1d9", "#f1f1f4"] },
+      "fg-muted": { "role": "neutral", "displayName": "Dim Ink", "canonical": "#5d5d68", "tonalRamp": ["#242428", "#404047", "#5b5b66", "#777785", "#9595a0", "#b4b4bc", "#d3d3d7", "#f2f2f3"] },
+      "accent": { "role": "primary", "displayName": "Signal Violet", "canonical": "#6d28d9", "tonalRamp": ["#200b41", "#391473", "#521da4", "#6a26d6", "#8b55e1", "#ad86ea", "#cfb8f2", "#f0e9fb"] },
+      "ok": { "role": "status", "displayName": "Signal Green", "canonical": "#116a33", "tonalRamp": ["#0b4220", "#137438", "#1ba650", "#23d968", "#52e38a", "#85ebac", "#b7f3ce", "#e9fbf0"] },
+      "warning": { "role": "status", "displayName": "Signal Amber", "canonical": "#8c4b07", "tonalRamp": ["#492704", "#804506", "#b86309", "#ef800c", "#f59d40", "#f8b978", "#fbd6af", "#fef3e7"] },
+      "danger": { "role": "status", "displayName": "Signal Rose", "canonical": "#ab213b", "tonalRamp": ["#400c16", "#711627", "#a21f38", "#d32949", "#df5771", "#e8889a", "#f1b9c3", "#fbeaed"] },
+      "info": { "role": "status", "displayName": "Signal Sky", "canonical": "#036194", "tonalRamp": ["#02314b", "#035784", "#047cbd", "#05a1f6", "#3bb7fb", "#74ccfc", "#ade1fd", "#e6f6fe"] },
+      "pastel-mint": { "role": "secondary", "displayName": "Mint", "canonical": "#d7f5e2", "tonalRamp": ["#0f3d20", "#1b6c39", "#279a51", "#32c96a", "#5fd78b", "#8de3ad", "#bceece", "#ebfaf0"] },
+      "pastel-lavender": { "role": "secondary", "displayName": "Lavender", "canonical": "#e8e0fb", "tonalRamp": ["#1a0944", "#2e0f77", "#4216ab", "#561ddf", "#7b4ee8", "#a281ef", "#c8b5f5", "#eee8fc"] },
+      "pastel-sky": { "role": "secondary", "displayName": "Sky", "canonical": "#dcedfb", "tonalRamp": ["#082945", "#0e4979", "#1468ad", "#1a87e2", "#4ba3ea", "#7fbdf0", "#b4d8f6", "#e8f3fc"] },
+      "pastel-butter": { "role": "secondary", "displayName": "Butter", "canonical": "#fdf0c6", "tonalRamp": ["#4a3903", "#826505", "#bb9007", "#f3bb09", "#f8cc3d", "#fadb76", "#fceaae", "#fef9e6"] },
+      "pastel-blush": { "role": "tertiary", "displayName": "Blush (one-hero-card only)", "canonical": "#fbdfe8", "tonalRamp": ["#44081c", "#780f31", "#ac1546", "#df1c5b", "#e94d7f", "#ef81a4", "#f6b5c9", "#fce8ef"] },
+      "console-ink": { "role": "secondary", "displayName": "Console Ink", "canonical": "#17171c", "tonalRamp": ["#22222a", "#3d3d4a", "#57576a", "#71718a", "#9191a5", "#b1b1bf", "#d1d1d9", "#f1f1f4"] }
+    },
+    "typographyMeta": {
+      "h1": { "displayName": "Page Title", "purpose": "One per page, dashed 3px underline instead of solid; 800 weight." },
+      "h2": { "displayName": "Section Heading", "purpose": "Names what a card/section is — carries the wayfinding job a colored border used to." },
+      "body": { "displayName": "Body", "purpose": "All prose; 1rem is a hard floor, never smaller." },
+      "label": { "displayName": "Label / Mono", "purpose": "Ticket IDs, shell commands, hint costs, log/diff output — JetBrains Mono, reads as real system output." }
+    },
+    "shadows": [
+      { "name": "ambient-card", "value": "0 1px 3px rgba(0,0,0,0.02)", "purpose": "Default on every card, panel, stat tile, and stage node — depth comes from color, not shadow height." },
+      { "name": "hero-lift", "value": "0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.06)", "purpose": "The one upgrade, reserved for .panel-hero (always paired with the Blush fill)." },
+      { "name": "console-dock", "value": "4px 0 16px rgba(0,0,0,0.12)", "purpose": "Sidebar only — the strongest shadow in the system, makes the dark rail read as a floating dock." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "0.15s ease", "purpose": "background-color/border-color/box-shadow transitions on buttons, cards, inputs." },
+      { "name": "press-down", "value": "transform 0.1s ease, translateY(1px) on :active", "purpose": "Buttons/cards get a 1px press-down on click, no bounce." },
+      { "name": "live-pulse", "value": "pulse 1.6s ease-in-out infinite (opacity 1 → 0.35 → 1)", "purpose": "The live-incident dot (sidebar, dashboard hero) — the only looping animation in the system." }
+    ],
+    "breakpoints": [
+      { "name": "sidebar-collapse", "value": "48rem", "purpose": "Below this, the sidebar collapses to a 3.75rem icon-only rail." },
+      { "name": "split-stack", "value": "56rem", "purpose": "Below this, .split's two-column grid stacks to one column." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one black pill on an otherwise pastel page — the unambiguous main action.",
+      "html": "<button class=\"ds-btn-primary\">Launch scenario</button>",
+      "css": ".ds-btn-primary { font-weight: 700; border-radius: 999px; padding: 0 1.75rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #17171c; color: #ffffff; background: #17171c; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: #5b21b6; border-color: #5b21b6; box-shadow: 0 4px 6px -1px rgba(109,40,217,0.25); } .ds-btn-primary:focus-visible { outline: 2px solid #6d28d9; outline-offset: 2px; } .ds-btn-primary:active { transform: translateY(1px); box-shadow: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Pastel Lavender fill for a lower-emphasis action beside a primary button.",
+      "html": "<button class=\"ds-btn-secondary\">Save hypothesis</button>",
+      "css": ".ds-btn-secondary { font-weight: 700; border-radius: 999px; padding: 0 1.75rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; color: #17171c; background: #e8e0fb; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03); transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease; } .ds-btn-secondary:hover { background: #ece3fc; border-color: #6d28d9; } .ds-btn-secondary:focus-visible { outline: 2px solid #6d28d9; outline-offset: 2px; } .ds-btn-secondary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Self-tinting status pill: one hue drives both the text/border color and (via a 22% mix into white) its own background.",
+      "html": "<span class=\"ds-badge ds-badge-complete\"><span class=\"ds-badge-mark\">🎉</span>Complete</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 1rem; border-radius: 999px; font-size: 1rem; font-weight: 700; } .ds-badge-complete { color: #116a33; border: 1px solid rgba(17,106,51,0.25); background: #d7ebdf; } .ds-badge-mark { font-size: 0.8em; }"
+    },
+    {
+      "name": "Lab Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A rotating-pastel-fill card from a repeating list (challenge browser), with a status-colored left border and a badge restating the status in text.",
+      "html": "<a class=\"ds-lab-card\" href=\"#\"><span class=\"ds-lab-card-title\">Fronting a Container With a Reverse Proxy</span><span class=\"ds-lab-card-meta\"><span class=\"ds-badge ds-badge-available\">● available</span><span class=\"ds-lab-card-diff\">● difficulty 2</span></span></a>",
+      "css": ".ds-lab-card { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: #d7f5e2; border: 1px solid #e2dff0; border-left: 5px solid #9c9ba8; border-radius: 16px; text-decoration: none; color: #17171c; transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease; } .ds-lab-card:hover { border-left-color: #6d28d9; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transform: translateY(-1px); } .ds-lab-card-title { font-weight: 600; } .ds-lab-card-meta { display: inline-flex; gap: 0.5rem; align-items: center; } .ds-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 1rem; border-radius: 999px; font-weight: 700; } .ds-badge-available { color: #5d5d68; border: 1px solid rgba(93,93,104,0.25); background: #e9e8ee; } .ds-lab-card-diff { color: #8c4b07; font-weight: 700; }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Console-dark rail item: full white at rest, a lifted white pill when current.",
+      "html": "<nav class=\"ds-sidebar\"><a class=\"ds-sidebar-item\" href=\"#\">Dashboard</a><a class=\"ds-sidebar-item ds-sidebar-item-current\" href=\"#\">Roadmap</a></nav>",
+      "css": ".ds-sidebar { display: flex; flex-direction: column; gap: 0.25rem; background: #17171c; padding: 1rem; border-radius: 0 22px 22px 0; } .ds-sidebar-item { display: flex; align-items: center; padding: 0.5rem 1rem; border-radius: 999px; color: #ffffff; font-weight: 500; text-decoration: none; } .ds-sidebar-item:hover { background: rgba(255,255,255,0.1); } .ds-sidebar-item-current { color: #17171c; background: #ffffff; font-weight: 700; }"
+    },
+    {
+      "name": "Roadmap Connector",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "A dashed vertical line between roadmap stages with a floating circular arrow bead — the system's one place where a dashed line is the UI, not just a heading underline.",
+      "html": "<div class=\"ds-connector\"><span class=\"ds-connector-arrow\">↓</span></div>",
+      "css": ".ds-connector { position: relative; display: flex; flex-direction: column; align-items: center; padding: 1rem 0; height: 4rem; } .ds-connector::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 3px dashed #cfc9e6; } .ds-connector-arrow { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; background: #ece3fc; color: #5b21b6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Bright Signal",
+    "overview": "BreakLab trains one person at a time to work real incidents: a container breaks, a ticket shows only the symptom, and the user debugs with no instructions. The interface's job is to make that loop feel like a game worth returning to daily, not like staring at a pager at 3am. \"Bright Signal\" is the resolution of that tension — a light, candy-pastel canvas with pill-shaped everything, cycling through four soft card fills so a list of labs or roadmap stages reads as colorful rather than a wall of identical gray boxes. But the \"signal\" half of the name is a real constraint: status colors (ok/warning/danger/info) stay distinct, legible, and never purely decorative — a lab that's locked, in progress, or complete has to be instantly scannable even inside all that color, because the practice only works if the state is always trustworthy. This replaces the earlier \"Quiet Indigo\" system (a cool-neutral zinc surface, one indigo accent, crisp 1px borders, subtle 6–12px radius) — itself a successor to a dark monochrome \"Pedagogical Clarity\" direction that is now historical reference material. Bright Signal is a deliberate identity replacement, not an incremental refinement.",
+    "keyCharacteristics": [
+      "A lavender-gray canvas (#f2f1f7), not the generic warm-cream default",
+      "A near-black console surface (#17171c) for the sidebar and primary buttons",
+      "Four pastel card fills that rotate across repeating lists so color carries variety, not a single repeated accent",
+      "Pill radius (999px) on every badge, button, tag, and search field; 16–22px on cards",
+      "Status color is never decorative-only: every badge/difficulty pairs its hue with a text label and a leading mark",
+      "A dashed connector line between roadmap stages, echoing the dashed underline on every <h1> — the one recurring decorative motif"
+    ],
+    "rules": [
+      { "name": "The Self-Tinting Badge Rule", "body": "A status badge's background is always color-mix(in srgb, currentColor 22%, var(--bg-elevated)) — never a second, independently chosen pastel.", "section": "colors" },
+      { "name": "The One Hero Card Rule", "body": "--pastel-blush never enters the four-color rotation; it is reserved for exactly one card per page.", "section": "colors" },
+      { "name": "The No-Shrinking Rule", "body": "--text-sm equals --text-base (both 1rem). There is no smaller type size anywhere in the system.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Shadows don't scale with a card's importance; color and the hero-reservation rule do that job.", "section": "elevation" },
+      { "name": "The No Side-Tab Rule", "body": "Don't add a thick, flat-colored border on one edge of a rounded card as a stand-alone accent — it's the single most recognizable AI-generated-UI tell, and it visibly clashes at the corner where the line meets the curve.", "section": "layout" }
+    ],
+    "dos": [
+      "Do rotate card fills from the fixed four-pastel set (Mint/Lavender/Sky/Butter) across any repeating list — never invent a fifth ad hoc pastel, and never use Blush outside the one-hero-per-page rule.",
+      "Do keep every status hue dark enough to pass 4.5:1 as text on its own tint, not just 3:1 against the page background.",
+      "Do pair every status/difficulty signal with a text label and a leading mark; color never carries meaning alone.",
+      "Do use the dashed-line motif sparingly — it's the <h1> underline and the roadmap connector, not a general-purpose divider."
+    ],
+    "donts": [
+      "Don't add a thick, flat-colored border on one side of a rounded card as a stand-alone accent.",
+      "Don't reach for opacity to convey a locked/disabled state on text — set an explicit muted color instead.",
+      "Don't give Console Ink a second job as a decorative brand color elsewhere on the page.",
+      "Don't rely on placeholder text as a form control's only accessible name."
+    ]
+  }
+}

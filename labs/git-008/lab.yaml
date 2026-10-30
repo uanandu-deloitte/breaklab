@@ -1,0 +1,39 @@
+id: git-008
+title: Fetch, Pull, Push
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, remotes]
+type: guided
+path: version-control
+module: remotes
+summary: A teammate pushed a commit your local clone doesn't have yet — fetch it, pull it in, add your own commit, and push it back.
+objectives:
+  - distinguish git fetch (updates remote-tracking refs only) from git pull (also updates your branch)
+  - read git log and git status to tell whether you're ahead, behind, or both
+  - push a local commit to a remote and confirm it landed
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git fetch origin
+      why: Downloads the teammate's new commit into origin/main locally, without touching your own main at all.
+    - do: git log main..origin/main --oneline
+      why: Shows exactly what commits origin has that you don't yet.
+    - do: git status
+      why: Reports your branch as behind origin/main by some number of commits, confirming what the fetch found.
+    - do: git pull
+      why: Fetches and merges origin/main into main — a fast-forward here, since you haven't committed anything locally yet.
+    - do: echo "- Add logging helper usage note" >> CHANGELOG.md && git add CHANGELOG.md && git commit -m "Update changelog"
+      why: Creates your own new commit on top of the teammate's, now that your main is up to date.
+    - do: git push origin main
+      why: Uploads your new commit and advances origin's main to match, since origin hasn't moved further in the meantime.
+hints:
+  - "git fetch updates origin/main locally without touching main — git log main..origin/main shows what's new on the remote that you don't have yet."
+  - "git status tells you directly whether your branch is ahead, behind, or diverged from its upstream."
+  - "git pull is roughly git fetch followed by git merge origin/main — here it will fast-forward since you haven't committed anything locally yet."

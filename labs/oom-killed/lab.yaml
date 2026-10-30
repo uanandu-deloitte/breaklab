@@ -1,0 +1,60 @@
+id: oom-killed
+title: oom-demo keeps dying and restarting
+stage: k8s-developer
+difficulty: 3
+estimated_minutes: 25
+tags: [kubernetes, scheduling, chaos-engineering, fault-injection]
+summary: A Pod's restart count keeps climbing — confirm it's actually the memory limit before you touch anything.
+prerequisites: [k8sd-005]
+loop:
+  learn: >
+    Every container in Kubernetes gets a memory limit, and the kernel enforces
+    it: the instant a container tries to use more than its limit, it's killed
+    outright — no warning, no graceful shutdown. kubectl then restarts it
+    (restartPolicy: Always), so what you see from the outside is just a
+    climbing restart count. The real question is always which side moved: did
+    the program's own memory use grow past a limit that used to be fine, or
+    did the limit itself get set too low for a program that never changed?
+  guided:
+    - do: kubectl get pod oom-demo
+      why: RESTARTS climbing is the first signal — confirm it's actually happening and isn't a one-off.
+    - do: kubectl describe pod oom-demo
+      why: The Containers section shows both the memory limit it was given and the Last State's exact termination reason — don't assume OOMKilled until you've seen it written down.
+    - do: kubectl get pod oom-demo -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}{"\n"}{.status.containerStatuses[0].lastState.terminated.exitCode}{"\n"}'
+      why: A terminated.reason of OOMKilled with exit code 137 is the kernel's OOM killer, specifically — not a crash in the program's own code.
+    - do: kubectl get pod oom-demo -o jsonpath='{.spec.containers[0].resources}{"\n"}'
+      why: Read the limit it was actually given. A limit that was copied from a smaller sibling service, or never updated after a new code path started allocating more, is the single most common cause here.
+    - do: kubectl delete pod oom-demo --wait=true && kubectl apply -f <corrected-manifest>
+      why: Pod resources are immutable once created — you can't patch a running Pod's memory limit, only replace it with one that reflects what the program actually needs.
+  practice:
+    task: >
+      Before touching the real incident below, work through what each signal
+      means on its own, then reveal the answer.
+    questions:
+      - prompt: A Pod exits with code 137 but kubectl describe shows terminated.reason as Error, not OOMKilled. What does that tell you?
+        answer: 137 alone isn't proof of an OOM kill — it's SIGKILL's generic exit code (128+9). Something else sent SIGKILL (a liveness probe, `kubectl delete --force`, the app itself). Confirm the reason field before treating it as a memory problem.
+      - prompt: "requests: 4Mi, limits: 24Mi — a process that steadily grows past 24Mi: is raising the limit always the right fix?"
+        answer: Not always. If the growth is unbounded (a real leak or an unbounded in-memory list), raising the limit just delays the same kill at a higher number. Only raise the limit when the program's genuine working set is bounded and you're confident of what it needs.
+      - prompt: Why can't you `kubectl edit` a running Pod's resources.limits.memory directly?
+        answer: A Pod's container resource limits are immutable after creation — Kubernetes requires deleting and recreating the Pod (or going through a Deployment, which does this for you on a spec change).
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - A 137 exit code is a clue, not a diagnosis. Confirm the termination reason is actually OOMKilled before assuming a fix.
+  - kubectl describe pod oom-demo shows the memory limit and the last termination's exact reason.
+variants:
+  - id: runaway-allocation
+    script: variants/runaway-allocation.sh
+    weight: 1
+    hints:
+      - Compare how much memory the process actually tries to use against its container's memory limit.
+  - id: limit-too-low
+    script: variants/limit-too-low.sh
+    weight: 1
+    hints:
+      - The process's own memory use may be entirely reasonable. Check the limit it's been given, not just the program.

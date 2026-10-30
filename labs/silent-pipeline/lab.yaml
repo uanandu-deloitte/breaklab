@@ -1,0 +1,62 @@
+id: silent-pipeline
+title: A push that didn't deploy
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [git, cicd, scripting, chaos-engineering, blind-spots]
+prerequisites: [cicd-002]
+summary: git push reported success, but /srv/app is still running yesterday's build — the deploy step that was supposed to run after the push never fired.
+loop:
+  learn: >
+    A post-receive hook runs after Git has already accepted and stored a
+    push; its exit status has no effect on whether the push itself
+    succeeds. That means a hook that isn't executable, has a broken
+    shebang, or errors internally fails completely silently from the
+    pushing engineer's side — git reports success because the push truly
+    did succeed, while the hook's side effect (the actual deploy) quietly
+    didn't happen. Whenever "git said it worked but the downstream result
+    didn't change," suspect the hook's own execution, not the push.
+  guided:
+    - do: cat /srv/app/VERSION
+      why: Confirms the deployed state really is stale, rather than taking the ticket's word for it.
+    - do: git -C /root/app-src log --oneline -1
+      why: Confirms the commit that should have deployed genuinely exists locally and was the one pushed.
+    - do: git --git-dir=/srv/deploy.git log --oneline -1
+      why: If the bare repo already has the new commit, the push itself succeeded and the problem is entirely in whatever runs after it.
+    - do: ls -l /srv/deploy.git/hooks/post-receive
+      why: A hook missing its execute bit is silently skipped by git — no error, no log entry, nothing.
+    - do: head -1 /srv/deploy.git/hooks/post-receive
+      why: A broken or wrong shebang makes the hook fail to exec; since the hook's exit code never affects the push result, that failure is invisible unless you look here directly.
+    - do: bash /srv/deploy.git/hooks/post-receive
+      why: The commit is already sitting in the bare repo from the earlier push — running the hook directly replays the missed deploy without needing anyone to push again.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: git push reported success. Does that guarantee the post-receive hook ran successfully?
+        answer: No — git considers a push successful once it stores the objects and updates the refs; hooks run afterward as a side effect, and their failure (or not running at all) doesn't change the push's own result.
+      - prompt: Why does the fix run the hook directly instead of telling the engineer to push again?
+        answer: The commit is already in the bare repo from the earlier push, so pushing again has nothing new to send. Running the hook directly replays the deploy step that was skipped, without needing new git history.
+      - prompt: Besides a missing execute bit, what's another way a post-receive hook can fail invisibly?
+        answer: A broken shebang pointing at a nonexistent interpreter, or an internal script error — since the hook's exit status doesn't gate the push, any failure inside it is swallowed unless something inspects the deploy target or the hook's own output afterward.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Push again and actually read what git prints, not just whether it succeeds.
+  - A post-receive hook that isn't executable, or that errors, won't fail the push.
+variants:
+  - id: hook-not-executable
+    script: variants/hook-not-executable.sh
+    weight: 1
+    hints:
+      - Check the permissions on /srv/deploy.git/hooks/post-receive.
+  - id: hook-broken-shebang
+    script: variants/hook-broken-shebang.sh
+    weight: 1
+    hints:
+      - Look at the first line of /srv/deploy.git/hooks/post-receive.

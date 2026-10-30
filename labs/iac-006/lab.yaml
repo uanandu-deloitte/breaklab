@@ -1,0 +1,39 @@
+id: iac-006
+title: "Config Precedence: File vs Environment vs Flag"
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+type: guided
+path: iac-fundamentals
+module: config-precedence
+summary: "resources.yaml declares one value, an environment variable declares another — infra-apply only ever honors one of them, and it isn't necessarily the file."
+objectives:
+  - confirm a declared config file and an environment variable can disagree about the same setting at the same time
+  - determine, by actually running the tool rather than assuming, which source it honors
+  - observe the full precedence order by overriding both the file and the environment with a CLI flag
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/resources.yaml
+      why: Shows the declared `value:` — maintenance-mode-off. This is what the config file alone claims should be set.
+    - do: env | grep INFRA_VALUE
+      why: Shows a conflicting value already set in this shell's environment — maintenance-mode-on. Nothing hidden set this; it's part of the container itself.
+    - do: infra-apply
+      why: Run it with no flag and read which source it actually reports using in its own output.
+    - do: cat /etc/app/mode.conf
+      why: Confirms the real resource reflects the environment variable's value, not the file's — proof the file alone wasn't honored this time.
+    - do: infra-apply --value=maintenance-mode-forced
+      why: A flag beats both the file and the environment variable — this is the third and highest-precedence source.
+    - do: cat /etc/app/mode.conf
+      why: Confirms the flag's value won this time, completing the precedence order flag > env > file.
+hints:
+  - "resources.yaml and $INFRA_VALUE disagree. Run infra-apply with no flag and read exactly what it says it's using before guessing."
+  - "infra-apply checks a CLI flag first, then an environment variable, and only falls back to the config file if neither of those is set."
+  - "A config file being 'correct' doesn't mean it's being honored — check the tool's actual resolved value, not just what's declared."

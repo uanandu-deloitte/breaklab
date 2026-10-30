@@ -1,0 +1,35 @@
+id: lnx-008
+title: Find the Stale Backend
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, filesystem]
+type: break-fix
+path: linux-fundamentals
+module: filesystem
+summary: Production should be talking to database.internal, but the live config still points at the old backend — and the old hostname shows up in places that must not be touched.
+objectives:
+  - find every occurrence of a string across a directory tree
+  - distinguish an active configuration file from archived/historical copies
+  - edit only the live file a running service actually reads
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: grep -R "database-old.internal" /opt/app
+      why: Recursively searches every file and prints each matching line with its path — this tells you where the string appears, not yet which occurrence is live.
+    - do: ls -la /opt/app/config /opt/app/releases
+      why: An active deployment location looks like config/, not releases/<old-version>/... — comparing the two paths shows which hit is live and which is an archived snapshot.
+    - do: sed -i 's/database-old.internal/database.internal/' /opt/app/config/app.conf
+      why: Edits only the single live config file identified above — a recursive find-and-replace across the whole tree would also corrupt the changelog and the archived snapshot.
+    - do: /opt/app/bin/check-config.sh
+      why: Self-checks the edit against what the running service actually expects to confirm only the live config changed.
+hints:
+  - "grep -R \"database-old.internal\" /opt/app shows you every file that mentions the old hostname — read each hit before touching anything."
+  - "/opt/app/releases/... is an archived snapshot of an old release, and CHANGELOG.md/docs/ are historical records — neither is what the running service reads."
+  - "/opt/app/config/app.conf is the live config. Edit only that one file, then run /opt/app/bin/check-config.sh to self-check."

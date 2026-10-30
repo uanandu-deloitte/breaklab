@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+CONFIG=/etc/dashboards/overview.yaml
+EXPORTED=/var/lib/metrics/exported.json
+
+metric=$(sed -n 's/^metric: *//p' "$CONFIG")
+value=$(jq -r --arg m "$metric" '.[$m] // "no-data"' "$EXPORTED")
+
+mkdir -p /var/lib/dashboards
+echo "$value" > /var/lib/dashboards/overview.rendered

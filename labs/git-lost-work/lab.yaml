@@ -1,0 +1,58 @@
+id: git-lost-work
+title: A commit that should be on main isn't
+stage: git
+difficulty: 2
+estimated_minutes: 25
+tags: [git, version-control]
+summary: A commit everyone swears exists isn't on main, and deleting more branches won't bring it back.
+loop:
+  learn: >
+    Git almost never deletes committed work outright. A commit made while
+    HEAD was detached, or thrown away by `git reset --hard`, still exists as
+    an object in the repository — it's just no longer reachable from any
+    branch, so `git log <branch>` won't show it. Every local HEAD movement
+    is recorded in the reflog, which is the first place to look for
+    "missing" work before assuming it's gone.
+  guided:
+    - do: git log main --oneline
+      why: Confirms the commit genuinely isn't reachable from main right now — the actual symptom, not a guess.
+    - do: git reflog
+      why: Shows every place HEAD has pointed recently, including commits made on a detached HEAD or abandoned by a hard reset — this is where lost commits usually turn up.
+    - do: git log --all --oneline
+      why: Lists every commit reachable from any ref or the reflog, which is broader than any single branch — useful to confirm the commit still exists as an object at all.
+    - do: git show <sha>
+      why: Verifies this is actually the commit you're looking for before merging it onto main, not just something with a similar message.
+    - do: git merge --ff-only <sha>
+      why: Fast-forwards main to include the recovered commit without rewriting history or risking a conflicted merge — the safest way to reattach orphaned work.
+    - do: git log main --oneline
+      why: Confirms the commit is now actually reachable from main, not just that the merge command exited cleanly.
+  practice:
+    task: >
+      Work through these before revealing the answer.
+    questions:
+      - prompt: A teammate insists they committed something that `git log main` doesn't show. Before assuming it's lost, what's the first thing to check?
+        answer: Check `git reflog` (and `git log --all`) — the commit is very likely still a real object in the repository, just unreachable from any branch right now, not actually deleted.
+      - prompt: Why does `git reset --hard` leave the discarded commit recoverable, instead of destroying it immediately?
+        answer: Reset only moves what the branch ref points to; it doesn't delete the commit object itself. The old position is recorded in the reflog, and the object stays in the repository until git's garbage collector eventually prunes unreachable objects.
+      - prompt: Why prefer `git merge --ff-only <sha>` over `git reset --hard <sha>` when main has moved on since the lost commit?
+        answer: --ff-only only succeeds if main can be moved forward without losing any commits already on it; a hard reset would overwrite main's current tip entirely, discarding anything committed there since the problem commit was lost.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - The commit isn't gone, just unreachable from any branch right now.
+  - git reflog and git log --all --oneline both show commits a branch doesn't point to.
+variants:
+  - id: hard-reset
+    script: variants/hard-reset.sh
+    weight: 1
+    hints:
+      - Check `git reflog` on main for what HEAD pointed to before the reset.
+  - id: detached-head
+    script: variants/detached-head.sh
+    weight: 1
+    hints:
+      - The commit was made outside of any branch. The HEAD reflog still remembers it.

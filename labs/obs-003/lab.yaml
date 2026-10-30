@@ -1,0 +1,42 @@
+id: obs-003
+title: Write an Alert Rule
+stage: observability
+difficulty: 1
+estimated_minutes: 15
+tags: [observability, alerting]
+type: guided
+path: observability-fundamentals
+module: alerting
+summary: A metric is breaching right now, but nothing is watching it — author the alert rule that catches it.
+objectives:
+  - author an alert rule file from scratch with the fields an evaluator expects
+  - compare a rule's metric, operator, and threshold against a live metric value
+  - confirm a rule genuinely fires by running the evaluator and reading its log
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /var/lib/metrics/current.json
+      why: Confirms the live error_rate value before writing any rule for it.
+    - do: cat /etc/alerts/rules.yaml
+      why: Confirms no rule exists yet — this is exactly why nothing has ever been compared against that metric.
+    - do: |
+        cat <<EOF > /etc/alerts/rules.yaml
+        metric: error_rate
+        op: ">"
+        threshold: 5
+        EOF
+      why: Writes the three fields an evaluator expects — metric, op, threshold — authoring the missing rule from scratch.
+    - do: alert-evaluator
+      why: Runs the evaluator directly so it reads the new rule and compares it against the live metric value right now.
+    - do: cat /var/log/alerts.log
+      why: Confirms the rule genuinely fired — a fresh breach line here is the real proof, not just that the evaluator ran without error.
+hints:
+  - alert-evaluator reads /etc/alerts/rules.yaml and compares it against /var/lib/metrics/current.json.
+  - "The rule file needs exactly three fields: metric, op, and threshold."
+  - Run alert-evaluator yourself and check /var/log/alerts.log to see whether it actually fired.

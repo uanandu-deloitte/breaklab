@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PIDFILE=/var/run/supervisor.pid
+FLAG=/tmp/breaklab-reap-flag
+
+if [ -f "$PIDFILE" ]; then
+  pid=$(cat "$PIDFILE")
+  touch "$FLAG"
+  for _ in $(seq 1 50); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+  done
+  rm -f "$FLAG"
+fi
+rm -f "$PIDFILE"
+
+nohup python3 /usr/local/bin/supervisor.py >/var/log/supervisor.log 2>&1 &
+sleep 0.5
+echo "supervisor restarted"

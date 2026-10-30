@@ -1,0 +1,35 @@
+id: lnx-025
+title: Repair the Broken Backup Script
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, shell-scripting, break-fix]
+type: break-fix
+path: linux-fundamentals
+module: shell-scripting
+summary: A backup script has four separate defects. Fix all of them so backups actually land where they're supposed to and failures are reported honestly.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /opt/app/backup.sh
+      why: Reading the source is the only way to find all four separate defects — none of them is a syntax error, so running it won't throw anything obviously wrong.
+    - do: /opt/app/backup.sh
+      why: Running it as-is and looking closely shows it prints success even though something clearly went wrong — the mismatch between the message and reality is the clue.
+    - do: ls /data/to-backup
+      why: Shows the file with a space in its name, which an unquoted variable expansion would word-split into two separate nonexistent paths.
+    - do: 'f="report draft.txt"; cp "$f" /tmp/test-copy'
+      why: Quoting a variable expansion ("$f") guarantees its value reaches the command as a single argument, no matter what whitespace it contains — the fix for the space-in-filename defect.
+    - do: ls /opt/backups
+      why: /opt/backups already exists and is where the backup is expected to land — comparing this against the destination the script actually writes to reveals the wrong-destination defect.
+    - do: 'tar -czf /opt/backups/backup-test.tar.gz /data/to-backup || { echo "FAIL: backup failed"; exit 1; }'
+      why: Checking tar's own exit code, instead of assuming success, is what the last defect requires — only reaching the success message on a path that actually passed every check.
+hints:
+  - "Try running /opt/app/backup.sh as-is and look closely: it prints success even though something clearly went wrong."
+  - One of the source files has a space in its name — trace exactly which line in the script handles that file, and whether its variable is quoted.
+  - "/opt/backups already exists and is where backups are expected to land — compare that against the destination the script actually uses."

@@ -1,0 +1,61 @@
+id: proxy-maze
+title: Storefront proxy is misbehaving
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [docker, networking, web-servers]
+summary: The storefront's public port is either unreachable or serving the wrong content after an nginx config cleanup.
+prerequisites: [docker-008]
+loop:
+  learn: >
+    A reverse proxy is only as good as three things being true at once: its
+    config file has to be syntactically valid (or the server refuses to
+    start at all), it has to actually be listening on the expected public
+    port, and the address it proxies to has to match where the real backend
+    is actually listening. A cleanup or manual edit can break any one of
+    these independently while leaving the other two fine, so "nginx is
+    running" or "the config exists" doesn't rule much out — validate syntax
+    first, then check what's listening where, then check whether the
+    upstream target is correct.
+  guided:
+    - do: curl -I http://localhost:8081/
+      why: Capture the exact symptom first — connection refused, a 502, or wrong-but-200 content point at three different layers of the problem.
+    - do: nginx -t
+      why: Ask nginx to validate its own config syntax before anything else — a syntax error (like a missing closing brace) means nginx won't even reload, and this is the fastest way to catch it.
+    - do: ss -ltnp | grep -E ':80|:8081|:8082'
+      why: See exactly what's listening on which ports right now — confirms nginx is actually up on the public port and shows what port the backend process really bound to.
+    - do: grep proxy_pass /etc/nginx/sites-available/default
+      why: Read the exact upstream address nginx is configured to forward to, to compare against where the backend actually listens.
+    - do: curl http://127.0.0.1:<backend-port>/
+      why: Test the backend directly, bypassing the proxy entirely — this isolates whether the backend itself is healthy or the proxy is just pointed at the wrong place.
+  practice:
+    task: >
+      Before touching the real incident, reason through how a reverse proxy
+      can fail in layers.
+    questions:
+      - prompt: nginx -t reports the config is valid, but curl against the public port still returns connection refused. What does that tell you to check next?
+        answer: Whether nginx actually (re)started/reloaded after the edit, and whether it's listening on the expected port at all — a valid config doesn't start the process for you, and an old instance may still be bound to the port with a stale config.
+      - prompt: A proxy_pass target was changed from one backend port to another during a "renumbering" pass, but nginx -t still passes. Why doesn't syntax validation catch this?
+        answer: nginx -t only checks that the config is syntactically well-formed and references valid directives — it has no way to know whether the upstream address is one anything is actually listening on; that's a runtime connectivity fact, not a syntax one.
+      - prompt: Why check the backend directly with curl against its own port, rather than only ever testing through the proxy?
+        answer: Testing through the proxy conflates two independent failure points (the proxy's config and the backend's health) into one symptom; hitting the backend directly isolates whether the backend itself is fine, which narrows the problem to the proxy's upstream address if it is.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8081:80"]
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Is anything listening on port 80 at all? Try nginx -t to check the config before anything else.
+  - The backend and the proxy are two separate processes in here. Confirm each one works on its own before blaming the other.
+variants:
+  - id: bad-upstream
+    script: variants/bad-upstream.sh
+    weight: 1
+    hints:
+      - nginx is running and the config is valid. Check what port it's actually proxying to, and what port the backend is actually listening on.
+  - id: bad-syntax
+    script: variants/bad-syntax.sh
+    weight: 1
+    hints:
+      - nginx -t will tell you exactly which line is wrong.

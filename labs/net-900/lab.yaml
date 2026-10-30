@@ -1,0 +1,48 @@
+id: net-900
+title: The Missing API
+stage: networking
+difficulty: 4
+estimated_minutes: 40
+tags: [networking, incident, web-servers]
+type: incident
+summary: The public API is failing. Narrow down which hop in client -> nginx -> api -> database actually broke before touching anything.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Start with the symptom. What does curl against the exposed port actually return -- a connection error, a 502, or a 500 with a body?
+  - "The request path has three hops: client -> nginx -> api -> database. A 502 means nginx itself couldn't reach the api process at all; a 500 with a body means the api process answered, but something it depends on failed."
+variants:
+  - id: dns-misconfigured
+    script: variants/dns-misconfigured.sh
+    weight: 1
+    hints:
+      - The api process is up and nginx can reach it just fine -- the api's own request to the database is what's failing. Check whether its hostname even resolves.
+      - "getent hosts db.internal -- does it resolve to anything?"
+  - id: listener-down
+    script: variants/listener-down.sh
+    weight: 1
+    hints:
+      - Is the api process actually running? Check with ps or pgrep.
+      - nginx can be perfectly healthy and still return 502 for every request if nothing is listening on its upstream port.
+  - id: bad-upstream
+    script: variants/bad-upstream.sh
+    weight: 1
+    hints:
+      - Check what port the api process is actually listening on, then compare it against nginx's own configured upstream.
+      - "cat /etc/nginx/sites-available/default -- does proxy_pass point at the api's real address?"
+  - id: database-unreachable
+    script: variants/database-unreachable.sh
+    weight: 1
+    hints:
+      - The api process is running and nginx can reach it -- but every response comes back as a 500, not a 502. That points further down the chain.
+      - Is anything actually listening on the database's port? Check with ss -ltnp.
+  - id: application-config-error
+    script: variants/application-config-error.sh
+    weight: 1
+    hints:
+      - Try starting the api process by hand, as the identity it actually runs as, and read the error it prints.
+      - Compare the api's service account against the ownership and permissions of its own config file.

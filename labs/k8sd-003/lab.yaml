@@ -1,0 +1,50 @@
+id: k8sd-003
+title: Persistent Volumes and Claims
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, storage]
+type: guided
+path: k8s-developer
+module: storage
+summary: The notes-pvc PersistentVolumeClaim has sat Pending since it was created — the Pod that wants to mount it is waiting right along with it.
+objectives:
+  - explain why a PVC only binds when its storageClassName and accessModes match what a real StorageClass's provisioner can satisfy
+  - fix a PVC so k3s's built-in local-path provisioner dynamically provisions and binds it
+  - prove a bound PVC is genuinely mountable, not just Bound on paper, by writing and reading back a file through it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pvc notes-pvc
+      why: Confirms the phase really is Pending before digging further — not Bound, not Lost.
+    - do: kubectl describe pvc notes-pvc
+      why: The Events section at the bottom carries the provisioner's own reason for not binding — this is the direct evidence, not a guess from the phase alone.
+    - do: kubectl get storageclass
+      why: Shows every StorageClass that actually exists in this cluster — k3s ships exactly one, local-path, by default.
+    - do: kubectl get pvc notes-pvc -o jsonpath='{.spec.storageClassName}'
+      why: Shows exactly what the PVC is asking for, so you can compare it against what kubectl get storageclass just showed actually exists.
+    - do: kubectl delete pod notes-writer --wait=true && kubectl delete pvc notes-pvc --wait=true
+      why: storageClassName is immutable once a PVC is created, so the broken PVC and the Pod waiting on it both have to be deleted before a corrected PVC can be created.
+    - do: kubectl apply -f <pvc and pod manifests, with storageClassName set to local-path>
+      why: local-path is k3s's built-in provisioner and supports ReadWriteOnce dynamic provisioning — exactly what this claim already correctly requests.
+    - do: kubectl get pvc notes-pvc && kubectl get pod notes-writer
+      why: Confirms the PVC reaches Bound and the Pod that was waiting on it reaches Running.
+    - do: kubectl exec notes-writer -- sh -c 'echo hello > /notes/testfile' && kubectl exec notes-writer -- cat /notes/testfile
+      why: Bound only proves the control plane matched the claim to provisioned storage — writing a file through the mount and reading it back is the only way to prove the volume is genuinely usable.
+hints:
+  - "kubectl get storageclass lists every StorageClass that actually exists in this cluster — compare it against what the PVC requests."
+  - "kubectl describe pvc notes-pvc — its Events show the provisioner's own rejection reason, not just 'Pending'."
+  - "k3s ships one built-in StorageClass, local-path, which supports ReadWriteOnce dynamic provisioning."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - Compare notes-pvc's storageClassName against kubectl get storageclass — nothing in this cluster matches it.

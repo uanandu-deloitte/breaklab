@@ -1,0 +1,39 @@
+id: net-004
+title: Packet Inspection Introduction
+stage: networking
+path: networking-fundamentals
+module: network-troubleshooting-tools
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, troubleshooting, tcpdump]
+type: guided
+summary: Before trusting a request/response cycle at the application layer, learn to watch the actual packets that make it up.
+objectives:
+  - capture traffic on the loopback interface with tcpdump
+  - correlate a single curl request to the TCP packets it produces
+  - identify source port, destination port, and confirm both halves of an exchange are visible in a capture
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: tcpdump -i lo -w /workspace/capture.pcap port 8005 &
+      why: Starts a capture on loopback filtered to port 8005, running in the background so you can still issue the request yourself.
+    - do: sleep 1
+      why: Gives the capture a moment to actually attach before any traffic is generated, so the first packets aren't missed.
+    - do: curl http://localhost:8005/
+      why: Generates exactly one request/response exchange on port 8005 for the capture to record.
+    - do: sleep 1
+      why: Gives the response time to arrive and be captured before the capture is stopped.
+    - do: kill %1
+      why: Stops the background capture now that the full exchange has happened.
+    - do: tcpdump -r /workspace/capture.pcap -nn
+      why: Reads the capture back as text with numeric ports, showing both directions — request packets with destination port 8005, response packets with source port 8005.
+hints:
+  - "tcpdump -i lo -w <file> port <port> captures traffic on loopback, filtered to one port, written to a file you can inspect afterward."
+  - Start the capture, give it a moment to attach, then make the request, then give it a moment before stopping it — a capture that starts after the request or stops before the response misses data.
+  - "tcpdump -r <file> -nn reads a capture back as text, with numeric ports instead of resolved service names."

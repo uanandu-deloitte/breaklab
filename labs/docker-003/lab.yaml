@@ -1,0 +1,33 @@
+id: docker-003
+title: PID 1 and the Command
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, linux, signals]
+type: guided
+path: docker-fundamentals
+module: process-identity
+summary: This container's CMD looks like it just runs one program — inspect what's actually sitting at PID 1, and why that's never guaranteed to be the program you named.
+objectives:
+  - inspect /proc/1/cmdline to find the real identity of PID 1, not just what the Dockerfile appears to say
+  - distinguish a Dockerfile's shell-form CMD from its exec-form CMD and recognize which one this container uses
+  - explain why PID 1 being a shell (rather than the real program) matters for signal delivery
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /proc/1/cmdline | tr '\0' ' '
+      why: Prints PID 1's actual argv — if it starts with /bin/sh -c, the shell is PID 1, not the program the Dockerfile's CMD looks like it names.
+    - do: ps -p 1 -o comm=
+      why: Prints just PID 1's command name, a quick way to confirm it's a shell (sh) rather than the real program (sleep).
+    - do: ps -eo pid,ppid,comm
+      why: Shows the full process tree — confirms sleep is running as a separate child process one layer below PID 1, not as PID 1 itself.
+hints:
+  - "cat /proc/1/cmdline | tr '\\0' ' ' prints PID 1's real argv, null-separated fields turned into spaces."
+  - "ps -p 1 -o comm= prints just PID 1's command name — compare it against what you'd expect if the Dockerfile's CMD ran directly."
+  - "This Dockerfile's CMD is written as a plain string (shell form), not a JSON array (exec form) — shell form always runs through /bin/sh -c first."

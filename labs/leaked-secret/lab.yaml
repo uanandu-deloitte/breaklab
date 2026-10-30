@@ -1,0 +1,59 @@
+id: leaked-secret
+title: A secret is still in git history after being "removed"
+stage: git
+difficulty: 3
+estimated_minutes: 30
+tags: [git, version-control, security]
+summary: A secret scan found a live-looking API key buried in git history, even though it's gone from the current files.
+loop:
+  learn: >
+    Git commits are immutable snapshots chained together — deleting a file or
+    "redacting" a value in a new commit only changes the latest snapshot;
+    every prior commit still contains the original blob, forever reachable
+    through `git log` or by checking out an old SHA. Treating a leaked secret
+    as fixed once it's gone from HEAD is the most common mistake here: the
+    string is still sitting in the object database, retrievable by anyone
+    with read access to the repo. Removing it for real means rewriting every
+    commit that ever touched it, not just the current tree.
+  guided:
+    - do: git log --all -p -- <path-of-removed-file>
+      why: Show every version of a file across every commit, including ones later deleted — confirms the secret's blob is still reachable in history.
+    - do: git log --all -p | grep -n "sk-"
+      why: Search the content of every commit, not just file paths, in case the secret was ever hardcoded inline rather than living in a deleted file.
+    - do: git log --oneline --all -- <path>
+      why: See exactly which commits touched the file, so you know the full span of history that needs rewriting, not just the add/remove pair.
+    - do: git filter-repo --analyze
+      why: Get an inventory of what's actually in the repo's object store before rewriting it, so you know what you're targeting.
+    - do: git filter-repo --invert-paths --path <file> (or --replace-text for inline secrets)
+      why: Rewrite every commit to strip the blob or replace the string everywhere it appears — the Git project's own recommended replacement for the older, slower filter-branch.
+  practice:
+    task: >
+      Before touching the real incident, work through what "removed" actually
+      means in git.
+    questions:
+      - prompt: A file containing a secret was deleted in commit C, three commits after it was added. Is `git log --all -p | grep <secret>` guaranteed to find it?
+        answer: Yes — `git log -p` walks every commit's diff, including the one that added the file, so the secret is still visible in that earlier commit even though HEAD no longer has the file.
+      - prompt: Why can't you just `git commit --amend` the last commit to remove a secret that's several commits back?
+        answer: Amending only rewrites the most recent commit. A secret introduced earlier is baked into an older commit's tree/blob; you have to rewrite that commit and every commit after it (which changes all their SHAs) to actually remove it.
+      - prompt: After a successful filter-repo rewrite, why is it still necessary to rotate the leaked key?
+        answer: Anyone who already cloned, forked, or fetched the repo before the rewrite still has the old history with the secret in it locally — rewriting the canonical repo doesn't erase copies that already escaped, so the key itself must be treated as compromised and rotated.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Deleting a file in a new commit does not remove it from earlier commits.
+  - git filter-repo can rewrite every commit to strip a file or a string (the project's own docs point here instead of the older git filter-branch).
+variants:
+  - id: env-file
+    script: variants/env-file.sh
+    weight: 1
+    hints:
+      - The key was committed in config/secrets.env, then the file was deleted later.
+  - id: inline-code
+    script: variants/inline-code.sh
+    weight: 1
+    hints:
+      - The key was hardcoded directly in deploy.sh, then "redacted" in a later commit.

@@ -1,0 +1,21 @@
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - mkdir -p /workspace/dist
+    - echo "built" > /workspace/dist/app.txt
+
+deploy:
+  stage: deploy
+  needs: ["build"]
+  # BUG: $CI_COMMIT_TAG is only ever set on a tag pipeline. This
+  # pipeline runs off a normal branch push, so this condition is always
+  # false here.
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - cp /workspace/dist/app.txt /workspace/deployed.txt
+    - echo "deployed"

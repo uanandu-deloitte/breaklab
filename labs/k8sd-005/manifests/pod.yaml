@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mem-demo
+  labels:
+    app: mem-demo
+spec:
+  restartPolicy: Always
+  containers:
+    - name: app
+      image: python:3.12-alpine
+      command: ["python", "-c", "a=[]; [a.append(bytearray(1024*1024)) for _ in range(10)]; import time; time.sleep(3600)"]
+      resources:
+        requests:
+          memory: 4Mi
+        limits:
+          memory: 6Mi

@@ -1,0 +1,60 @@
+id: stuck-lock
+title: Deploys refuse to run
+stage: cicd
+difficulty: 1
+estimated_minutes: 15
+tags: [cicd, scripting, linux]
+prerequisites: [cicd-005]
+summary: Every deploy today has failed outright, and nothing is actually deploying.
+loop:
+  learn: >
+    A lockfile is a cheap way to stop two deploys from racing each other, but
+    it only works if whatever creates it also reliably removes it — a crash,
+    a kill, or a permissions change on the lock directory itself can leave
+    the lock (or the ability to manage it) in a broken state forever. When a
+    script "refuses to run" with no real error, the question isn't "what's
+    wrong with the deploy logic" — it's "what's blocking the lock step before
+    the deploy logic even starts," and that can be either the lock file
+    itself or the directory's permissions underneath it.
+  guided:
+    - do: deploy
+      why: Run it yourself and read the exact error message — "another deploy is already in progress" versus a permission-denied error point at two completely different causes.
+    - do: ls -la /var/run/deploy
+      why: See who owns the lock directory and what its permission bits actually are, before assuming the lock file itself is the problem.
+    - do: ls -la /var/run/deploy/deploy.lock 2>/dev/null
+      why: Check whether a lock file exists at all, and if so, confirm whether anything is actually still running or if it's left over from a crash.
+    - do: ps aux | grep do-deploy
+      why: Confirm whether a deploy process is genuinely in flight — a lock with no matching process behind it is stale, not protecting anything.
+    - do: whoami; id deployer
+      why: Deploys run as the deployer user — confirm that user actually has the access it needs to the lock directory, not just that the directory exists.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: A lock file exists but no process is running the deploy. What does that tell you, and is it safe to remove?
+        answer: It's a stale lock left behind by a crash or an unclean exit that skipped cleanup. It's safe to remove once you've confirmed (via ps) that nothing is actually using it — the lock's only job was to represent that in-progress state, and it no longer does.
+      - prompt: chmod 700 on the lock directory, owned by root, locks out the deployer user even though the lock file itself was never touched. Why does that still break deploys?
+        answer: The deploy script needs to create and remove a file inside that directory, which requires write+execute permission on the directory itself, not just on the lock file — tightening the directory's permissions blocks that regardless of what's inside it.
+      - prompt: Why is it safer for a deploy script to clean up its lock file in a trap/on-exit handler rather than only at the end of a successful run?
+        answer: If the script fails or is killed partway through, a trap still fires and removes the lock, preventing exactly this kind of stale-lock pileup; cleanup only at the happy-path end leaves every abnormal exit with a lock nothing will ever clear.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run `deploy` yourself and read what it prints.
+  - deploy refuses to run if /var/run/deploy/deploy.lock exists, or if it can't write there at all.
+variants:
+  - id: stale-lock
+    script: variants/stale-lock.sh
+    weight: 1
+    hints:
+      - Is anything actually still deploying, or is that lock left over from a crash?
+  - id: bad-dir-perms
+    script: variants/bad-dir-perms.sh
+    weight: 1
+    hints:
+      - Check the ownership and permissions on /var/run/deploy itself.

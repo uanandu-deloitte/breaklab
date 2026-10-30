@@ -1,0 +1,49 @@
+id: k8ss-003
+title: Secrets Aren't Config
+stage: k8s-security
+path: k8s-security
+module: secrets
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, security, secrets]
+type: guided
+summary: An API token is stored in a ConfigMap and wired into a Deployment with configMapKeyRef. Migrate it into a real Secret, then see for yourself what base64 does and doesn't protect.
+objectives:
+  - migrate a sensitive value from a ConfigMap into a Secret without changing its key or breaking the consumer
+  - repoint a Deployment's env var from configMapKeyRef to secretKeyRef
+  - decode a live Secret's own base64 data and observe firsthand that it reveals the plaintext, proving base64 is encoding, not confidentiality
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get configmap app-config -o yaml
+      why: Reads the live API_TOKEN value you need to copy into the Secret, and shows it sitting in plain text right next to ordinary LOG_LEVEL config.
+    - do: kubectl create secret generic app-secrets --from-literal=API_TOKEN=<value>
+      why: Creates a real Secret holding the exact same key and value — the resource type actually built for sensitive data, unlike a ConfigMap.
+    - do: kubectl patch deployment app --type=json -p='[{"op":"replace","path":"/spec/template/spec/containers/0/env/1/valueFrom","value":{"secretKeyRef":{"name":"app-secrets","key":"API_TOKEN"}}}]'
+      why: Repoints the Deployment's API_TOKEN env var from configMapKeyRef to secretKeyRef, without touching the LOG_LEVEL entry next to it.
+    - do: kubectl patch configmap app-config --type=json -p='[{"op":"remove","path":"/data/API_TOKEN"}]'
+      why: Removes the sensitive value from the ConfigMap entirely now that nothing reads it from there anymore.
+    - do: kubectl exec deploy/app -- printenv API_TOKEN
+      why: Confirms the running Pod still resolves the correct value, now sourced from the Secret instead of the ConfigMap.
+    - do: kubectl get secret app-secrets -o jsonpath='{.data.API_TOKEN}' | base64 -d
+      why: Decodes the Secret's own data yourself and see firsthand that base64 reveals the plaintext instantly — it's encoding, not encryption.
+    - do: echo 'BASE64_IS_NOT_ENCRYPTION_PROOF=<the exact decoded value you saw>' > /workspace/answers.env
+      why: Records what you actually observed, grounding the proof in a real decode rather than an assumption.
+hints:
+  - "kubectl get configmap app-config -o yaml shows exactly what's wrong — a plain API token sitting in .data alongside ordinary config."
+  - "kubectl create secret generic app-secrets --from-literal=API_TOKEN=<value> creates the Secret; the value has to be the real one already in the ConfigMap, read it first."
+  - "Patch the Deployment's env entry for API_TOKEN to valueFrom.secretKeyRef (name + key), then remove API_TOKEN from the ConfigMap's data entirely."
+  - "kubectl get secret app-secrets -o jsonpath='{.data.API_TOKEN}' | base64 -d reveals the plaintext instantly — record what that proves into /workspace/answers.env."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - A ConfigMap is the wrong resource type for anything sensitive, regardless of how it's wired up.

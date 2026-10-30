@@ -1,0 +1,64 @@
+id: clock-skew-timeline
+title: The timeline doesn't add up
+stage: observability
+difficulty: 3
+estimated_minutes: 25
+tags: [observability, linux, scripting]
+prerequisites: [obs-007]
+summary: One host's log timestamps place its responses before the request that triggered them was even sent — the clock, not the logic, is lying.
+loop:
+  learn: >
+    Distributed systems rely on every host's clock being close enough to
+    real time that event ordering across hosts means something. When a
+    clock drifts, every timestamp that host produces is wrong by the same
+    offset, which can make causally-later events appear to happen earlier
+    in a merged timeline. The dangerous part is that a sync mechanism
+    reporting "success" doesn't guarantee it corrected anything — a sync job
+    that's disabled, or pointed at the wrong server, can report a clean
+    exit code while the clock keeps drifting untouched. Trust the actual
+    time it produces, not the sync tool's self-reported status.
+  guided:
+    - do: date +%s
+      why: Get the real current time directly from the system clock as an independent baseline to compare everything else against.
+    - do: log-event "checking in" && tail -1 /var/log/host-a.log
+      why: Produce a fresh timestamp the same way the real application does, and see exactly how far it diverges from the real time you just captured.
+    - do: cat /etc/clocksync/enabled
+      why: Confirm whether the sync mechanism is even turned on — a disabled sync means the clock has been free-running since whenever it was last correct.
+    - do: cat /etc/clocksync/server
+      why: If sync is enabled, check exactly what server it's pointed at — a renamed or decommissioned host lets sync "succeed" every time without ever correcting anything.
+    - do: sync-clock
+      why: Run the sync utility directly and read its own output — "synced with X" succeeding is not proof the clock actually moved, only that the attempt didn't error.
+    - do: cat /var/lib/clock/offset_seconds
+      why: After attempting a fix, check the actual stored offset directly rather than trusting sync-clock's success message — this is the ground truth for whether the clock is now correct.
+  practice:
+    task: >
+      Before touching the real incident below, reason through why a
+      "successful" sync can still leave the clock wrong, then reveal the
+      answer.
+    questions:
+      - prompt: sync-clock prints "synced with ntp.old-internal.example" and exits 0. Does that prove host-a's clock is now correct?
+        answer: "No — a sync tool can report success for the act of attempting a sync against whatever server is configured, even if that server doesn't exist or isn't the real time source. You have to check the actual resulting offset or timestamp, not the tool's exit status or message."
+      - prompt: Why can host-a's events appear to happen before host-b's request that caused them, in a merged timeline, purely from clock skew?
+        answer: Because each host stamps events using its own local clock — if host-a's clock is running ahead (or behind) of host-b's by enough seconds, the wall-clock order recorded in the logs no longer matches the true causal order of events, even though the actual sequence of operations was correct.
+      - prompt: /etc/clocksync/enabled is false. What's the first thing to check before assuming the sync server is misconfigured?
+        answer: Whether sync is even running at all — if it's disabled, the clock has simply been drifting unchecked, and the fix is turning sync back on, not debugging the server address, which doesn't matter while sync never runs.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run log-event and compare the timestamp it just wrote against the real current time (date +%s).
+  - Check /etc/clocksync/enabled and /etc/clocksync/server, then try running sync-clock yourself.
+variants:
+  - id: clock-drifted
+    script: variants/clock-drifted.sh
+    weight: 1
+    hints:
+      - Is clock sync even enabled right now? Check /etc/clocksync/enabled.
+  - id: ntp-misconfigured
+    script: variants/ntp-misconfigured.sh
+    weight: 1
+    hints:
+      - Sync looks enabled and sync-clock reports success. Check what server it's actually pointed at.

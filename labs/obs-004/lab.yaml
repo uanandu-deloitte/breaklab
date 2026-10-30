@@ -1,0 +1,39 @@
+id: obs-004
+title: Ship Your Logs
+stage: observability
+difficulty: 1
+estimated_minutes: 15
+tags: [observability, log-shipping]
+type: guided
+path: observability-fundamentals
+module: log-shipping
+summary: A log file has lines nobody's aggregator has seen yet — ship them over, then prove a second run doesn't duplicate anything.
+objectives:
+  - invoke a log shipper with explicit source and destination arguments
+  - confirm every existing line reaches the destination after one run
+  - confirm a shipper tracks its offset so re-running it only ships new lines
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: wc -l /var/log/app.log /var/log/aggregator.log
+      why: Confirms the source already has lines the empty destination is missing, before shipping anything.
+    - do: ship-logs --source /var/log/app.log --destination /var/log/aggregator.log
+      why: Runs one shipping pass with the two required flags, moving every unshipped line from source to destination.
+    - do: diff /var/log/app.log /var/log/aggregator.log
+      why: Confirms the destination now matches the source exactly after this first run.
+    - do: echo "probe line" >> /var/log/app.log
+      why: Grows the source the way a real application would, so a second run has something new to actually prove offset tracking on.
+    - do: ship-logs --source /var/log/app.log --destination /var/log/aggregator.log
+      why: Re-runs the shipper — because it remembers how many lines it already shipped, this pass should append only the newly added line, not duplicate everything.
+    - do: diff /var/log/app.log /var/log/aggregator.log
+      why: Confirms the destination still matches the source exactly, proving the offset tracking worked instead of duplicating or dropping lines.
+hints:
+  - "ship-logs takes two explicit flags: --source and --destination."
+  - After the first run, append a new line to the source and run ship-logs again — the destination should gain only that one line.
+  - Compare the two files' full contents, not just their line counts.

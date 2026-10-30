@@ -1,0 +1,35 @@
+id: obs-002
+title: Structured vs Unstructured Logs
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, logs, scripting]
+type: practice
+path: observability-fundamentals
+module: structured-logging
+summary: The same failure, logged two different ways — find the same two facts in both, the fragile way and the reliable way.
+objectives:
+  - extract a specific fact from unstructured text logs using grep/awk/sed
+  - extract the same fact from structured JSON-lines logs using a single jq filter
+  - recognize why a structured query survives wording changes that break a text search
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: grep -c "ERROR could not connect to db" /var/log/legacy.log
+      why: Counts lines matching the retry error's exact wording in the unstructured log — this is ATTEMPTS_FROM_LEGACY, but it only works while that exact phrasing holds.
+    - do: grep "checkout failed for order ord-5521" /var/log/legacy.log | awk '{print $1, $2}'
+      why: Greps for the failure line by its exact wording, then awk grabs the first two whitespace-separated columns as date and time — this is FINAL_FAILURE_TIME_FROM_LEGACY.
+    - do: jq -r 'select(.order_id=="ord-5521" and .level=="ERROR" and (.message|startswith("could not connect to db")))|.timestamp' /var/log/app.jsonl | wc -l
+      why: Filters the structured log by real fields (order_id, level, message prefix) instead of guessing at wording — counting matches gives ATTEMPTS_FROM_JSON, and this filter survives a reworded message that would break the grep above.
+    - do: jq -r 'select(.order_id=="ord-5521" and (.message|startswith("checkout failed")))|.timestamp' /var/log/app.jsonl
+      why: Reads the timestamp field directly off the matching JSON object — this is FINAL_FAILURE_TIME_FROM_JSON — no column-position guessing required.
+hints:
+  - "/var/log/legacy.log and /var/log/app.jsonl describe the exact same events, just in two formats."
+  - "grep -c and awk '{print $1, $2}' work on legacy.log's fixed columns; a single jq select(...) filter works on app.jsonl's real fields."
+  - "Only one order's checkout actually fails in this data -- ord-5521. The other succeeds on its first attempt."

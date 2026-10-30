@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p /var/spool/shipper/queue
+shopt -s nullglob
+for f in /var/spool/shipper/queue/msg-*; do
+  cat "$f" >> /var/log/shipped-final.log
+  rm -f "$f"
+done

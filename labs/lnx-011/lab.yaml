@@ -1,0 +1,35 @@
+id: lnx-011
+title: Normalize Deployment Data
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, text-processing]
+type: practice
+path: linux-fundamentals
+module: text-processing
+summary: A deployment inventory came in with mixed case, duplicates, and inconsistent delimiters — turn it into a clean, canonical host list with a pipeline, not manual edits.
+objectives:
+  - transliterate case with tr
+  - normalize inconsistent delimiters and whitespace with tr/cut/sed
+  - deduplicate and sort with sort and uniq
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /workspace/hosts.txt
+      why: Shows the raw messy inventory before building the normalization pipeline, so you know what delimiters and casing you're actually dealing with.
+    - do: "tr ',' '\\n' < /workspace/hosts.txt | tr 'A-Z' 'a-z'"
+      why: Splits comma-separated entries onto their own lines first, then lowercases everything — splitting has to happen before delimiter-sensitive steps, and lowercasing before dedup is what makes different-case duplicates collapse.
+    - do: "tr ',' '\\n' < /workspace/hosts.txt | tr 'A-Z' 'a-z' | sed 's/^[ \\t]*//;s/[ \\t]*$//'"
+      why: Strips leading and trailing whitespace from each line so sort -u, which only merges byte-for-byte identical lines, can actually catch the duplicates.
+    - do: "tr ',' '\\n' < /workspace/hosts.txt | tr 'A-Z' 'a-z' | sed 's/^[ \\t]*//;s/[ \\t]*$//' | sort -u > /workspace/normalized.txt"
+      why: sort -u sorts alphabetically and deduplicates in one pass, writing the final canonical list that satisfies every requirement at once.
+hints:
+  - "tr ',' '\\n' turns comma-separated entries into one-per-line before anything else."
+  - "tr 'A-Z' 'a-z' lowercases everything; sed 's/^[ \\t]*//;s/[ \\t]*$//' strips leading/trailing whitespace."
+  - "sort -u gives you a sorted, deduplicated result in one step — no separate uniq needed once sort has -u."

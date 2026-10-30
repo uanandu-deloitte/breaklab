@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+offset=$(cat /var/lib/clock/offset_seconds 2>/dev/null || echo 0)
+now=$(date +%s)
+ts=$((now + offset))
+human=$(date -u -d "@$ts" +%FT%TZ)
+echo "${human} ${ts} $*" >> /var/log/host-a.log

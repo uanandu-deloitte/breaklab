@@ -1,0 +1,60 @@
+id: path-shadow
+title: Deploy-sync keeps recording the wrong version
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, shell, scripting]
+summary: A deploy script keeps recording the wrong version, even though the file it reads from is correct.
+loop:
+  learn: >
+    A shell command like `jq` is resolved by searching $PATH directories in
+    order and running the first executable match — not necessarily the one
+    you think of as "the real" one. Anything earlier on $PATH with the same
+    name silently wins, whether it's a leftover test stub, an old tool
+    symlinked under a convenient name, or a typo'd package. A script can be
+    completely correct and still produce the wrong result if the name it
+    calls resolves to the wrong binary. The fix is never to re-run the
+    script harder — it's to find out exactly which file a name resolves to,
+    and why that one wins.
+  guided:
+    - do: which -a jq
+      why: List every executable named jq on $PATH in search order — the first one listed is the one that actually runs, regardless of which one you assume is "real."
+    - do: type -a jq
+      why: Same idea as which, but also reveals if jq is a shell function, alias, or builtin rather than a file — which `which` alone can miss.
+    - do: ls -la /usr/local/bin/jq
+      why: /usr/local/bin is earlier on $PATH than /usr/bin by default, so anything placed there shadows the system jq — confirm what's actually sitting there and whether it's a plain file or a symlink.
+    - do: readlink -f /usr/local/bin/jq
+      why: If it's a symlink, follow it to the real target — a symlink to some other unrelated tool behaves nothing like jq even though the name matches.
+    - do: /usr/local/bin/jq -r '.version' /etc/app/release.json
+      why: Run the suspicious entry directly against real input to see exactly how it misbehaves, confirming it's the thing producing the wrong output before removing it.
+  practice:
+    task: >
+      Before touching the real incident, reason through how name resolution
+      on $PATH works.
+    questions:
+      - prompt: "`which -a jq` lists two paths: /usr/local/bin/jq then /usr/bin/jq. Which one runs when a script just calls `jq`?"
+        answer: /usr/local/bin/jq — the shell searches $PATH directories in order and uses the first match, regardless of which one is "correct."
+      - prompt: A script hardcodes the full path /usr/bin/jq instead of just calling jq. Does a shadowing entry at /usr/local/bin/jq still affect it?
+        answer: No — an absolute path bypasses $PATH search entirely, so it always runs that exact binary no matter what else is shadowing the bare name elsewhere on the path.
+      - prompt: Why does `readlink -f` matter here instead of just `ls -la`?
+        answer: ls -la shows that a path is a symlink and what it points to in one hop, but readlink -f resolves the full chain to the final real file, which matters if the shadowing entry is a symlink to another symlink or a relative path.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - deploy-sync just calls `jq` by name. Check what that name actually resolves to right now with `type -a jq` or `which -a jq`.
+  - "/usr/local/bin comes before /usr/bin on $PATH by default — anything placed there wins over the real jq."
+variants:
+  - id: fake-jq-stub
+    script: variants/fake-jq-stub.sh
+    weight: 1
+    hints:
+      - Look at what's actually at /usr/local/bin/jq. Is it the real jq binary?
+  - id: legacy-tool-symlink
+    script: variants/legacy-tool-symlink.sh
+    weight: 1
+    hints:
+      - Whatever's at /usr/local/bin/jq might not be a plain file at all — check with `ls -la` and `readlink`.

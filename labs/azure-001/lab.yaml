@@ -1,0 +1,35 @@
+id: azure-001
+title: main.bicep Won't Compile
+stage: cloud
+difficulty: 2
+estimated_minutes: 15
+tags: [azure, bicep, iac]
+type: break-fix
+path: cloud-fundamentals
+module: bicep
+summary: retentionDays is declared as an int parameter but its default value is a quoted string -- a real Bicep compile-time type error, not a guess.
+objectives:
+  - run a real IaC compiler (az bicep build) entirely offline, no Azure login or subscription required
+  - read a real compiler type error down to the exact parameter and line
+  - fix the actual type mismatch instead of loosening the parameter's declared type
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/main.bicep
+      why: Shows every declared parameter and the one resource -- read retentionDays' declared type against its default value.
+    - do: az bicep build --file /infra/main.bicep --stdout
+      why: Runs the real compiler -- read its exact error message, including the line number and the type it expected versus what it found.
+    - do: Edit main.bicep so retentionDays' default value is a real number, not a quoted string
+      why: Fixes the actual type mismatch -- retentionDays should stay an int, since it's a real count of days used elsewhere as a number.
+    - do: az bicep build --file /infra/main.bicep --stdout | jq .parameters.retentionDays
+      why: Confirms the compiled ARM JSON now has retentionDays as a real int parameter with the right default.
+hints:
+  - "az bicep build needs no Azure login or subscription -- it only type-checks and compiles the file locally."
+  - "The compiler error names the exact parameter and the exact type mismatch -- read it literally before guessing a fix."
+  - "The fix is the default value, not the declared type -- retentionDays should stay int."

@@ -1,0 +1,60 @@
+id: pinned-module-regression
+title: The config looks right. The pin doesn't.
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, scripting]
+summary: The source config is right and the apply ran clean, but the deployed output still doesn't match it.
+prerequisites: [iac-007]
+loop:
+  learn: >
+    A render step that resolves "which version of code actually does the
+    work" dynamically — via a pinned version file, a lockfile, a module
+    registry — can produce a stale or wrong result even when the input
+    config is perfect and the apply command exits 0. The bug isn't in the
+    data being deployed; it's in which implementation got selected to
+    deploy it, and whether that implementation even still exists. A quiet,
+    no-error exit is not proof the right code ran — only that whatever code
+    did run, ran without crashing.
+  guided:
+    - do: cat /infra/site.yaml
+      why: Confirm the source of truth is actually correct before assuming the bug is downstream — rules out "the input itself is wrong."
+    - do: cat /etc/site/deployed.conf
+      why: See exactly what got deployed, to compare directly against what the source says it should be.
+    - do: cat /infra/MODULE_VERSION
+      why: Find out which version of the render logic is actually pinned and selected right now — the apply step picks its implementation based on this file, not on the source config.
+    - do: ls /infra/modules/
+      why: Confirm the pinned version actually has a matching module file on disk — a pin pointing at a version that was since removed fails differently (and more quietly) than a pin pointing at a version with a bug in it.
+    - do: cat /infra/modules/render-<version>.sh
+      why: Read the actual logic the pinned version runs — if the module exists, the bug may be inside its render function itself, not in the pin or the source data.
+  practice:
+    task: >
+      Before touching the real incident, reason through what a version pin
+      controls.
+    questions:
+      - prompt: infra-apply exits 0 and prints no error, but the deployed output is stale. Does a clean exit code prove the right module ran?
+        answer: No — a clean exit only proves whatever code ran didn't crash. If the pinned version points at a missing module, the apply script can choose to skip rendering and exit 0 anyway, leaving the old deployed output untouched with no visible failure.
+      - prompt: Two render modules exist — v1 has a bug that truncates output, v2 is correct — and the version pin says v1. Is editing site.yaml the right fix?
+        answer: No — site.yaml is the input data, which is already correct; the pin is selecting the wrong implementation to process it. The fix is updating the pin (or the buggy module itself), not touching the source config.
+      - prompt: Why is "the apply ran without error" not reassuring on its own when debugging a pinned-version regression?
+        answer: Because the version-selection logic can legitimately treat a missing module as a silent no-op rather than a hard failure, so a successful exit can mean either "did the right thing" or "quietly did nothing" — you have to check the actual deployed output and the resolved version to tell which.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - /infra/site.yaml is correct. infra-apply ran without error. Check what it actually rendered with.
+  - infra-apply sources a render module picked by /infra/MODULE_VERSION. Check which version that currently points at.
+variants:
+  - id: pinned-to-buggy
+    script: variants/pinned-to-buggy.sh
+    weight: 1
+    hints:
+      - Compare /infra/modules/render-v1.sh against render-v2.sh. One of them doesn't render the full message.
+  - id: pinned-to-missing
+    script: variants/pinned-to-missing.sh
+    weight: 1
+    hints:
+      - Does /infra/modules/ actually have a file matching what MODULE_VERSION says?

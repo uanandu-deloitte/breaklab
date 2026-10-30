@@ -1,0 +1,69 @@
+id: k8s-blind-spot
+title: The outage the dashboard never saw
+stage: capstone
+difficulty: 5
+estimated_minutes: 40
+tags: [capstone, kubernetes, observability]
+summary: Checkout is actually down in the cluster, but the monitoring that's supposed to catch exactly this kind of outage is quietly broken too — in a way that has nothing to do with why checkout itself is down.
+loop:
+  learn: >
+    An outage and a monitoring blind spot are usually treated as one
+    story — "it broke and nobody noticed" — but they're frequently two
+    completely unrelated failures that happen to land at the same time.
+    A Kubernetes Service can lose its healthy backends for reasons that
+    have nothing to do with whether the metrics pipeline watching it is
+    fresh, accurate, or wired to a working alert rule. Fixing the cluster
+    doesn't repair the monitoring, and fixing the monitoring doesn't
+    repair the cluster — each has to be diagnosed and fixed on its own
+    terms, using a different set of skills, before either half is
+    actually done.
+  guided:
+    - do: kubectl get endpoints checkout; kubectl get pods -l app=checkout
+      why: Confirms from the cluster's own state whether checkout currently has a healthy backend to route to, independent of anything a dashboard claims.
+    - do: "curl --max-time 3 \"http://$(kubectl get svc checkout -o jsonpath='{.spec.clusterIP}'):$(kubectl get svc checkout -o jsonpath='{.spec.ports[0].port}')/\""
+      why: Tests the Service exactly like a real caller would, rather than trusting kubectl's status columns alone.
+    - do: kubectl get svc checkout -o jsonpath='{.spec.selector}{"\n"}'; kubectl get pod -l app=checkout --show-labels; kubectl get deployment checkout -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
+      why: Compares the Service's selector and the Deployment's readiness probe against what the Pod can actually satisfy — the two most common reasons a Service ends up with zero healthy Endpoints.
+    - do: cat /var/lib/metrics/current.json; refresh-metrics; cat /var/lib/metrics/current.json
+      why: Compares the metrics file before and after forcing a refresh — if the value and its observed_at timestamp don't change, the refresh path itself is broken, independent of the real cluster state.
+    - do: cat /usr/local/bin/refresh-metrics; cat /etc/alerts/rules.yaml
+      why: Reads the two places an observability bug independently hides — the wrapper responsible for keeping metrics current, and the rule deciding whether a given value should ever page anyone.
+    - do: alert-evaluator && cat /var/log/alerts.log
+      why: Runs the alert pipeline directly and reads its own output — silence here means either the metric feeding it is wrong, or the rule itself can't fire, not that everything is fine.
+    - do: Fix each problem on its own terms — correct the Service selector or readiness probe so real traffic routes again, and separately correct the frozen refresh path or the drifted alert rule so monitoring reflects that truth.
+      why: These are two unrelated failures in different subsystems; fixing only one leaves check.sh failing on the other half.
+    - do: bash check.sh
+      why: Re-verifies both halves independently — the only way to confirm neither is still broken.
+  practice:
+    task: >
+      Think through these before revealing the answer.
+    questions:
+      - prompt: "A cluster has zero Endpoints for checkout, but /var/lib/metrics/current.json still says checkout_healthy: 1 from an hour ago. Does that mean the outage just started?"
+        answer: No — it only tells you the metrics pipeline hasn't refreshed in at least an hour. The outage could have started at any point since that last successful observation; a stale timestamp is a monitoring-pipeline symptom, not evidence about when checkout itself actually broke.
+      - prompt: You fix the Service selector and real traffic starts flowing again, but check.sh still fails. What's the most likely explanation?
+        answer: The observability half is still broken independently — either the metrics refresh path is still stale or disconnected, or the alert rule still can't tell a real breach from healthy. A still-failing check after a genuine fix doesn't mean that fix was wrong; it means the other, unrelated half still needs attention.
+      - prompt: "An alert rule has op: \">\" and threshold: 1, and checkout_healthy only ever takes the values 0 or 1. Can this rule ever fire?"
+        answer: "No — 0 > 1 and 1 > 1 are both false, so the rule can never fire no matter what actually happens to checkout. The operator is pointed the wrong direction for a \"value dropped to 0\" alert."
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - This incident has two independent causes, not one — fixing the first thing you find might not be enough.
+  - Check the Kubernetes side (Service selector, readiness probe, Endpoints) and the observability side (refresh-metrics, /etc/alerts/rules.yaml) separately.
+variants:
+  - id: selector-drift-stale-metric
+    script: variants/selector-drift-stale-metric.sh
+    weight: 1
+    hints:
+      - kubectl get endpoints checkout and compare the Service's selector against the Pod's actual labels.
+      - Run refresh-metrics yourself and check whether current.json's observed_at actually changes — then read what refresh-metrics itself calls.
+  - id: bad-probe-alert-never-fires
+    script: variants/bad-probe-alert-never-fires.sh
+    weight: 1
+    hints:
+      - The Pod is Running but never Ready — compare the Deployment's readinessProbe port/path against what the container actually serves.
+      - The metric value is accurate. Check the comparison operator in /etc/alerts/rules.yaml, not just the number.

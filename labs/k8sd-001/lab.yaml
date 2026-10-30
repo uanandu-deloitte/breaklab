@@ -1,0 +1,48 @@
+id: k8sd-001
+title: ConfigMaps, Two Ways
+stage: k8s-developer
+difficulty: 1
+estimated_minutes: 15
+tags: [kubernetes, config]
+type: guided
+path: k8s-developer
+module: config
+summary: A Deployment is supposed to expose one ConfigMap key as an environment variable and a different key as a mounted file — right now it does neither.
+objectives:
+  - explain the difference between injecting a ConfigMap key as an environment variable (valueFrom.configMapKeyRef) and mounting it as a file (volumes + volumeMounts)
+  - wire both injection styles onto the same Deployment and confirm each independently inside the running Pod
+  - read a ConfigMap's live data with kubectl rather than trusting what a manifest file claims it contains
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get configmap app-config -o yaml
+      why: Shows both keys the ConfigMap actually holds, LOG_LEVEL and app.conf, by name — this is the ground truth to wire against, not what a manifest claims.
+    - do: kubectl exec <pod> -- printenv APP_LOG_LEVEL
+      why: Confirms the environment variable doesn't exist yet inside the running container, before you change anything.
+    - do: kubectl exec <pod> -- cat /etc/app/app.conf
+      why: Confirms the mounted file doesn't exist yet either — both injection styles are currently missing.
+    - do: kubectl apply -f <deployment manifest with env.valueFrom.configMapKeyRef for LOG_LEVEL and a configMap volume + volumeMounts entry for app.conf>
+      why: An env var needs env[].valueFrom.configMapKeyRef naming the ConfigMap and key; a mounted file needs a matching volumes[].configMap entry and volumeMounts[] entry in the container — they're independent, and both are required here.
+    - do: kubectl rollout status deployment/configmap-demo --timeout=60s
+      why: Confirms the Deployment actually rolled a new Pod with the corrected spec before checking inside it — there's no way to inject an env var into an already-running process from outside.
+    - do: kubectl exec <pod> -- printenv APP_LOG_LEVEL
+      why: Proves the env var injection actually took effect and now matches the ConfigMap's live LOG_LEVEL value, not just that the manifest looks right.
+    - do: kubectl exec <pod> -- cat /etc/app/app.conf
+      why: Proves the file mount actually took effect and now matches the ConfigMap's live app.conf content.
+hints:
+  - "kubectl get configmap app-config -o yaml shows every key currently in the ConfigMap, by name."
+  - "An env var sourced from a ConfigMap key uses env[].valueFrom.configMapKeyRef — the var name doesn't have to match the key name. A mounted key needs both a volumes[].configMap entry and a matching volumeMounts[] entry in the container."
+  - "kubectl exec <pod> -- printenv <VAR> and kubectl exec <pod> -- cat <path> are how you prove each wiring actually took effect, not just that the manifest looks right."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - Compare the Deployment's container spec against what the ConfigMap actually contains — neither injection style is wired up yet.

@@ -1,0 +1,39 @@
+id: cicd-002
+title: Exit Codes and Pipeline Stages
+stage: cicd
+difficulty: 1
+estimated_minutes: 15
+tags: [cicd, scripting]
+type: guided
+path: cicd-fundamentals
+module: pipeline-mechanics
+summary: A failing test stage isn't stopping the deploy stage from running anyway — because the driver script chains them with ';' instead of '&&'.
+objectives:
+  - explain why ';' between two commands runs the second regardless of the first's exit code, while '&&' only runs the second if the first succeeded
+  - read a shell script's own content to predict its failure-propagation behavior before running it
+  - fix a pipeline driver so a failing stage genuinely halts every stage after it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /opt/pipeline/run.sh
+      why: Shows exactly what separates the three stage invocations — here a bare ';', which carries no information about exit codes at all.
+    - do: /opt/pipeline/run.sh
+      why: Running it live confirms test.sh really does fail, and that deploy.sh still runs right after it anyway.
+    - do: ls /workspace/bad-deploy-happened
+      why: Proves deploy.sh actually ran despite test.sh's failure — the marker file exists only because nothing stopped the chain.
+    - do: Edit run.sh so the three invocations are chained with && instead of ; (or add set -e near the top of the script)
+      why: "&& only runs the next command if the previous one exited 0, so a failing test.sh now stops the pipeline before deploy.sh ever runs."
+    - do: rm -f /workspace/bad-deploy-happened
+      why: Clears the stale marker so the next run can only recreate it if deploy.sh genuinely runs again — proving the fix instead of just reading leftover state.
+    - do: /opt/pipeline/run.sh
+      why: Re-running from scratch confirms the marker stays gone and the pipeline now reports failure instead of silently deploying anyway.
+hints:
+  - "cat /opt/pipeline/run.sh — look at exactly what character separates the three script invocations."
+  - "';' always runs the next command, no matter what the previous one exited with. '&&' only runs the next command if the previous one exited 0."
+  - "set -e (errexit) makes a script exit immediately the first time any command in it fails — that's another valid way to stop deploy.sh from running."

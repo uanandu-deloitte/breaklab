@@ -1,0 +1,37 @@
+id: cicd-008
+title: Build Passes, Deploy Never Runs
+stage: cicd
+difficulty: 3
+estimated_minutes: 20
+tags: [cicd, github-actions]
+type: break-fix
+path: cicd-fundamentals
+module: real-pipelines
+summary: "deploy's if: condition reads a job output that build's steps never actually set -- the job isn't failing, it's silently skipped every single run."
+objectives:
+  - run a real GitHub Actions workflow locally with act instead of guessing at its behavior
+  - recognize that a declared job output is empty until some step actually writes to $GITHUB_OUTPUT
+  - "fix a needs.<job>.outputs reference by wiring the producing step correctly, not by loosening the if: condition"
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /workspace/project/.github/workflows/ci.yml
+      why: "Shows both jobs end to end -- deploy's if: depends on an output build's job block declares but never actually sets from a step."
+    - do: cd /workspace/project && act push -P ubuntu-latest=-self-hosted
+      why: Runs the real workflow locally -- build succeeds, and deploy is silently skipped with no error at all.
+    - do: ls /workspace
+      why: Confirms the real symptom on disk -- dist/app.txt exists from build, deployed.txt from deploy does not.
+    - do: Edit .github/workflows/ci.yml's build step to add echo "ready=true" >> "$GITHUB_OUTPUT"
+      why: Actually sets the output the job declares, so needs.build.outputs.ready is no longer silently empty.
+    - do: act push -P ubuntu-latest=-self-hosted
+      why: Re-run the real workflow -- deploy should now actually execute instead of being skipped.
+hints:
+  - "A skipped job in GitHub Actions produces no error at all -- if: just silently evaluates to false. Don't go looking for a crash."
+  - "needs.build.outputs.ready reads whatever build's job-level outputs: block points at. If no step in build ever writes to $GITHUB_OUTPUT, that's always empty."
+  - "The fix is in the step that should set the output, not in deploy's if: condition -- loosening if: would hide the bug, not fix it."

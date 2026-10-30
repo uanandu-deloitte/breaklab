@@ -1,0 +1,37 @@
+id: lnx-022
+title: Disk Full Incident
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, storage, incident]
+type: incident
+path: linux-fundamentals
+module: storage
+summary: The application stopped writing logs and requests fail intermittently. Free up space without touching protected data.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: df -h
+      why: Confirms the free-space symptom before drilling into which directory is actually responsible.
+    - do: du -sh /var/log/*
+      why: Shows which subtree under /var/log is actually responsible for the usage, without reading through every individual file.
+    - do: du -sh /var/log/app/*
+      why: Repeating du one level deeper on the largest subtree narrows down to the specific directory actually consuming the space.
+    - do: find /var/log/app/debug -type f | wc -l
+      why: Confirms how much disposable, regenerable debug output is sitting in the directory before removing it.
+    - do: rm -rf /var/log/app/debug/*
+      why: Removes only the disposable generated data — debug output is regenerable, unlike the explicitly retained audit log and customer records.
+    - do: grep -q RETAINED_AUDIT_ENTRY /var/log/audit/retained.log
+      why: Confirms the explicitly retained audit log's content is unchanged after cleanup — not everything large is safe to delete.
+    - do: touch /var/log/app/test-write
+      why: Checks that the specific capability that failed, the application writing new logs, actually works again, not just that free space increased.
+hints:
+  - Compare du -sh across the subdirectories of /var/log to find what's actually consuming space.
+  - Not everything under /var/log is safe to delete — some of it is explicitly retained.
+  - "Useful commands: df -h; du -sh /var/log/*; du -sh /var/log/app/*; find /var/log/app/debug -type f | wc -l."

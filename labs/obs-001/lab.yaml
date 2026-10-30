@@ -1,0 +1,35 @@
+id: obs-001
+title: Logs vs Metrics
+stage: observability
+difficulty: 1
+estimated_minutes: 15
+tags: [observability, logs, metrics]
+type: guided
+path: observability-fundamentals
+module: orientation
+summary: Two small files, two different kinds of data — learn to tell a discrete log event apart from a current metric value, and query both with jq.
+objectives:
+  - distinguish a discrete timestamped log event from a current numeric metric value
+  - use jq to filter JSON-lines logs by field and count matches
+  - use jq to read a specific key out of a JSON object
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: jq 'select(.level=="ERROR")' /var/log/app.jsonl
+      why: Filters the JSON-lines log down to just the ERROR-level events, keying off the real "level" field rather than scanning text.
+    - do: jq 'select(.level=="ERROR")' /var/log/app.jsonl | jq -s 'length'
+      why: Counts how many ERROR events matched — this is ERROR_COUNT.
+    - do: jq -r 'select(.request_id=="req-3005") | .message' /var/log/app.jsonl
+      why: Pulls the message off the one log line whose request_id is req-3005 — a log answers "why," so this is REQUEST_ID_MESSAGE.
+    - do: jq -r '.disk_used_pct' /var/lib/metrics/current.json
+      why: Reads the current gauge value straight out of the metrics snapshot — no events involved, just a number — this is DISK_USED_PCT.
+hints:
+  - "jq reads a file of consecutive JSON objects just fine even when each one sits on its own line — no special jsonl mode needed."
+  - "select(.field==\"value\") filters a stream of JSON objects down to the ones matching a condition; piping the result into wc -l turns matches into a count."
+  - "A metric file holds no events — just read the key you need straight out of it with jq -r '.key'."

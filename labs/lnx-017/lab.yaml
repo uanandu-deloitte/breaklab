@@ -1,0 +1,35 @@
+id: lnx-017
+title: Find the Runaway Process
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, processes]
+type: break-fix
+path: linux-fundamentals
+module: processes
+summary: Three background processes are running. One of them is quietly burning 100% CPU — find it with ps, record it, and terminate it gracefully.
+objectives:
+  - distinguish idle background processes from a CPU-bound one using ps/top
+  - record a process's PID, PPID, user, and command before acting on it
+  - terminate a process gracefully with SIGTERM instead of reaching for SIGKILL
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ps aux --sort=-%cpu | head
+      why: Sorts every process by CPU usage, highest first — the runaway stands out immediately in the %CPU column, regardless of its name.
+    - do: ps -eo pid,ppid,user,cmd
+      why: Prints the exact four fields — PID, PPID, user, and command — that answers.env asks you to record, in one line per process.
+    - do: kill <pid>
+      why: Sends SIGTERM by default, a graceful request to exit, which is the required method — save SIGKILL for a process that ignores this.
+    - do: ps -eo pid,user,cmd | grep worker
+      why: Confirms the two healthy background processes are still running, undisturbed, after only the offending one was signaled.
+hints:
+  - "ps aux --sort=-%cpu (or top) sorts processes by CPU usage, highest first — the runaway stands out immediately by its %CPU column, not by its name."
+  - "ps -eo pid,ppid,user,cmd lets you read off every field answers.env asks for in one command."
+  - "kill <pid> sends SIGTERM (a graceful request to exit) by default — save kill -9 (SIGKILL) for a process that ignores SIGTERM."

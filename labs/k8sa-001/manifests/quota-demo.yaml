@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: quota-demo
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: pod-quota
+  namespace: quota-demo
+spec:
+  hard:
+    pods: "2"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-a
+  namespace: quota-demo
+  labels:
+    app: quota-demo
+spec:
+  restartPolicy: Never
+  containers:
+    - name: sleeper
+      image: busybox:1.36
+      command: ["sh", "-c", "sleep 3600"]

@@ -1,0 +1,42 @@
+id: k8sf-003
+title: Services and In-Cluster DNS
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, networking]
+type: guided
+path: k8s-fundamentals
+module: services-and-dns
+summary: A healthy "api" Deployment and Service are already running — reach the Service both by its DNS name and its ClusterIP from inside the cluster, and prove both actually work.
+objectives:
+  - reach a Service by its ClusterIP from inside the cluster
+  - reach the same Service by its in-cluster DNS name (api.default.svc.cluster.local, or the short form api)
+  - launch and read the result of a throwaway debug Pod with kubectl run
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get svc api -o jsonpath='{.spec.clusterIP}'
+      why: Reads the Service's live ClusterIP directly, rather than assuming or remembering it — it's stable for the Service's lifetime but only knowable by asking the cluster.
+    - do: kubectl run probe --rm -it --image=busybox:1.36 --restart=Never -- sh
+      why: Launches a throwaway Pod, attaches your terminal, and deletes it automatically on exit — the standard way to poke at the cluster from the inside without leaving anything behind.
+    - do: wget -qO- api.default.svc.cluster.local
+      why: "Proves the Service resolves and responds by its in-cluster DNS name — the short form \"api\" also works from inside the same namespace."
+    - do: "wget -qO- <the ClusterIP you read above>"
+      why: Proves the same Service also responds by its ClusterIP — a separate claim from DNS working, so it needs its own proof.
+    - do: exit
+      why: Leaves the throwaway probe Pod's shell — the --rm flag you launched it with deletes the Pod automatically the moment you do.
+hints:
+  - "Every Service gets a DNS A record at <service>.<namespace>.svc.cluster.local automatically; inside the same namespace the short form <service> resolves too — no manual DNS configuration required."
+  - "kubectl run <name> --rm -it --image=busybox:1.36 --restart=Never -- <command> launches a throwaway Pod, attaches to it, and deletes it when the command exits — a quick way to probe the cluster from the inside."
+  - "A Service's ClusterIP is stable for its lifetime; read it live with kubectl get svc <name> -o jsonpath='{.spec.clusterIP}' rather than assuming it."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

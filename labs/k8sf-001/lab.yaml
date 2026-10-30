@@ -1,0 +1,47 @@
+id: k8sf-001
+title: Your First Pod
+stage: k8s-fundamentals
+difficulty: 1
+estimated_minutes: 15
+tags: [kubernetes, orientation]
+type: guided
+path: k8s-fundamentals
+module: orientation
+summary: A healthy Deployment is already running in a real cluster — get oriented with the handful of kubectl commands you'll use in every lab after this one, then make your first real change to live cluster state.
+objectives:
+  - read a Pod's status and readiness with kubectl get and kubectl describe
+  - read a container's stdout with kubectl logs
+  - distinguish a Deployment's desired replica count from its live ready count
+  - change live cluster state with kubectl scale and confirm the change actually took effect
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pods -o wide
+      why: "STATUS and READY are two different questions: STATUS=Running only means the container started, while READY (e.g. 2/2) counts how many are passing their readiness probe."
+    - do: kubectl describe pod -l app=hello
+      why: The Events section at the bottom is the fastest way to see why a Pod is or isn't doing what you expect, before you assume anything.
+    - do: kubectl logs -l app=hello
+      why: Shows the container's stdout directly — the same output you'd see running it in a foreground terminal.
+    - do: kubectl get deployments
+      why: DESIRED, CURRENT, UP-TO-DATE, and AVAILABLE are separate columns — a Deployment can have the Pods it wants (CURRENT) without all of them ready yet (AVAILABLE).
+    - do: kubectl get svc hello
+      why: Shows the Service's ClusterIP and port, independent of which Pods currently back it.
+    - do: kubectl scale deployment/hello --replicas=4
+      why: Edits the Deployment's desired replica count directly — a live change to cluster state, not a change to any file.
+    - do: kubectl rollout status deployment/hello
+      why: Confirms the scale-up actually finished and all 4 Pods are Ready, rather than assuming it's done the moment the scale command returns.
+hints:
+  - "kubectl get pods -o wide shows status and which node a Pod landed on; kubectl describe pod <name> shows its recent Events."
+  - "kubectl get deployment hello has separate DESIRED/CURRENT/UP-TO-DATE/AVAILABLE columns — they are not always the same number."
+  - "kubectl scale deployment/<name> --replicas=<n> changes desired state immediately; the actual Pods take a moment to catch up — kubectl rollout status or a short wait confirms they did."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

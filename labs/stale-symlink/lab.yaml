@@ -1,0 +1,59 @@
+id: stale-symlink
+title: The wrong release is live
+stage: docker
+difficulty: 1
+estimated_minutes: 15
+tags: [containers, linux]
+summary: The live symlink points somewhere, but not at the release that's actually supposed to be current.
+loop:
+  learn: >
+    Symlink-based releases ("current" points at one of several versioned
+    directories) make cutover and rollback a single atomic pointer swap — but
+    that same convenience means the pointer itself can be wrong in two
+    distinct ways: it can point at a real but outdated target, or it can
+    point at a target that no longer exists at all (a dangling symlink). Both
+    look identical from the outside ("the site is wrong" or "it's broken"),
+    but you have to check the link's target before you can tell which one
+    you're dealing with.
+  guided:
+    - do: ls -la /opt/current
+      why: See what /opt/current actually is and where it points — confirm it's a symlink, not a real directory, before assuming anything about its target.
+    - do: readlink /opt/current
+      why: Read the exact target path the symlink points at, instead of guessing from context.
+    - do: ls /opt/releases/
+      why: See what releases actually exist on disk — compare this against the symlink's target to tell "points at the wrong one" apart from "points at one that's gone."
+    - do: ls /opt/current/
+      why: Following the link, confirm whether it resolves to real content or comes back as a dangling reference with nothing there.
+    - do: ln -sfn /opt/releases/<correct-release> /opt/current
+      why: Atomically repoint the symlink at the release that actually exists and is actually current — the same single-command swap a healthy rollout would use.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: readlink /opt/current returns a path. How do you tell whether that target is stale (points at an old-but-real release) versus dangling (points at nothing)?
+        answer: "Check whether the target path exists: `ls /opt/releases/` or `test -e` on the resolved target. If the directory it names isn't there, it's dangling; if it's there but isn't the latest release, it's stale."
+      - prompt: Why is `ln -sfn` (not just `ln -s`) the right command for repointing an existing symlink?
+        answer: "-f forces replacement of the existing link instead of erroring that it already exists, and -n treats the target as a literal path rather than following it if /opt/current itself were a directory — together they make the repoint atomic and exact."
+      - prompt: What's a one-line way to check if a symlink is dangling without manually comparing paths?
+        answer: "`test -e /opt/current && echo ok || echo dangling` — `-e` follows the link and fails if the target doesn't exist, which `-L` (link exists) alone would not catch."
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - /opt/current is supposed to be a symlink. Where does it actually point?
+  - ls -la /opt/current and ls /opt/releases/ will tell you what's available.
+variants:
+  - id: pointing-old
+    script: variants/pointing-old.sh
+    weight: 1
+    hints:
+      - Check what /opt/current currently points to with `readlink`.
+  - id: dangling-link
+    script: variants/dangling-link.sh
+    weight: 1
+    hints:
+      - A symlink can point at a path that no longer exists.

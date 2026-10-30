@@ -1,0 +1,41 @@
+stages:
+  - id: linux
+    title: Linux fundamentals
+    blurb: Everything else in here runs on Linux — know the shell first.
+  - id: networking
+    title: Networking & Web
+    blurb: Every service you'll debug talks over a network — know how before you need to.
+  - id: git
+    title: Git
+    blurb: Lost work and bad history are routine; recovery is a core skill.
+  - id: docker
+    title: Docker
+    blurb: Every lab from here down runs in a container you must understand.
+  - id: cicd
+    title: CI/CD
+    blurb: Automate the deploy, then learn how the automation lies to you.
+  - id: iac
+    title: Infrastructure as code
+    blurb: Declared config drifts from reality; catch it before prod does.
+  - id: cloud
+    title: Cloud fundamentals (Azure)
+    blurb: Infrastructure as code has to target something real — learn the platform before the cluster that runs on it.
+  - id: k8s-fundamentals
+    title: Kubernetes fundamentals
+    blurb: Your app is a Pod now — learn the objects and commands before anything breaks.
+  - id: k8s-developer
+    title: Kubernetes for developers
+    blurb: Config, storage, and dependencies the way an app team actually deploys them.
+  - id: k8s-admin
+    title: Kubernetes administration
+    blurb: Capacity, quotas, and scheduling — the cluster operator's side of the fence.
+  - id: k8s-security
+    title: Kubernetes security
+    blurb: A cluster is a bigger attack surface than any one container ever was.
+  - id: observability
+    title: Monitoring and logging
+    blurb: If you can't see it break, you can't fix it fast.
+  - id: capstone
+    title: Capstone
+    blurb: Everything you've learned, one incident, no safety net.
+    capstone: true

@@ -1,0 +1,43 @@
+id: docker-006
+title: Nothing Listens Where You Think
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, networking]
+type: break-fix
+path: docker-fundamentals
+module: networking
+summary: The server is running, the port is listening, curl works fine from inside the container — and the mapped host port still gets nothing back.
+objectives:
+  - compare a host-side curl against a container-side curl to localize which side of the port mapping actually fails
+  - read a listening socket's bound address with ss -tlnp, not just which port it owns
+  - fix a server bound only to its loopback interface so a published host port can actually reach it
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl http://localhost:8080/
+      why: Tests the real path a real client would use, through Docker's port mapping — this establishes the actual symptom before touching anything inside the container.
+    - do: docker exec -it breaklab-docker-006 bash
+      why: Opens a shell inside the container so the next checks can compare its own view against what the host just saw.
+    - do: curl localhost
+      why: Tests the server from inside its own network namespace — succeeding here while the host curl failed narrows the problem straight to the bind address, not the process or the port.
+    - do: ss -tlnp
+      why: Shows exactly which address the server process is bound to, not just which port — 127.0.0.1 only accepts connections originating from inside this same namespace.
+    - do: sed -i 's/127.0.0.1/0.0.0.0/' /usr/local/bin/serve.sh
+      why: Fixes the actual bug — the bind address baked into the server's launch script — without touching the port number, which was never wrong.
+    - do: pkill -f http.server
+      why: Stops the already-running server process — editing the script alone changes nothing until the process actually reading it is replaced.
+    - do: nohup /usr/local/bin/serve.sh > /var/log/serve.log 2>&1 &
+      why: Starts a fresh server process that reads the corrected bind address, so the mapped host port can finally reach it.
+    - do: curl http://localhost:8080/
+      why: Confirms the fix end-to-end from the same host vantage point that showed the original symptom — it should now return the real page.
+hints:
+  - From the host, curl the mapped port. From inside the container, curl localhost. Compare the two results before assuming anything is actually broken.
+  - ss -tlnp shows exactly which address a listening process is bound to, not just which port.
+  - A process bound to 127.0.0.1 only accepts connections that originate from inside its own network namespace — Docker's port mapping can't reach it from outside.

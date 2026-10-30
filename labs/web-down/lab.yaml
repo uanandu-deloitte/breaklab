@@ -1,0 +1,63 @@
+id: web-down
+title: The website returns nothing
+stage: linux
+difficulty: 1
+estimated_minutes: 20
+tags: [linux, web-servers, networking]
+summary: A browser gets nothing back from a server that was fine yesterday — find out which layer broke.
+loop:
+  learn: >
+    Serving a web page takes three things working together: a process (nginx)
+    that's actually running, a config that tells it what to listen on and where
+    the content lives, and a file it's allowed to read. "The site is down"
+    could mean any one of those three failed — the fix is always different, so
+    the first job is narrowing down which layer broke before touching anything.
+  guided:
+    - do: curl -I http://localhost:8080/
+      why: Get the exact symptom first. A connection refused, a timeout, and a 403 point at three completely different layers — don't guess before you've seen this.
+    - do: docker exec -it breaklab-web-down bash
+      why: Everything from here happens inside the container, where nginx and the files actually live.
+    - do: ps aux | grep nginx
+      why: Confirm the process itself is even running before worrying about its config or its files.
+    - do: ss -ltnp | grep :80
+      why: Confirm something is actually listening on port 80 — and check whether it's nginx or some other process that got there first.
+    - do: nginx -t
+      why: Ask nginx to validate its own config file. A syntax error here is the single most common reason nginx refuses to (re)start.
+    - do: ls -l /var/www/html/index.html
+      why: If nginx is running and listening but you still get an error, confirm it can actually read the file it's supposed to serve.
+  practice:
+    task: >
+      Before you touch the real incident below, predict the output for each
+      command against a *healthy* server, then reveal the answer.
+    questions:
+      - prompt: What should `ss -ltnp | grep :80` show when nginx is healthy and listening?
+        answer: "A line like `LISTEN 0 511 *:80 *:* users:((\"nginx\",pid=...,fd=...))` — nginx owns port 80."
+      - prompt: What does `nginx -t` print when the config is valid?
+        answer: "`nginx: the configuration file ... syntax is ok` followed by `nginx: configuration file ... test is successful`."
+      - prompt: What permission bits let nginx's worker process (usually running as www-data) read a file it doesn't own?
+        answer: World-readable, e.g. 644 — the "other" bits need at least read (4).
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Start with the symptom. What does curl localhost:8080 return?
+  - Is the web server process running? Is anything listening on port 80?
+variants:
+  - id: config-typo
+    script: variants/config-typo.sh
+    weight: 1
+    hints:
+      - Ask nginx to test its own configuration.
+  - id: port-taken
+    script: variants/port-taken.sh
+    weight: 1
+    hints:
+      - Which process owns port 80? Try ss -ltnp.
+  - id: bad-perms
+    script: variants/bad-perms.sh
+    weight: 1
+    hints:
+      - Can the web server process read the homepage file? Check its permissions and owner.

@@ -1,0 +1,41 @@
+id: lnx-018
+title: Graceful Shutdown
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, processes]
+type: guided
+path: linux-fundamentals
+module: processes
+summary: Watch the difference between asking a process to stop and forcing it to — one leaves a clean record behind, the other can't.
+objectives:
+  - send SIGTERM to let a process shut down on its own terms
+  - send SIGKILL and observe that the target gets no chance to react
+  - explain why a trapped signal can run cleanup code and an unconditional kill cannot
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: pgrep -af worker1
+      why: Finds worker1's PID along with its full command line in one step.
+    - do: kill <pid>
+      why: Sends SIGTERM, giving worker1's trap a chance to run its cleanup and write its completion marker before exiting.
+    - do: ls /workspace/worker-graceful.marker
+      why: Confirms the graceful shutdown actually let the trap run and write the marker, not just that the process exited.
+    - do: /usr/local/bin/worker.sh /workspace/worker-forced.marker &
+      why: Starts a second instance with a different marker path so its outcome doesn't overwrite worker1's.
+    - do: pgrep -af worker-forced.marker
+      why: Finds the new instance's PID before forcing it.
+    - do: kill -9 <pid>
+      why: Sends SIGKILL, which the kernel enforces unconditionally — the target never gets a chance to run its trap or write anything.
+    - do: ls /workspace/worker-forced.marker
+      why: Confirms the forced kill gave the process no chance to write its marker, unlike the graceful shutdown.
+hints:
+  - "pgrep -af worker1 finds worker1's PID along with its full command line."
+  - "kill <pid> (SIGTERM) gives the worker a chance to run its cleanup and write a marker file; kill -9 <pid> (SIGKILL) gives it none."
+  - Start the second worker instance with a different marker path so its outcome doesn't overwrite worker1's.

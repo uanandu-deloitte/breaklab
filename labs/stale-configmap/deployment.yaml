@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_MESSAGE: v1
+  message: v1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-reader
+  labels:
+    app: config-reader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-reader
+  template:
+    metadata:
+      labels:
+        app: config-reader
+    spec:
+      containers:
+        - name: config-reader
+          image: busybox:1.36
+          env:
+            - name: APP_MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_MESSAGE
+          command: ["sh", "-c", "touch /tmp/ready && sleep infinity"]
+          readinessProbe:
+            exec:
+              command: ["cat", "/tmp/ready"]
+            initialDelaySeconds: 1
+            periodSeconds: 2
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config/message
+              subPath: message
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config

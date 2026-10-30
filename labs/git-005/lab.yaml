@@ -1,0 +1,35 @@
+id: git-005
+title: Wrong Branch
+stage: git
+difficulty: 2
+estimated_minutes: 20
+tags: [git, branching]
+type: practice
+path: version-control
+module: branching
+summary: Two commits meant for a feature branch were made directly on main — split them out without losing the work, then put main back where it belongs.
+objectives:
+  - create a branch that preserves commits already made on another branch
+  - move a branch pointer backward safely with git reset --hard
+  - tell the difference between discarding work and relocating it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: git log --oneline --all --graph
+      why: Shows every ref's history at once — confirms where main's two mistaken commits sit relative to known-good-base before you move anything.
+    - do: git branch feature/csv-export main
+      why: Creates a new branch pointing at main's current tip without switching to it, so the two commits become reachable from a second name too.
+    - do: git reset --hard known-good-base
+      why: Moves main's pointer backward safely now that the commits are also reachable from feature/csv-export — nothing is lost, it's just no longer on main's line.
+    - do: git log --oneline --all --graph
+      why: Confirms main is back at known-good-base while feature/csv-export still points at the original tip with both CSV-export commits.
+hints:
+  - "main currently points at the mistaken commits. Create the feature branch from main's current position before you move main anywhere."
+  - "git branch <name> <start-point> creates a branch without switching to it — you don't need to check it out to create it."
+  - "Once the commits are reachable from the new branch, git reset --hard known-good-base is safe: nothing is lost, it's just no longer on main's line of history."

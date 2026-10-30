@@ -1,0 +1,310 @@
+/* BEGIN design tokens for this site only — no longer shared with the
+   local app, which moved to Astryx's own theme system and dropped
+   templates/web/style.css (redesign-web-ui-astro); the two are now
+   deliberately independent design systems.
+   Direction: "Warm Ledger" — a warm paper-cream canvas, white cards
+   outlined in solid ink (--border-strong, not a soft shadow) rather
+   than floated on pastel fills, and one terracotta accent, replacing
+   the earlier violet/lavender-gray "Bright Signal" system (itself a
+   reversal of a prior pass's explicit "not the cliché warm cream"
+   call — the brief pinned a cream/ink/terracotta reference image, so
+   this is a deliberate identity replacement, not drift). Corners stay
+   rounded (buttons keep --radius-full pill) but definition now comes
+   from a real --border-strong line around every card, echoing the
+   reference's black-outlined white/tan cards instead of a floating
+   shadow. --pastel-* keeps its four-color rotation (list scanability
+   is still a real requirement) but the hues shift from candy-violet to
+   muted warm neutrals (sage/sand/clay/gold) so they read as "paper,"
+   not "candy." --accent (terracotta) is the one actionable/link color
+   — status hues (--ok/--warning/--danger/--info) stay distinct from it
+   and from each other so "in progress"/difficulty-2 never reads as
+   plain body text or as a link/button. Color is still never the only
+   signal: every badge pairs its hue with a text label AND a leading
+   mark (see .badge/.difficulty), never a tinted fill alone (web-ui-
+   design's "never color alone" requirement). Topic tags use the other
+   non-text distinction available, a filled background instead of an
+   outline (see .tag), rather than a hue. Every token below is verified
+   by TestDesignTokensMeetWCAGAAContrast: --fg/--fg-muted clear 4.5:1
+   and the --ok/--warning/--danger/--info/--accent status set clears
+   3.0:1, both against --bg. The --pastel-* fills are never used for
+   text, only backgrounds behind --fg, so they sit outside that
+   contrast-checked set by design. --ok/--warning/--danger/--info/
+   --fg-muted are also used AS badge/difficulty text on top of their
+   own color-mix(currentColor, --bg-elevated) tint (see .badge/
+   .difficulty below) — a tighter, self-referential 4.5:1 floor than
+   the --bg check covers, so each is picked dark enough to clear that
+   too. */
+:root {
+  color-scheme: light;
+
+  /* Warm paper-cream canvas, the reference's signature over the prior
+     system's lavender-gray */
+  --bg: #f2ecdc;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #e9e0c8;
+  --bg-overlay: #ded2b0;
+
+  --fg: #1a1711;
+  --fg-muted: #615948;
+  --fg-subtle: #9c9480;
+
+  /* --border stays a quiet hairline for internal dividers;
+     --border-strong is now solid ink, not a darker tint of --border —
+     it's the card-outline color (see .panel/.active-lab/.stat-tile/
+     .stage-node below), matching the reference's black-bordered cards. */
+  --border: #e2d8bc;
+  --border-strong: #1a1711;
+
+  /* One warm, saturated terracotta for everything actionable/linked */
+  --accent: #c14e1f;
+  --accent-strong: #963812;
+  --accent-subtle: #f7e2d2;
+
+  /* WCAG-legible status hues, re-picked to sit comfortably on a warm
+     canvas instead of the prior cool-violet system's hues */
+  --ok: #2f6b2f;
+  --warning: #8c5a07;
+  --danger: #ab2e2e;
+  --info: #1d5f7a;
+
+  /* Card/section fills — same four-color rotation as before (list
+     scanability is still a real requirement), re-dyed warm/muted:
+     sage, sand, clay, gold, with a soft coral reserved as the one hero
+     fill (--pastel-blush's job, unchanged). */
+  --pastel-mint: #dbe4ca;
+  --pastel-lavender: #e7dcc0;
+  --pastel-sky: #ded7c2;
+  --pastel-butter: #efdfb0;
+  --pastel-blush: #f3d9c4;
+
+  /* Already documented in DESIGN.md's color list but never wired as
+     tokens; the topology graph canvas is the first surface to use
+     them (an intentional one-off dark "technical readout" treatment,
+     not a second theme — everything else stays Warm Ledger). */
+  --terminal-bg: #18181b;
+  --terminal-fg: #f4f4f5;
+  --terminal-muted: #b3b3b3;
+
+  --focus-ring: #c14e1f;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+
+  /* Pill-round, not subtle — the signature shape of this direction */
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --radius-full: 999px;
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* 1rem is the floor: nothing in the app renders smaller, a standing
+     accessibility commitment carried over unchanged from every prior
+     system. --text-sm equals --text-base rather than being removed, so
+     every existing "small" label keeps its semantic tier without
+     dropping under the floor. */
+  --text-sm: 1rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+}
+/* END shared design tokens */
+
+/* Locally-vendored faces — see breaklab publish's font copy step; never
+   a network font request (web-ui-design spec's "Locally-vendored
+   typography" requirement), so site/index.html still renders correctly
+   opened from disk with no network connection. Geist carries every UI
+   label and heading; JetBrains Mono is reserved for things that are
+   literally code (inline `code` spans here). Relative src: style.css
+   always lives at the published site's own root, so this resolves
+   correctly regardless of where the site itself is hosted (GitHub
+   Pages subpath, or opened directly from disk). */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.5;
+  color: var(--fg);
+  background-color: var(--bg);
+}
+
+h1, h2 {
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: calc(var(--text-xl) * 1.2);
+  font-weight: 800;
+  padding-bottom: var(--space-3);
+  border-bottom: 3px dashed var(--border-strong);
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  margin-top: var(--space-5);
+}
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+a:active {
+  color: var(--fg-muted);
+}
+
+.totals {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--pastel-lavender);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-full);
+}
+
+.totals p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.stage {
+  margin: var(--space-5) 0;
+}
+
+.bar {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  height: 0.75rem;
+  overflow: hidden;
+  margin: var(--space-2) 0;
+}
+
+.bar-fill {
+  background: var(--accent);
+  height: 100%;
+}
+
+ul.labs {
+  list-style: none;
+  padding: 0;
+}
+
+ul.labs li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.date {
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+}
+
+/* Difficulty badge: each level gets its own hue (see the token block's
+   --ok/--warning/--danger comment), shown as a tinted fill behind a
+   currentColor border plus a leading solid dot. Color is always paired
+   with the numeric label itself, never the only signal (web-ui-design
+   spec). */
+.difficulty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  background: color-mix(in srgb, currentColor 22%, var(--bg-elevated));
+}
+
+.difficulty::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.difficulty-1 { color: var(--ok); }
+.difficulty-2 { color: var(--warning); }
+.difficulty-3 { color: var(--danger); }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 1em;
+  color: var(--accent-strong);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
+}

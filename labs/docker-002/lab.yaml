@@ -1,0 +1,37 @@
+id: docker-002
+title: Read the Dockerfile
+stage: docker
+difficulty: 2
+estimated_minutes: 20
+tags: [containers, image-anatomy]
+type: practice
+path: docker-fundamentals
+module: image-anatomy
+summary: No live system to debug this time — just a Dockerfile, three mistakes, and the question of whether you can spot them by reading alone.
+objectives:
+  - identify which instruction ordering defeats Docker's build cache
+  - trace which builder-stage files and tools actually survive into a multi-stage final image
+  - distinguish deleting a file within the same RUN instruction from deleting it in a later, separate one
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /workspace/sample.Dockerfile
+      why: Read the whole multi-stage Dockerfile once, top to bottom, before answering anything about it.
+    - do: grep -n "COPY . ." /workspace/sample.Dockerfile
+      why: Finds the instruction that copies application source before the dependency-install step — this is the one that busts the cache on every source change, even when package.json never changed.
+    - do: grep -n "COPY --from=builder" /workspace/sample.Dockerfile
+      why: Shows exactly which paths the final stage pulls across from the builder stage — anything not named here, like build-essential or python3, never leaves the builder stage.
+    - do: grep -n -A1 "Block A" /workspace/sample.Dockerfile
+      why: Shows the scratch file created and removed within the same RUN instruction — that layer's diff is captured only after both commands finish, so the file never appears in it.
+    - do: grep -n -A1 "Block B" /workspace/sample.Dockerfile
+      why: Shows the second scratch file, created in one RUN and removed by a separate, later RUN — the create was already committed to an earlier layer before the later RUN's delete ever runs.
+hints:
+  - "Docker's layer cache is sequential: once one layer's cache misses, every layer after it misses too, even if that later instruction's own command never changed."
+  - "--from=builder only pulls across the exact paths named in a COPY --from instruction — nothing else from that stage, including anything apt-get installed there, comes along for free."
+  - "A RUN layer is a snapshot of the filesystem state after the whole instruction finishes. A file created and deleted inside one RUN never appears in that layer's diff; a file deleted by a later, separate RUN already exists in an earlier layer and stays part of the image."

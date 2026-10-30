@@ -1,0 +1,148 @@
+---
+import "@astryxdesign/core/reset.css";
+import "@astryxdesign/core/astryx.css";
+import Shell from "../components/Shell";
+// The graph itself is rendered by the existing vendored
+// cytoscape.min.js (still served by Go at /js/cytoscape.min.js), not a
+// React island, per design.md "React islands only where an Astryx
+// component is used" — only the page chrome (Shell's nav) is React;
+// #topo-root is static markup the script below fills in imperatively.
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BreakLab — topology</title>
+    <script is:inline src="/js/cytoscape.min.js"></script>
+  </head>
+  <body>
+    <Shell client:load>
+      <h1>Topology</h1>
+      <div id="topo-root"></div>
+    </Shell>
+    <script type="module">
+      const root = document.getElementById("topo-root");
+
+      function el(tag, attrs, children) {
+        const node = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+        for (const child of children || []) node.appendChild(child);
+        return node;
+      }
+
+      function copyButton(text) {
+        const btn = el("button", {}, []);
+        btn.textContent = "Copy";
+        btn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.left = "-1000px";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+          }
+          btn.textContent = "Copied";
+          setTimeout(() => (btn.textContent = "Copy"), 1500);
+        });
+        return btn;
+      }
+
+      fetch("/api/topology", { credentials: "include" })
+        .then((res) => res.json())
+        .then((view) => {
+          if (!view.Active) {
+            root.appendChild(el("p", {}, [document.createTextNode("No lab is active.")]));
+            return;
+          }
+
+          root.appendChild(el("p", {}, [document.createTextNode(view.Lab)]));
+
+          const canvas = el("div", { id: "topo-cy", style: "width: 100%; height: 420px;" }, []);
+          root.appendChild(canvas);
+
+          const cy = cytoscape({
+            container: canvas,
+            elements: view.Elements,
+            minZoom: 0.4,
+            maxZoom: 2,
+            wheelSensitivity: 0.2,
+            style: [
+              {
+                selector: "node",
+                style: {
+                  shape: "round-rectangle",
+                  width: "label",
+                  height: "label",
+                  padding: "14px",
+                  "background-color": "#1f1f23",
+                  "border-width": 1.5,
+                  "border-color": "#3a3a40",
+                  label: "data(label)",
+                  "text-wrap": "wrap",
+                  "text-valign": "center",
+                  "text-halign": "center",
+                  "font-size": 14,
+                  color: "#f4f4f5",
+                },
+              },
+              { selector: "node[kind='host']", style: { "border-color": "#c14e1f", "border-width": 2 } },
+              { selector: "node[kind='container']", style: { "border-color": "#1d5f7a", "border-width": 2 } },
+              { selector: "node[kind='port']", style: { "border-color": "#2f6b2f", "border-width": 2 } },
+              {
+                selector: "edge",
+                style: {
+                  width: 1.5,
+                  "line-color": "#6b6b72",
+                  "curve-style": "bezier",
+                  "target-arrow-shape": "triangle",
+                  "target-arrow-color": "#6b6b72",
+                  label: "data(label)",
+                  "font-size": 13,
+                  color: "#b3b3b3",
+                },
+              },
+            ],
+            layout: { name: "breadthfirst", directed: true, padding: 40, spacingFactor: 1.4 },
+          });
+
+          const toolbar = el("div", {}, [
+            (() => {
+              const b = el("button", {}, []);
+              b.textContent = "+";
+              b.addEventListener("click", () => cy.zoom(cy.zoom() * 1.2));
+              return b;
+            })(),
+            (() => {
+              const b = el("button", {}, []);
+              b.textContent = "−";
+              b.addEventListener("click", () => cy.zoom(cy.zoom() / 1.2));
+              return b;
+            })(),
+            (() => {
+              const b = el("button", {}, []);
+              b.textContent = "Reset view";
+              b.addEventListener("click", () => cy.fit(undefined, 40));
+              return b;
+            })(),
+          ]);
+          root.insertBefore(toolbar, canvas);
+
+          for (const c of view.Containers) {
+            const section = el("section", {}, [
+              el("h2", {}, [document.createTextNode(`${c.Name} (${c.Status})`)]),
+              el("p", {}, [document.createTextNode(`Image: ${c.Image}`)]),
+              el("p", {}, [document.createTextNode(`${c.ExecCmd} `), copyButton(c.ExecCmd)]),
+            ]);
+            root.appendChild(section);
+          }
+        })
+        .catch((err) => {
+          root.appendChild(el("p", {}, [document.createTextNode(`Couldn't load topology: ${err}`)]));
+        });
+    </script>
+  </body>
+</html>

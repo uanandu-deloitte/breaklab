@@ -1,0 +1,65 @@
+id: crash-loop-worker
+title: Worker won't stay up after today's deploy
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, containers, chaos-engineering, fault-injection]
+summary: The worker's restart count keeps climbing right after today's deploy — the current Pod's logs are gone by the time you look.
+prerequisites: [k8sf-004]
+loop:
+  learn: >
+    When a container exits immediately after start, Kubernetes restarts it
+    per restartPolicy, which means the live Pod you inspect may already be
+    on its third or fourth attempt — its current logs show nothing because
+    it just started again. The exit itself can come from two different
+    places: something wrong in what the container was told to run (a bad
+    command or entrypoint), or something missing that the container checks
+    for before it will run at all (a required environment variable). Both
+    produce the same visible symptom — a climbing restart count — so you
+    have to look at the previous attempt's exit, not the current one, to
+    tell them apart.
+  guided:
+    - do: kubectl get pods -l app=worker
+      why: Confirm the restart count is actually climbing and isn't a one-off blip before investigating further.
+    - do: kubectl logs <pod> --previous
+      why: The current container instance may have only just started — its predecessor's logs, right before it exited, are where the actual failure message lives.
+    - do: kubectl get pod <pod> -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}{"\n"}{.status.containerStatuses[0].lastState.terminated.exitCode}{"\n"}'
+      why: Get the precise termination reason and exit code written down, rather than guessing from the restart count alone.
+    - do: kubectl get deployment worker -o yaml | grep -A5 env
+      why: Check what environment variables the Deployment actually defines right now — a variable the container's startup script requires may simply be missing from the current spec.
+    - do: kubectl describe deployment worker
+      why: Look at the Events and current template to see what changed recently — a typo'd command or a removed env var both show up here.
+    - do: kubectl rollout undo deployment/worker
+      why: If today's deploy introduced the bad command or dropped the required variable, undoing the rollout restores the previous spec that was known to work.
+  practice:
+    task: >
+      Before touching the real incident below, reason through why the
+      current Pod's logs can be misleading, then reveal the answer.
+    questions:
+      - prompt: kubectl logs <pod> shows nothing useful for a crash-looping Pod. What's the first thing to try instead?
+        answer: kubectl logs <pod> --previous — the currently-running container may have only just restarted, so its logs are empty or irrelevant; the actual failure output is in the terminated container instance before it.
+      - prompt: lastState.terminated.reason is Error with exitCode 1, not OOMKilled. Does that rule out a resource problem?
+        answer: "It strongly suggests the process exited on its own (e.g. a script hitting `exit 1` deliberately, such as a missing-env check), rather than being killed by the kernel — but you'd still confirm by reading the actual exit message via --previous logs rather than inferring purely from the code."
+      - prompt: Why does a required environment variable being missing produce the exact same restart-count symptom as a typo in the startup command?
+        answer: Because both cause the container's entrypoint process to exit non-zero almost immediately after starting, which Kubernetes treats identically — as a crash to restart — regardless of why the process chose to exit.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - kubectl get pods -l app=worker shows a rising restart count.
+  - kubectl logs <pod> --previous shows what the container printed right before it last exited.
+variants:
+  - id: bad-command
+    script: variants/bad-command.sh
+    weight: 1
+    hints:
+      - Check lastState.terminated on the Pod — what exit code and reason does it report?
+  - id: missing-env
+    script: variants/missing-env.sh
+    weight: 1
+    hints:
+      - The container checks for an environment variable before starting. Is it actually set on the Deployment?

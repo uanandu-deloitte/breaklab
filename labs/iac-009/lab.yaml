@@ -1,0 +1,37 @@
+id: iac-009
+title: The Config Says One Thing, The State Remembers Another
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, terraform]
+type: practice
+path: iac-fundamentals
+module: terraform-workflow
+summary: main.tf was updated for today's release, but nobody ran terraform apply -- the real banner and Terraform's own state both still remember yesterday's text.
+objectives:
+  - read a real terraform plan to see exactly what changed between declared config and recorded state
+  - reconcile real-world state to a declared config using terraform apply, not a hand-edit
+  - confirm a terraform plan reports no pending changes once state, config, and the real world agree
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/main.tf
+      why: Shows the banner text that's supposed to be live right now, declared as a local_file resource.
+    - do: cat /etc/motd-app/banner.txt
+      why: Shows what's actually on disk -- compare it by eye against main.tf's declared content before running anything.
+    - do: cd /infra && terraform plan
+      why: Terraform diffs the declared config against its own recorded state, not just the file on disk -- this is the real signal that something hasn't been applied yet.
+    - do: terraform apply -auto-approve
+      why: Reconciles the real file and Terraform's state to match main.tf -- the only way to fix drift that doesn't just drift again next time someone runs plan.
+    - do: terraform plan -detailed-exitcode
+      why: Exits 0 only when state, config, and the real world all agree -- the real proof this is actually fixed, not just eyeballed.
+hints:
+  - "cd /infra first -- that's where this stack's main.tf and Terraform state live."
+  - "terraform plan tells you exactly what it thinks needs to change, and why, before you touch anything."
+  - "terraform apply -auto-approve is what actually reconciles the real file to match main.tf. Hand-editing /etc/motd-app/banner.txt would just drift again the next time anyone applies."

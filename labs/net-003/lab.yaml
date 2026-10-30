@@ -1,0 +1,40 @@
+id: net-003
+title: Connectivity Ladder
+stage: networking
+path: networking-fundamentals
+module: network-troubleshooting-tools
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, troubleshooting]
+type: practice
+summary: Four local endpoints, four different failure classes — diagnose each one before touching anything.
+objectives:
+  - distinguish a healthy response from a DNS failure, a connection refusal, and a timeout
+  - use ping, ss, nc -zv, and curl to narrow down which layer failed
+  - classify a connectivity symptom into its correct failure class
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl http://localhost:8001/
+      why: A normal response here is what "healthy" looks like — DNS resolved, the TCP handshake completed, and the server answered.
+    - do: curl http://nonexistent.internal:8002/
+      why: Fails with "Could not resolve host" — the name never became an address, before any TCP connection was even attempted. That's dns-failure.
+    - do: curl http://localhost:8003/
+      why: Fails immediately with "Connection refused" — the host is reachable, but nothing is listening on that port. That's refused.
+    - do: nc -zv localhost 8003
+      why: Reproduces the same refusal signal directly at the TCP layer, without needing an application protocol.
+    - do: curl --max-time 3 http://localhost:8004/
+      why: Without a short timeout this would hang indefinitely — something accepted the connection but never sent a response. That's timeout.
+    - do: ss -ltn
+      why: Shows, independent of curl, which of these ports actually have a process in LISTEN state at all — ground truth to check your classification against.
+hints:
+  - "Work through the endpoints in order: 8001, then nonexistent.internal:8002, then 8003, then 8004."
+  - "curl -v shows exactly which stage failed: DNS resolution, TCP connection, or waiting for a response."
+  - "nc -zv <host> <port> tests whether a TCP connection can even be established, without sending or expecting any application data."
+  - Use a short --max-time with curl when probing 8004, or you'll wait a very long time for nothing.

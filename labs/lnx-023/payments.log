@@ -1,0 +1,11 @@
+2026-01-15T10:20:02Z INFO payments charge authorized req=req-1001
+2026-01-15T10:20:16Z INFO payments charge authorized req=req-1002
+2026-01-15T10:20:41Z INFO payments charge authorized req=req-1003
+2026-01-15T10:21:03Z INFO payments charge authorized req=req-1004
+2026-01-15T10:21:31Z INFO payments received authorization request req=req-8841
+2026-01-15T10:21:33Z WARN payments ledger-service response slow req=req-8841
+2026-01-15T10:21:56Z INFO payments charge authorized req=req-1005
+2026-01-15T10:22:01Z ERROR payments upstream timeout contacting ledger-service req=req-8841
+2026-01-15T10:22:21Z INFO payments charge authorized req=req-1006
+2026-01-15T10:22:46Z INFO payments charge authorized req=req-1007
+2026-01-15T10:23:11Z INFO payments charge authorized req=req-1008

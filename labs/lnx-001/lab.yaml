@@ -1,0 +1,41 @@
+id: lnx-001
+title: Identify the Machine
+stage: linux
+difficulty: 1
+estimated_minutes: 15
+tags: [linux, orientation]
+type: guided
+path: linux-fundamentals
+module: linux-orientation
+summary: You've been given shell access to an unfamiliar host — collect its basic operating context before touching anything.
+objectives:
+  - determine a host's distribution, kernel, and architecture
+  - distinguish shell, user, and hostname identity
+  - record findings collected from the running environment, not guessed
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /etc/os-release
+      why: Shows the distribution name and version in predictable ID/NAME/PRETTY_NAME fields — this is where DISTRIBUTION comes from, not a guess.
+    - do: uname -r
+      why: Prints the exact running kernel version — copy this directly into KERNEL.
+    - do: uname -m
+      why: Prints the CPU architecture (e.g. x86_64, aarch64) — this is ARCHITECTURE.
+    - do: hostname
+      why: Prints this host's hostname, independent of who you are — this is HOSTNAME.
+    - do: whoami
+      why: Prints the user you're actually running as right now — this is USER, and it can differ from what you'd assume.
+    - do: echo $SHELL
+      why: Names your configured login shell — this is SHELL.
+    - do: pwd
+      why: Prints your current working directory — this is WORKING_DIRECTORY.
+hints:
+  - Linux identity is available through files under /etc and a handful of system commands.
+  - Inspect /etc/os-release, the environment, and kernel information.
+  - "Useful commands: uname -r, uname -m, hostname, whoami, echo $SHELL, pwd."

@@ -1,0 +1,66 @@
+id: stale-configmap
+title: Config update never actually took effect
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, configuration]
+summary: app-config's message moved from v1 to v2 this morning, but config-reader is still acting on v1 — and this time, simply waiting for it to catch up won't help.
+prerequisites: [k8sd-001]
+loop:
+  learn: >
+    Kubernetes does keep a volume-mounted ConfigMap file in sync with the
+    live object automatically — kubelet periodically resyncs a plainly
+    mounted key, so it does eventually update on disk without a Pod
+    restart. That guarantee has two specific exceptions worth telling
+    apart: an environment variable sourced from a ConfigMap is resolved
+    once at container start and never updates regardless of how long you
+    wait, and a volume mounted with subPath is explicitly excluded from
+    that automatic resync, because subPath ties the mount to a single
+    file rather than the live ConfigMap directory. Knowing which of the
+    two you're looking at tells you whether "just give it a minute" would
+    ever have worked at all.
+  guided:
+    - do: kubectl get configmap app-config -o yaml
+      why: Confirms the ConfigMap genuinely holds v2 for both keys before assuming the Pod side is broken.
+    - do: kubectl exec <pod> -- printenv APP_MESSAGE
+      why: Checks the env-var path directly — if this still shows v1, you've confirmed the frozen-at-start mechanism.
+    - do: kubectl exec <pod> -- cat /etc/config/message
+      why: Checks the file path — if this also still shows v1, it rules out "it just hasn't synced yet," since a subPath mount never syncs live updates at all.
+    - do: kubectl get deployment config-reader -o yaml
+      why: Confirms the mount uses subPath specifically — that one field is why this particular file isn't behaving like a normal auto-updating ConfigMap volume.
+    - do: kubectl describe pod -l app=config-reader
+      why: The Pod's start time predating the ConfigMap edit is consistent with both staleness mechanisms, and rules out "it just hasn't had enough time."
+    - do: kubectl rollout restart deployment/config-reader
+      why: Neither a frozen env var nor a subPath-mounted file updates live — replacing the Pod is the only way either path picks up the current ConfigMap value.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: A ConfigMap is mounted as a plain volume (no subPath), and the Pod has run for an hour since the ConfigMap changed. Should the file on disk reflect the new value?
+        answer: Yes — kubelet periodically resyncs a plainly-mounted ConfigMap volume, so the file on disk updates automatically within roughly a minute, with no Pod restart needed (though an app that cached the old contents at startup still won't notice).
+      - prompt: Does a subPath mount behave the same way as a plain ConfigMap volume mount once the ConfigMap changes?
+        answer: No — subPath mounts are specifically excluded from the automatic ConfigMap resync. The file at a subPath mount point won't pick up the update no matter how long you wait, so a Pod restart is required rather than optional.
+      - prompt: Why does config-reader's APP_MESSAGE env var stay v1 even though the ConfigMap's APP_MESSAGE key is now v2?
+        answer: valueFrom.configMapKeyRef only resolves the value once, when the container starts, and copies it into the environment at that moment — it's never re-evaluated afterward, regardless of later ConfigMap changes.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - A ConfigMap update alone doesn't change what a running Pod sees. Consumption method determines refresh behavior.
+  - kubectl get configmap app-config -o yaml shows the current declared value; compare it against what the Pod actually sees.
+variants:
+  - id: env-var
+    script: variants/env-var.sh
+    weight: 1
+    hints:
+      - Environment variables are set once when the container starts and never update on their own.
+  - id: subpath-mount
+    script: variants/subpath-mount.sh
+    weight: 1
+    hints:
+      - A plain mounted ConfigMap file updates on its own after a short delay. A subPath mount does not.

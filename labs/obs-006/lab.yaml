@@ -1,0 +1,46 @@
+id: obs-006
+title: Dashboards Query by Name — Renames Break Silently
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, metrics, dashboards]
+type: guided
+path: observability-fundamentals
+module: dashboards
+summary: A panel is configured to show one metric name, the exporter emits a close cousin of that name — close enough to read right, wrong enough to match nothing.
+objectives:
+  - trace a dashboard panel's render path from its configured metric name to an exact-match lookup against the exporter's current output
+  - diagnose a silently empty panel by comparing the exact strings on both sides of that lookup, not just skimming them
+  - recognize that a failed name lookup degrades to "no data" instead of an error, so nothing alerts on it
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /etc/dashboards/overview.yaml
+      why: Reads exactly which metric name the panel is configured to look up.
+    - do: jq 'keys' /var/lib/metrics/exported.json
+      why: Lists every metric key the exporter is actually emitting right now, to compare against what the panel expects.
+    - do: render-dashboard && cat /var/lib/dashboards/overview.rendered
+      why: Re-runs the real render step and reads its actual output — "no-data" confirms the lookup is failing right now, not just historically.
+    - do: "diff <(echo disk_free_pct) <(jq -r 'keys[]' /var/lib/metrics/exported.json | grep disk)"
+      why: Lines up the panel's expected name against the closest real key byte-for-byte, so a subtle rename (not a typo) is unmistakable.
+  practice:
+    task: >
+      Before touching the real incident below, reason through how the
+      lookup chain resolves, then reveal the answer.
+    questions:
+      - prompt: A panel asks for metric "requests_total" and the exporter's JSON has no such key, but does have "http_requests_total". Does render-dashboard error out?
+        answer: "No. A missing key resolves to \"no-data\" (or similar), not an error — the render step treats an absent key as a normal, if empty, result rather than a failure."
+      - prompt: Why is "the exporter's data looks fine in isolation" not enough to clear the exporter of blame?
+        answer: Because the exporter can be emitting perfectly correct, current data under its current name while the dashboard never looks there — the bug isn't in the data, it's in the agreement between two configs about what to call it.
+      - prompt: What are the two ways to close a metric rename gap like this, and when would you pick each?
+        answer: Update the panel config to reference the new name directly (cleanest, if nothing else still depends on the old name), or add an alias/compat mapping from old name to new name (useful when other dashboards still reference the old name and can't all be updated at once).
+hints:
+  - "A dashboard panel does an exact string match between its configured metric name and a key in the exporter's output — no fuzzy matching, no partial credit."
+  - "jq 'keys' on the exporter's JSON shows you every name that's actually available right now."
+  - "Compare the two names character for character — a rename usually looks almost identical, not obviously wrong."

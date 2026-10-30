@@ -1,0 +1,35 @@
+id: obs-009
+title: The Dashboard Panel That Queries Nothing
+stage: observability
+difficulty: 3
+estimated_minutes: 20
+tags: [observability, grafana, prometheus]
+type: break-fix
+path: observability-fundamentals
+module: real-dashboards
+summary: The Checkout overview dashboard's one panel queries a metric name that was renamed on the exporter side -- real Grafana, real Prometheus, a real empty graph.
+objectives:
+  - read a real Grafana dashboard's provisioned JSON to find a panel's actual stored query
+  - query Prometheus's real HTTP API directly to separate a dashboard problem from a data problem
+  - fix a dashboard panel's query to match a metric's current real name
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl -s http://localhost:9090/api/v1/label/__name__/values | jq .
+      why: Lists every real metric name Prometheus currently has -- the ground truth for what's actually being exported right now.
+    - do: cat /etc/grafana/provisioning/dashboards/json/checkout.json
+      why: Shows the dashboard's real provisioned panel query -- compare it against the real metric names you just listed.
+    - do: curl -s --data-urlencode 'query=http_requests_total' http://localhost:9090/api/v1/query | jq .
+      why: Runs the panel's exact query directly against Prometheus, independent of Grafana -- confirms whether the problem is the query or the data.
+    - do: curl -s http://localhost:3000/api/dashboards/uid/checkout-overview | jq '.dashboard.panels[0].targets[0].expr'
+      why: Confirms the same thing from Grafana's own API -- this is the literal string the panel re-runs on every render.
+hints:
+  - "A panel's query is just a stored string -- Grafana never checks whether the metric it names actually still exists."
+  - "List every real metric name Prometheus has with /api/v1/label/__name__/values, then compare it against the panel's expr by eye."
+  - "The fix is editing the dashboard panel's expr to the metric's current name, not changing anything on the exporter side."

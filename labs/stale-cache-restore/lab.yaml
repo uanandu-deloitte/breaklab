@@ -1,0 +1,65 @@
+id: stale-cache-restore
+title: CI reports success but the app is running last build's dependencies
+stage: cicd
+difficulty: 2
+estimated_minutes: 20
+tags: [cicd, caching, dependencies]
+prerequisites: [cicd-006]
+summary: The security fix landed in requirements.lock and CI reported a clean build, but the deployed vendor copy never actually picked up the new version.
+loop:
+  learn: >
+    A build cache is only trustworthy if its invalidation key is actually
+    derived from the thing that's supposed to invalidate it. A cache keyed
+    on something incidental — a directory's own mtime, a counter that
+    doesn't move when the real input changes — will happily report "cache
+    hit, nothing to do" even after the input it's meant to track has
+    changed underneath it. The symptom is always the same shape: the
+    pipeline reports success, but the artifact it produced doesn't match
+    the thing you most recently edited. The fix is never "clear the cache
+    once" — it's finding what the key is actually derived from and making
+    sure that's the real input, not a proxy for it.
+  guided:
+    - do: diff /srv/app/requirements.lock /srv/app/vendor/requirements.lock
+      why: Directly confirms the deployed vendor copy doesn't match the current lockfile — the real symptom, not just the ticket's claim.
+    - do: cat $(command -v ci-build)
+      why: Reveals exactly how the build decides to refresh from the lockfile versus reuse what's cached — that decision logic is where the real bug lives.
+    - do: stat /var/cache/ci/deps
+      why: If the cache key is derived from this directory's own mtime rather than the lockfile's content, editing the lockfile will never have touched this timestamp.
+    - do: cat /var/cache/ci/.cache-key
+      why: Compares the stored key against what the next build would compute — if they always match regardless of lockfile edits, the key isn't tracking the right input at all.
+    - do: ci-build
+      why: Watch which branch it actually takes ("refreshing" vs "reusing cached") to confirm live whether it's noticing your lockfile change at all.
+    - do: <touch /var/cache/ci/deps, or copy requirements.lock into the cache directly> && ci-build
+      why: Whichever flavor of broken invalidation caused it, the fix is making the next build genuinely copy from the current lockfile instead of trusting a cache that was never told it was stale.
+  practice:
+    task: >
+      Before touching the real incident below, reason through each
+      signal, then reveal the answer.
+    questions:
+      - prompt: ci-build prints "build complete" with no errors on every run. Does that mean the deployed dependencies match the current lockfile?
+        answer: No — a clean exit only means the script ran without error. If the cache key doesn't accurately reflect the lockfile's content, "build complete" can mean "successfully reused stale dependencies," which is exactly what happened here.
+      - prompt: Why does deriving a cache key from a cache directory's own mtime fail to catch a lockfile content change?
+        answer: The key is watching the wrong thing — editing the lockfile's content doesn't touch the cache directory's own timestamp, so the key stays identical across builds even though the real input changed.
+      - prompt: What would make this cache invalidation actually reliable?
+        answer: Deriving the key from the lockfile itself — a hash or mtime of requirements.lock — rather than from something incidental like the cache directory's own timestamp, which only changes when the cache is written to, not when the thing it caches should change.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - /srv/app/requirements.lock is the source of truth for what should be deployed. Compare it against /srv/app/vendor.
+  - The cached dependency copy lives in /var/cache/ci/deps. Read /usr/local/bin/ci-build to see how (and whether) it decides that cache is still good.
+variants:
+  - id: cache-never-invalidated
+    script: variants/cache-never-invalidated.sh
+    weight: 1
+    hints:
+      - Read ci-build end to end. Is there anywhere it compares the cache against requirements.lock at all?
+  - id: cache-key-ignores-lockfile
+    script: variants/cache-key-ignores-lockfile.sh
+    weight: 1
+    hints:
+      - ci-build does compute a cache key before deciding to reuse the cache. What is that key actually derived from?
+      - A key that never changes when requirements.lock changes isn't protecting you from anything.

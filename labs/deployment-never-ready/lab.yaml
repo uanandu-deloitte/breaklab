@@ -1,0 +1,62 @@
+id: deployment-never-ready
+title: The storefront Service has no healthy backends
+stage: k8s-fundamentals
+difficulty: 2
+estimated_minutes: 25
+tags: [kubernetes, containers]
+summary: Pods report Running, yet the storefront Service has zero endpoints to send traffic to.
+prerequisites: [k8sf-005]
+loop:
+  learn: >
+    A Kubernetes Service doesn't route to every Pod matching its label
+    selector — only to the ones currently marked Ready. The endpoints
+    controller watches two independent things: whether a Pod's labels match
+    the Service's selector at all, and whether that Pod is currently passing
+    its readiness probe. A mismatch in either one leaves the Service with no
+    usable backends, even while `kubectl get pods` shows everything
+    "Running".
+  guided:
+    - do: kubectl get endpoints storefront
+      why: An empty ADDRESSES column is the actual symptom — confirms the Service genuinely has no backends before you go looking for a cause.
+    - do: kubectl get pods -l app=storefront -o wide
+      why: Running and Ready are different columns — a Pod can be Running with 0/1 Ready, which alone would explain empty endpoints.
+    - do: kubectl get pods --show-labels
+      why: Compares the Pods' actual labels against what you'd expect — a relabeling mistake means the Service's selector simply never matches these Pods.
+    - do: kubectl get svc storefront -o jsonpath='{.spec.selector}'
+      why: Shows exactly what the Service is trying to match; line it up against the Pods' real labels from the previous step.
+    - do: kubectl describe pod -l app=storefront
+      why: If labels do match, the Events and Conditions sections show the readiness probe's actual failure reason instead of just assuming it's unhealthy.
+    - do: Fix whichever layer is wrong — correct the Service's selector to match the Pods' real labels, or point the readiness probe at a condition the container actually satisfies — then recheck endpoints.
+      why: The two failure modes need different fixes; patching the wrong one leaves the Service just as broken.
+  practice:
+    task: >
+      Before the real incident, work through these on paper, then reveal
+      the answer.
+    questions:
+      - prompt: A Pod shows STATUS Running and READY 0/1. Will the Service that selects it have an endpoint for it?
+        answer: No. Services only include Pods that are both selector-matched and Ready; Running only means the container process started, not that it passed its readiness check.
+      - prompt: Why does `kubectl get endpoints` tell you something `kubectl get pods` alone doesn't?
+        answer: It shows what the Service controller actually computed as routable right now — the net effect of selector matching and readiness together — rather than making you infer it from two separate Pod fields.
+      - prompt: You fix a typo in the Service's selector. Do you need to restart or recreate the Pods for traffic to start flowing?
+        answer: No — the endpoints controller reconciles continuously, so correcting the selector (or the Pods' labels) alone causes matching, Ready Pods to appear as endpoints without any Pod restart.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - kubectl get endpoints storefront shows whether anything is actually routable.
+  - kubectl get pods and kubectl describe deployment storefront tell different parts of the story.
+variants:
+  - id: bad-selector
+    script: variants/bad-selector.sh
+    weight: 1
+    hints:
+      - Compare the Service's selector to the pods' actual labels.
+  - id: bad-readiness-probe
+    script: variants/bad-readiness-probe.sh
+    weight: 1
+    hints:
+      - Check pod readiness with `kubectl get pods`. A Running pod isn't necessarily Ready.

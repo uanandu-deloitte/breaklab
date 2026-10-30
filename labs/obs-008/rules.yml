@@ -1,0 +1,12 @@
+groups:
+  - name: checkout
+    rules:
+      # BUG: this fires when error_rate drops BELOW 5, not when it
+      # breaches above it.
+      - alert: HighErrorRate
+        expr: error_rate < 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Checkout error rate is high"

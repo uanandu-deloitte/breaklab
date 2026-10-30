@@ -1,0 +1,37 @@
+id: cicd-009
+title: Deploy Is Never Even Attempted
+stage: cicd
+difficulty: 3
+estimated_minutes: 20
+tags: [cicd, gitlab-ci]
+type: break-fix
+path: cicd-fundamentals
+module: real-pipelines
+summary: "deploy's rules: checks a variable that's only ever set on a tag pipeline -- on a normal branch push it's silently never created, not failed."
+objectives:
+  - run a real GitLab CI pipeline locally with gitlab-ci-local instead of guessing at its behavior
+  - "understand that a rules: mismatch removes a job from the pipeline entirely, with no error to point at"
+  - "fix a rules: condition to match the trigger type the pipeline actually runs under"
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /workspace/project/.gitlab-ci.yml
+      why: "Shows deploy's rules: block -- it only matches when $CI_COMMIT_TAG is set, which a plain branch push never sets."
+    - do: cd /workspace/project && gitlab-ci-local --force-shell-executor
+      why: Runs the real pipeline locally -- build passes, and deploy doesn't even appear in the run.
+    - do: ls /workspace
+      why: Confirms the real symptom on disk -- dist/app.txt exists from build, deployed.txt from deploy does not.
+    - do: "Edit .gitlab-ci.yml so deploy's rules: checks $CI_COMMIT_BRANCH instead of $CI_COMMIT_TAG"
+      why: Matches the condition to the variable that's actually set for this pipeline's trigger type.
+    - do: gitlab-ci-local --force-shell-executor
+      why: Re-run the real pipeline -- deploy should now actually execute instead of being silently skipped.
+hints:
+  - "A job that doesn't match any of its rules: isn't failed -- it's simply never added to the pipeline. Look for what's missing, not what's red."
+  - "$CI_COMMIT_TAG is only set on a pipeline triggered by a tag push. This pipeline runs from an ordinary branch push."
+  - "$CI_COMMIT_BRANCH is GitLab's predefined variable for the branch name on a normal push -- it's set exactly when $CI_COMMIT_TAG isn't."

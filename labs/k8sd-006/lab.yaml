@@ -1,0 +1,44 @@
+id: k8sd-006
+title: "StorageClasses: What Has to Match for a PVC to Bind"
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, storage]
+type: guided
+path: k8s-developer
+module: storage
+summary: The reports-pvc PersistentVolumeClaim has sat Pending since it was created — find out which StorageClass it's actually asking for, and whether that class even exists.
+objectives:
+  - explain that a PVC only binds when a StorageClass matching its declared storageClassName actually exists in the cluster
+  - read a PVC's requested storageClassName and compare it against kubectl get storageclass's real output rather than assuming
+  - recognize that a PVC referencing a nonexistent StorageClass stays Pending forever with no further error anywhere else
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pvc reports-pvc
+      why: Confirms the phase really is Pending, not Bound or Lost, before digging further.
+    - do: kubectl describe pvc reports-pvc
+      why: The Events section at the bottom carries the provisioner's own rejection reason — direct evidence, not a guess from the phase alone.
+    - do: kubectl get pvc reports-pvc -o jsonpath='{.spec.storageClassName}'
+      why: Reads exactly what the PVC is asking for, so it can be compared against what the cluster actually has.
+    - do: kubectl get storageclass
+      why: Shows every StorageClass that genuinely exists in this cluster right now — the PVC's requested name has to appear here, exactly, or it will never bind.
+    - do: kubectl get pod -l app=reports-writer
+      why: Confirms the Pod waiting on this PVC shows a normal, non-error wait state — a Pending PVC never produces an error on the Pod side, which is why the diagnosis has to start at the PVC itself.
+hints:
+  - "kubectl describe pvc reports-pvc's Events show the provisioner's exact rejection reason — this is the direct evidence, not just the phase."
+  - "kubectl get storageclass lists every StorageClass that actually exists — compare it character-for-character against what the PVC requests."
+  - A PVC referencing a StorageClass name that doesn't exist produces no error on the Pod waiting to mount it — only the PVC's own Events record it.
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - Compare reports-pvc's storageClassName against kubectl get storageclass — nothing in this cluster matches it.

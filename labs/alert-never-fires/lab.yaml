@@ -1,0 +1,61 @@
+id: alert-never-fires
+title: The outage that never paged anyone
+stage: observability
+difficulty: 2
+estimated_minutes: 20
+tags: [observability, alerting, scripting, chaos-engineering, blind-spots]
+prerequisites: [obs-003]
+summary: A metric has been breaching its threshold for a while, but the alert pipeline stayed silent the whole time.
+loop:
+  learn: >
+    An alert rule is really a small boolean expression — metric, comparison
+    operator, threshold — evaluated against a live value on every run. If any
+    one of those three pieces drifts out of sync with what the metric
+    actually does in practice, the rule can be syntactically fine and still
+    never fire, or fire constantly. The evaluator doesn't know what "correct"
+    looks like; it only knows what the rule file says, so silence from a
+    clearly-bad metric means the rule itself is the thing to distrust, not
+    the metric or the pipeline that runs it.
+  guided:
+    - do: cat /var/lib/metrics/current.json
+      why: Confirm what value the metric is actually reporting right now, independent of any rule's interpretation of it.
+    - do: cat /etc/alerts/rules.yaml
+      why: Read the rule exactly as written — the metric name, the comparison operator, and the threshold it's compared against.
+    - do: alert-evaluator && cat /var/log/alerts.log
+      why: Run the evaluator directly and see whether it wrote an alert line at all — this tells you if the rule fired, without guessing from the dashboard.
+    - do: grep -E '^(metric|op|threshold):' /etc/alerts/rules.yaml
+      why: Pull out exactly the three fields the evaluator uses, side by side, so you can check its logic by hand against the value you already confirmed.
+    - do: "sed -i 's/^op: .*/op: \">\"/' /etc/alerts/rules.yaml && sed -i 's/^threshold: .*/threshold: 90/' /etc/alerts/rules.yaml"
+      why: Once you know which field is wrong — the operator pointed the wrong way, or a threshold raised past any real value — set it back to something that actually fires on a genuine breach.
+  practice:
+    task: >
+      Before touching the real incident below, reason through a couple of
+      rule variations and predict whether each would fire, then reveal the
+      answer.
+    questions:
+      - prompt: "A rule has op: \"<\" and threshold: 90, and the metric value is 97. Does the rule fire?"
+        answer: "No. 97 < 90 is false, so the rule never fires no matter how high the value climbs — the operator is pointed the wrong direction for a \"too high\" alert."
+      - prompt: "A rule has op: \">\" and threshold: 999, and the metric value is 97. Does the rule fire?"
+        answer: "No. 97 > 999 is false — the threshold was raised so high that a real breach can never cross it."
+      - prompt: Why does alert-evaluator writing nothing to /var/log/alerts.log not prove the pipeline is broken?
+        answer: Because an evaluator that's running correctly against a bad rule produces exactly the same symptom as a broken evaluator — no alert. You have to check the rule's logic against the real metric value before blaming the tooling.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - Run alert-evaluator yourself and read what it does (and doesn't) write to /var/log/alerts.log.
+  - Compare /etc/alerts/rules.yaml's operator and threshold against the actual value in /var/lib/metrics/current.json.
+variants:
+  - id: wrong-operator
+    script: variants/wrong-operator.sh
+    weight: 1
+    hints:
+      - The metric value is clearly over any sane threshold. Check the comparison operator in rules.yaml, not just the number.
+  - id: wrong-threshold
+    script: variants/wrong-threshold.sh
+    weight: 1
+    hints:
+      - The operator in rules.yaml looks right. Check the threshold value itself.

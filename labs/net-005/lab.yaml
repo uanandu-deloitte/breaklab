@@ -1,0 +1,40 @@
+id: net-005
+title: Broken Name Resolution
+stage: networking
+path: networking-fundamentals
+module: dns
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, dns, break-fix]
+type: break-fix
+summary: A frontend call to http://api.internal:8080/ fails before it ever reaches the network — the hostname itself doesn't resolve.
+objectives:
+  - diagnose a name-resolution failure separately from a connectivity failure
+  - read and correct /etc/hosts
+  - fix the failure in the resolver layer, not by hard-coding an IP into the request
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: curl http://api.internal:8080/
+      why: Reproduces the failure — the call fails before it ever reaches the network layer.
+    - do: getent hosts api.internal
+      why: Resolves the name exactly the way an application would — if it comes back empty, nothing above it stands a chance.
+    - do: cat /etc/hosts
+      why: Shows what's actually configured, to compare against the name that failed to resolve.
+    - do: curl http://127.0.0.1:8080/
+      why: Confirms the backend itself is healthy and listening, isolating the problem to name resolution rather than the backend.
+    - do: echo "127.0.0.1  api.internal" >> /etc/hosts
+      why: The durable fix belongs in the resolver layer — adding the missing entry, not hard-coding an IP into the curl command.
+    - do: curl http://api.internal:8080/
+      why: Confirms api.internal now resolves and the backend responds correctly.
+hints:
+  - "getent hosts api.internal is how the system itself would resolve this name — if it comes back empty, nothing above it stands a chance."
+  - "cat /etc/hosts to see what's actually configured — compare it against what name curl was asked to resolve."
+  - The backend is real and already running on 8080. Confirm that directly against an address you know works before blaming the backend.
+  - The fix belongs in the resolver (/etc/hosts), not in the curl command — curling a raw IP would dodge the problem instead of fixing it.

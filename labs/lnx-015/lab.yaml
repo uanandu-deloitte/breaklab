@@ -1,0 +1,37 @@
+id: lnx-015
+title: Application Cannot Read Configuration
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, permissions]
+type: break-fix
+path: linux-identity
+module: permissions
+summary: appuser can't read its own config file, and the fix has to be least-privilege — no chmod 777, no running as root.
+environment:
+  dockerfile: Dockerfile
+  ports: ["8080:80"]
+checks:
+  - id: app-can-read
+    script: checks/app-can-read.sh
+    run_in: container
+  - id: permissions-safe
+    script: checks/permissions-safe.sh
+    run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ps -o user=,pid=,cmd= -C python3
+      why: Shows the identity the application process actually runs as — the user whose permissions matter for reading the config.
+    - do: id appuser
+      why: Shows appuser's UID and group memberships, which determine what permission triplet applies when appuser tries to read the file.
+    - do: ls -ld /srv/app /srv/app/config.yaml
+      why: Checks every directory component on the way to the file, not just the file itself — a directory missing read/execute access blocks reaching the file inside it regardless of the file's own permissions.
+    - do: su -s /bin/bash -c "test -r /srv/app/config.yaml && echo readable" appuser
+      why: Proves the fix actually works from appuser's own point of view — root can read anything regardless of permissions, so testing as root would tell you nothing.
+    - do: curl http://localhost:8080/healthz
+      why: Confirms the health endpoint actually succeeds once access is repaired, the real-world signal the fix worked.
+hints:
+  - Compare the identity the application process runs as with the ownership and permissions of the configuration path.
+  - Inspect every directory component on the way to /srv/app/config.yaml, not only the file itself.
+  - "Useful commands: ps -o user=,pid=,cmd= -C python3; id appuser; ls -ld /srv/app /srv/app/config.yaml; su -s /bin/bash -c \"test -r /srv/app/config.yaml && echo readable\" appuser."

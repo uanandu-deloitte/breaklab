@@ -1,0 +1,59 @@
+id: deleted-file-still-open
+title: The disk that won't give its space back
+stage: linux
+difficulty: 2
+estimated_minutes: 20
+tags: [linux, filesystem, processes]
+summary: A file was deleted an hour ago but the disk space never came back — something still has it open.
+loop:
+  learn: >
+    Deleting a file with `rm` only removes its directory entry (the name);
+    the kernel won't free the underlying data blocks until every process
+    that still has the file open closes that file descriptor or exits. A
+    file can show up nowhere in `ls` or `du` and still be eating disk space,
+    because the inode survives as long as any open fd points at it — and
+    that fd doesn't have to belong to the service you'd expect.
+  guided:
+    - do: disk-usage-report
+      why: Compares real bytes under /var/log against bytes still held open by deleted-but-unclosed file descriptors, so you know you're chasing a leak and not just a big file you missed.
+    - do: for fd in /proc/[0-9]*/fd/*; do readlink "$fd" 2>/dev/null; done | grep deleted
+      why: readlink on a deleted file's fd prints the old path tagged "(deleted)" — this is the direct evidence a process is still holding it.
+    - do: ls -l /proc/*/fd 2>/dev/null | grep deleted
+      why: The listing includes the pid directory in the path, so you can see exactly which process number is holding the stale handle, not just that one exists.
+    - do: ps -p <pid> -o pid,cmd
+      why: Confirms whether the pid holding the handle is the app itself (from /var/run/app.pid) or something unrelated, like a leftover debugging session — that changes what you need to restart.
+    - do: kill <pid> to restart the real app, and clean up anything else still holding the fd
+      why: A process has to actually exit or close the fd for the kernel to release the blocks — restarting only the obvious process isn't enough if a second one is also holding it.
+  practice:
+    task: >
+      Before touching the real incident, reason through what each signal
+      means, then reveal the answer.
+    questions:
+      - prompt: "`ls -la /var/log/app` and `du -sh /var/log/app` both look clean, but disk usage is still high. Why wouldn't rm have fixed that?"
+        answer: rm only unlinks the directory entry. If any process still has the file open, the inode and its data blocks stay allocated until that fd is closed — ls and du can't see what's gone from the directory but still occupies space.
+      - prompt: Why check every pid under /proc, instead of just the service's own pid file?
+        answer: Any process with the file open keeps it alive, not just the service that originally created it — a stray tail -f or debugging shell started by someone else holds the same fd and will keep the space pinned even after the real service restarts.
+      - prompt: Restarting the owning service drops its own fd. Why might the leaked bytes still not go down afterward?
+        answer: A different process may also have the same file open. The data isn't freed until every open fd to that inode is closed — one restart only clears one holder.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - "`rm` only removes a directory entry. If a process still has the file open, the data blocks aren't freed until that process closes the fd or exits."
+  - Run disk-usage-report to see where the bytes actually are, and look under /proc/*/fd for anything pointing at a path that says "(deleted)".
+variants:
+  - id: rotated-without-truncate
+    script: variants/rotated-without-truncate.sh
+    weight: 1
+    hints:
+      - Find the pid in /var/run/app.pid and check its open file descriptors.
+      - Restarting that one process should be enough here.
+  - id: stray-debug-process
+    script: variants/stray-debug-process.sh
+    weight: 1
+    hints:
+      - The app's own pid isn't the only thing that might have this file open. Check every pid's fds, not just the obvious one.
+      - Restarting the app alone won't be enough if something else is still holding the old file open too.

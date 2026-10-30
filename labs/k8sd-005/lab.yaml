@@ -1,0 +1,42 @@
+id: k8sd-005
+title: What Actually Happens When a Container Hits Its Memory Limit
+stage: k8s-developer
+difficulty: 2
+estimated_minutes: 20
+tags: [kubernetes, resource-management]
+type: guided
+path: k8s-developer
+module: resource-management
+summary: The mem-demo Pod's restart count keeps climbing — confirm it was actually OOMKilled, and read the memory limit that triggered it, before assuming a plain application crash.
+objectives:
+  - explain why a container's memory limit is enforced by the kernel, not the application, and why that means an over-limit container is killed outright rather than throttled
+  - find OOMKilled in a Pod's last-state termination reason with kubectl describe pod, and read the memory limit that caused it
+  - distinguish an OOM kill from a plain application crash, since both can produce the same exit code
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get pod mem-demo
+      why: A climbing RESTARTS count is the first signal — confirm it's actually happening and isn't a one-off before digging further.
+    - do: kubectl describe pod mem-demo
+      why: The Containers section's Last State names the exact termination reason, right next to the memory limit this container was configured with — read both before assuming anything.
+    - do: kubectl get pod mem-demo -o jsonpath='{.status.containerStatuses[0].lastState.terminated.reason}{"\n"}{.status.containerStatuses[0].lastState.terminated.exitCode}{"\n"}'
+      why: A reason of OOMKilled together with exit code 137 is the kernel's own OOM killer, specifically — exit code 137 alone is just generic SIGKILL, and can come from a liveness probe or a forced delete instead.
+    - do: kubectl get pod mem-demo -o jsonpath='{.spec.containers[0].resources.limits.memory}'
+      why: Reads the exact memory limit this container was given — the number the kernel enforced the instant the process tried to exceed it, with no warning and no graceful shutdown.
+hints:
+  - "kubectl describe pod mem-demo's Last State shows the termination reason and the configured memory limit side by side."
+  - "Exit code 137 alone is generic SIGKILL — it only means an OOM kill specifically when the reason field itself reads OOMKilled."
+  - "Unlike a CPU limit, a memory limit is never throttled — the kernel kills the container outright the instant it's exceeded."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1
+    hints:
+      - kubectl describe pod mem-demo and read the Last State's reason and the container's configured memory limit.

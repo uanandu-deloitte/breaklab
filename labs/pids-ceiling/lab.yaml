@@ -1,0 +1,63 @@
+id: pids-ceiling
+title: Plenty of CPU and memory, but nothing new can start
+stage: docker
+difficulty: 3
+estimated_minutes: 25
+tags: [containers, linux, chaos-engineering, fault-injection]
+summary: CPU and memory both look fine, but new jobs simply stop completing.
+prerequisites: [docker-009]
+loop:
+  learn: >
+    A Linux process limit (a container's pids_limit, or the kernel's PID
+    table more generally) is a resource ceiling that doesn't show up in CPU
+    or memory graphs at all — once it's hit, fork() itself starts failing
+    for the whole container, which can silently break anything that needs
+    to spawn a new process, including your own debugging tools. The two
+    general causes are symmetric: either something is forking far more
+    processes than it should (a leak, a missing cleanup, an unbounded
+    loop), or a legitimate concurrency cap was set higher than the box can
+    actually support. Counting what's actually alive, and asking why, is the
+    only way to tell which one you're looking at.
+  guided:
+    - do: free -h && ps aux | wc -l
+      why: Confirm memory/CPU genuinely look fine while the number of live processes is counted directly — this is the check that's normally skipped, and it's the one that matters here.
+    - do: cat /sys/fs/cgroup/pids.current /sys/fs/cgroup/pids.max
+      why: Read the container's actual process count against its actual ceiling directly from the cgroup — this confirms a pids limit is the real constraint, not a guess from symptoms alone.
+    - do: ps aux --sort=start_time | tail -40
+      why: See what's been spawned most recently and in what volume — a flood of short-lived or stuck processes from one source stands out here.
+    - do: ps aux | awk '{print $11}' | sort | uniq -c | sort -rn
+      why: Group live processes by command to spot one source producing far more processes than any legitimate workload would need.
+    - do: grep -n "CAP" /usr/local/bin/handler.py
+      why: Once a culprit is identified, check whether the problem is a leak (something spawning and never cleaning up) or a concurrency cap set too high for what the box can hold.
+  practice:
+    task: >
+      Before touching the real incident, reason through what a pids limit
+      does and doesn't show.
+    questions:
+      - prompt: Why can exec itself start failing inside a container that's hit its pids limit, even for something as simple as running `ls`?
+        answer: Running any new command requires the kernel to fork/exec a new process, which needs a free slot in the container's process table — once pids.current equals pids.max, that allocation fails regardless of how trivial the command is, including your own diagnostic commands.
+      - prompt: A concurrency cap was raised from 10 to 999999 "to stop throttling." The box has a pids limit of 35. Is raising the cap ever the right call here?
+        answer: No — the cap exists specifically to keep concurrent work within what the box can actually hold; raising it past what the pids limit allows guarantees the box runs out of process slots under load instead of degrading in a controlled way.
+      - prompt: A background helper spawns a short cheap subprocess every 0.05s, but each one is wrapped in a 5-second sleep before it does its real work. Why does that matter for a pids ceiling even though each individual process is harmless?
+        answer: The spawn rate (every 0.05s) is much faster than the drain rate (5s before each one exits), so processes accumulate faster than they finish — a steady trickle of individually-cheap work still blows through a fixed ceiling if each one lingers far longer than the interval between new ones.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  pids_limit: 35
+check:
+  script: check.sh
+  run_in: host
+hints:
+  - Memory and CPU both look fine. What other resource can a container run out of?
+  - Count how many processes are actually alive right now (ps aux | wc -l) and compare it to what you'd expect.
+variants:
+  - id: no-concurrency-cap
+    script: variants/no-concurrency-cap.sh
+    weight: 1
+    hints:
+      - Check /usr/local/bin/handler.py's CAP constant against how many jobs are arriving at once.
+  - id: metrics-collector-leak
+    script: variants/metrics-collector-leak.sh
+    weight: 1
+    hints:
+      - The job handler itself isn't the only thing running. Check what /usr/local/bin/metrics-collector.sh is actually doing on each cycle.

@@ -1,0 +1,58 @@
+id: stale-stash
+title: The hotfix never made it out of the stash
+stage: git
+difficulty: 1
+estimated_minutes: 15
+tags: [git, version-control]
+summary: Someone swears they already fixed it, git log looks clean, but the fix never reached the working tree.
+loop:
+  learn: >
+    `git stash` moves uncommitted work off to a side stack without putting it
+    anywhere git log, git status, or git diff will show you — that's exactly
+    what makes it invisible to the usual "did the fix land" checks. A stash is
+    not lost, just parked; the fix is finding the right entry on the stack and
+    applying it, not re-doing the work. When there's more than one entry, the
+    one you want isn't guaranteed to be the most recent.
+  guided:
+    - do: git status
+      why: Confirm the working tree really is clean — rules out an uncommitted edit sitting in plain sight before you go looking somewhere less obvious.
+    - do: git log --oneline -5
+      why: Confirm the fix never landed as a commit either — if it's not in status and not in log, it has to be somewhere else entirely.
+    - do: git stash list
+      why: See what's actually sitting on the stash stack and how many entries there are — this is the "somewhere else."
+    - do: git stash show -p stash@{0}
+      why: Read what a specific stash entry actually changes without applying it — never pop a stash blind when more than one entry exists.
+    - do: git stash pop <ref>
+      why: Apply the specific stash entry that contains the real fix (not necessarily stash@{0}) and drop it from the stack once it's safely back in the working tree.
+  practice:
+    task: >
+      Before touching the real incident below, reason through these questions,
+      then reveal the answer.
+    questions:
+      - prompt: Why does `git log` look completely normal even though a real fix is missing from the working tree?
+        answer: A stash never becomes a commit on any branch — it's a separate stack of saved changes, so git log has nothing to show because the fix was never committed in the first place.
+      - prompt: With two entries on the stash stack, why might `git stash pop` (no ref) be the wrong move?
+        answer: Plain `git stash pop` always applies stash@{0}, the most recent entry — if the fix you need is actually stash@{1} (buried under a later, unrelated stash), you'd apply the wrong one and still not have your fix.
+      - prompt: What's the difference between `git stash show -p` and `git stash pop` in terms of risk?
+        answer: "`show -p` only displays a stash's diff and changes nothing; `pop` actually applies it to the working tree and removes it from the stack — inspect first with `show`, then `pop` once you're sure it's the right one."
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - git status is clean and git log looks normal — the fix was never lost from history, it's just sitting in the stash, unapplied.
+  - Run `git stash list` inside /srv/repo.
+variants:
+  - id: forgotten-stash
+    script: variants/forgotten-stash.sh
+    weight: 1
+    hints:
+      - There's exactly one stash on the stack. `git stash pop` applies it.
+  - id: wrong-stash-popped
+    script: variants/wrong-stash-popped.sh
+    weight: 1
+    hints:
+      - There are two stashes on the stack this time. Read what each one actually contains before popping anything.
+      - The hotfix isn't necessarily stash@{0}. `git stash show -p <ref>` shows what a stash changes without applying it.

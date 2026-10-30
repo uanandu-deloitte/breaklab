@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+LOCK=/var/run/infra/apply.lock
+
+if [ -e "$LOCK" ]; then
+  echo "infra-apply: another apply is already in progress ($LOCK exists)" >&2
+  exit 1
+fi
+if ! su infraops -s /bin/bash -c "touch '$LOCK'" 2>/tmp/infra-apply.err; then
+  echo "infra-apply: cannot create lock file at $LOCK: $(cat /tmp/infra-apply.err)" >&2
+  exit 1
+fi
+trap 'rm -f "$LOCK"' EXIT
+
+message=$(sed -n 's/^message: *//p' /infra/site.yaml)
+MESSAGE="$message" envsubst '${MESSAGE}' < /infra/templates/index.html.tmpl > /var/www/html/index.html
+nginx -t
+if pgrep -x nginx >/dev/null; then
+  nginx -s reload
+else
+  nginx
+fi

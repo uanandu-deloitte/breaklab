@@ -1,0 +1,35 @@
+id: azure-002
+title: The Blob Nobody Outside The Team Can Read
+stage: cloud
+difficulty: 2
+estimated_minutes: 15
+tags: [azure, storage, blob]
+type: break-fix
+path: cloud-fundamentals
+module: blob-storage
+summary: public-assets/notice.txt is real and uploaded, but the container's public access level is off, so a plain anonymous GET against it fails.
+objectives:
+  - use the real az storage CLI against a real Azure Storage emulator (Azurite), no cloud account needed
+  - distinguish a container's public access level from whether a blob itself exists and is readable with credentials
+  - fix a container's access level with az storage container set-permission instead of handing out a key or SAS token
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: az storage blob show --container-name public-assets --name notice.txt --query "name"
+      why: Confirms the blob is real and readable with the account's credentials -- rules out "the blob doesn't exist" before looking anywhere else.
+    - do: curl -i http://127.0.0.1:10000/devstoreaccount1/public-assets/notice.txt
+      why: Sends a genuine anonymous HTTP request, no auth at all -- this is the real failure, independent of whether the blob itself is fine.
+    - do: az storage container show --name public-assets --query "properties.publicAccess" -o tsv
+      why: Shows the container's real access level -- compare it against what's actually needed for an anonymous read to succeed.
+    - do: az storage container set-permission --name public-assets --public-access blob
+      why: Grants anonymous read of individual blobs by URL without exposing container listing -- the right level for "this one file is public."
+hints:
+  - "The account's own credentials can always read a blob regardless of public access level -- that's not the test. The test is a request with no credentials at all."
+  - "az storage container show --query properties.publicAccess tells you the real current setting -- off, blob, or container."
+  - "az storage container set-permission --public-access blob is the fix -- not handing out the account key or a SAS token to work around it."

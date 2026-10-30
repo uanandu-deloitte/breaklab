@@ -1,0 +1,25 @@
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.build.outputs.ready }}
+    steps:
+      - name: Build the app
+        id: build
+        run: |
+          mkdir -p /workspace/dist
+          echo "built" > /workspace/dist/app.txt
+          # BUG: this job declares a "ready" output above, but nothing
+          # here ever sets it.
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ needs.build.outputs.ready == 'true' }}
+    steps:
+      - name: Deploy
+        run: |
+          cp /workspace/dist/app.txt /workspace/deployed.txt
+          echo "deployed"

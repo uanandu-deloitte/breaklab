@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -uo pipefail
+# Probes the real checkout Service live, every time it's run — this is the
+# source of truth the rest of the observability pipeline depends on. It
+# never trusts a cached address; it asks the cluster right now.
+svc="${CHECKOUT_SVC:-checkout}"
+ip=$(kubectl get svc "$svc" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+port=$(kubectl get svc "$svc" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
+
+healthy=0
+if [ -n "$ip" ] && [ -n "$port" ] && curl -fsS --max-time 3 "http://${ip}:${port}/" >/dev/null 2>&1; then
+  healthy=1
+fi
+
+mkdir -p /var/lib/metrics
+printf '{"checkout_healthy": %s, "observed_at": %s}\n' "$healthy" "$(date +%s)" > /var/lib/metrics/current.json

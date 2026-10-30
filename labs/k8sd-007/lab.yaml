@@ -1,0 +1,42 @@
+id: k8sd-007
+title: The Cluster That Stopped Listening to Git
+stage: k8s-developer
+path: k8s-developer
+module: gitops
+difficulty: 3
+estimated_minutes: 25
+tags: [kubernetes, gitops, argocd]
+type: guided
+summary: A real ArgoCD Application's source.path points at a directory that no longer exists in the repo after a rename -- it's not failing, it's just permanently out of sync.
+objectives:
+  - read a real ArgoCD Application resource's status.conditions to find the real reconciliation error
+  - understand that ArgoCD tracks a repo by a literal path string, with no awareness of repo reorganizations
+  - fix a stale Application source so the cluster actually reconciles from git again
+environment:
+  dockerfile: Dockerfile
+  ports: []
+  privileged: true
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: kubectl get application web -n argocd
+      why: Shows the real sync/health status at a glance -- Unknown sync status with a healthy last-known state is the signature of a reconciliation error, not a crash.
+    - do: kubectl get application web -n argocd -o yaml
+      why: status.conditions has the real ComparisonError message, naming the exact path ArgoCD tried and failed to find in the repo.
+    - do: git clone git://127.0.0.1/app.git /tmp/check-repo && find /tmp/check-repo -name '*.yaml'
+      why: Shows where the manifests really live in the repo right now, straight from the same git daemon ArgoCD itself clones from.
+    - do: kubectl patch application web -n argocd --type merge -p '{"spec":{"source":{"path":"manifests/web"}}}'
+      why: Updates the Application's source path to match where the manifests actually are, so the next reconcile can succeed.
+    - do: kubectl get application web -n argocd && kubectl get deployment web -n default
+      why: Confirms both ArgoCD's own status and the real Deployment it's supposed to manage -- Synced/Healthy only counts if the real workload is actually running too.
+hints:
+  - "An Application stuck on Unknown sync status with no crash anywhere is a reconciliation error, not an outage -- read status.conditions, not kubectl get pods."
+  - "ArgoCD never guesses a repo's layout -- source.path is a literal string it either finds or doesn't."
+  - "The repo itself is real and clonable at git://127.0.0.1/app.git (or the node's IP) -- check where the manifests actually live before guessing the fix."
+variants:
+  - id: setup
+    script: variants/setup.sh
+    weight: 1

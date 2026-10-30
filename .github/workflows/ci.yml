@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: gofmt, vet, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: frontend install, audit, build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run audit
+          npm run build
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - run: go vet ./...
+      - run: go test ./...
+
+  integration:
+    name: lab integration test (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Matches every TestXxxEndToEnd function — one per lab in labs/,
+      # enforced by TestAllLabsCovered (which runs unconditionally as
+      # part of the "test" job above, so a lab added without a matching
+      # entry fails fast there rather than silently skipping coverage
+      # here). Two labs run a real k3s control plane and are slow, so
+      # this needs more than go test's default 10m timeout.
+      - run: go test ./internal/runner/... -run EndToEnd -v -timeout 20m
+        env:
+          BREAKLAB_INTEGRATION: "1"
+
+  build-arm64:
+    name: linux/arm64 build (Raspberry Pi 5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go build -o /dev/null ./cmd/breaklab
+        env:
+          GOOS: linux
+          GOARCH: arm64
+
+  govulncheck:
+    name: dependency audit (govulncheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Exits non-zero on any vulnerability reachable from this module's code.
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...

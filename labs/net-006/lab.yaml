@@ -1,0 +1,36 @@
+id: net-006
+title: Debug an API with curl
+stage: networking
+path: networking-fundamentals
+module: http
+difficulty: 2
+estimated_minutes: 20
+tags: [networking, http, curl]
+type: practice
+summary: A fixture API on 8080 only accepts one exact shape of request — use curl's method, header, and body flags to build it correctly.
+objectives:
+  - send a POST request with curl, with an explicit method flag
+  - set multiple request headers with curl
+  - send a JSON request body with curl and match a server's exact content-type expectation
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: "curl -i -X POST http://127.0.0.1:8080/"
+      why: Sending an incomplete request first shows exactly what the server's response names as missing, rather than guessing.
+    - do: "curl -i -X POST -H 'Content-Type: application/json' http://127.0.0.1:8080/"
+      why: Adds the content-type header, confirming via the response which requirement is satisfied next.
+    - do: "curl -i -X POST -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token-fixture' http://127.0.0.1:8080/"
+      why: Adds the exact Authorization header the server checks for — a missing or misspelled header fails the same way.
+    - do: "curl -i -X POST -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token-fixture' -d '{\"action\": \"sync\"}' http://127.0.0.1:8080/"
+      why: Pairs the JSON body with the Content-Type header that tells the server to parse it as JSON, satisfying all four requirements at once.
+hints:
+  - "curl defaults to GET. Use -X POST to send a different method."
+  - "Set headers with -H, one flag per header: -H 'Content-Type: application/json' -H 'Authorization: Bearer test-token-fixture'."
+  - "Send a JSON body with -d '{\"action\": \"sync\"}' — pairing -d with the right Content-Type header is what makes it a JSON request rather than a form post."
+  - The server remembers the outcome of only your most recent request — if an earlier attempt failed, your next attempt is the one that has to succeed.

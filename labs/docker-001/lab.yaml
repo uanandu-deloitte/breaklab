@@ -1,0 +1,35 @@
+id: docker-001
+title: What Even Is a Container
+stage: docker
+difficulty: 1
+estimated_minutes: 15
+tags: [containers, linux, orientation]
+type: guided
+path: docker-fundamentals
+module: orientation
+summary: A container looks like its own little machine — find out exactly which parts of it are real and which parts it's borrowing from the host.
+objectives:
+  - observe that a container's process list shows only its own processes, never the host's
+  - confirm the kernel a container reports is the host's kernel, not something bundled in the image
+  - recognize that a container's hostname is assigned by the container runtime at start time, not baked into the image by the Dockerfile
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: ps aux --no-headers | wc -l
+      why: Counts exactly how many processes this container's own PID namespace shows — a real host would show hundreds; a container only ever shows its own small handful.
+    - do: uname -r
+      why: Prints the kernel version this container sees. No container image bundles a kernel, so this is always the host's kernel, not something this image shipped.
+    - do: hostname
+      why: Prints this container's current hostname — a short hex string, not anything this lab's Dockerfile ever set.
+    - do: cat /etc/hostname
+      why: Confirms the file-based view agrees with the hostname command — both reflect what the container runtime assigned at start time, never a build-time value.
+hints:
+  - "ps aux inside the container only ever shows the handful of processes running in this container's own PID namespace — never the host's hundreds."
+  - "uname -r reports the running kernel version. A container has no kernel of its own; it shares the host's kernel, so this is the host's version, not something this image shipped."
+  - "hostname (and /etc/hostname) show a short hex string — that's the container's own short container ID, assigned by the container runtime when it starts, not a name the Dockerfile ever set."

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+conf=/etc/agent/agent.conf
+. "$conf"
+: "${LOGFILE:?LOGFILE not set in $conf}"
+count=$(wc -l < "$LOGFILE")
+mkdir -p /var/lib/agent
+echo "$count" > /var/lib/agent/metrics.count

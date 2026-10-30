@@ -1,0 +1,35 @@
+id: iac-004
+title: Same Template, Different Environment
+stage: iac
+difficulty: 2
+estimated_minutes: 20
+tags: [iac, templating]
+type: practice
+path: iac-fundamentals
+module: variables-and-environments
+summary: One templated config, two environment var files — apply the wrong one and you get a dev-shaped resource with a straight face.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+lesson: lesson.md
+loop:
+  guided:
+    - do: cat /infra/resources.yaml.tmpl
+      why: Shows the placeholders (like {{ ENVIRONMENT }}) that get filled in per environment — this template is never applied directly.
+    - do: ls /infra/vars/
+      why: Shows which environment variable files exist — each one fills the template differently.
+    - do: cat /infra/vars/dev.env
+      why: Shows the values currently applied — this is why the rendered resource is dev-shaped right now.
+    - do: cat /infra/vars/prod.env
+      why: Shows the production values the rendered resource needs to reflect instead.
+    - do: diff /infra/vars/dev.env /infra/vars/prod.env
+      why: Highlights exactly which values differ between the two environments, so you know what should change in the output.
+    - do: cat /etc/app/config.yaml
+      why: Shows the currently rendered (dev-shaped) resource, to compare against prod's expected values once you apply.
+hints:
+  - "/infra/resources.yaml.tmpl has placeholders like {{ ENVIRONMENT }} — it isn't meant to be applied directly."
+  - "/infra/vars/ holds one file per environment. infra-apply takes the environment name as its argument."
+  - "cat /etc/app/config.yaml after applying to see exactly what got rendered, and compare it against each vars file by eye."

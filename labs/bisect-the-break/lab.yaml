@@ -1,0 +1,62 @@
+id: bisect-the-break
+title: healthcheck.sh is failing on main, nobody knows which commit broke it
+stage: git
+difficulty: 2
+estimated_minutes: 25
+tags: [git, version-control, scripting]
+summary: Something in a pile of recent commits broke a script that used to pass — most of those commits are completely unrelated.
+loop:
+  learn: >
+    When a regression is hiding somewhere in a run of commits, the fastest
+    path is narrowing the search before reading diffs line by line. Git
+    gives you two complementary tools for this: restricting history to only
+    the commits that touched a specific file (so you ignore unrelated
+    noise), and bisecting by testing a midpoint commit to halve the
+    remaining range. Once you've found the exact commit, reverting it
+    — rather than editing the file back by hand, or resetting history —
+    undoes only that change while leaving every other commit, and anyone
+    who already pulled them, intact.
+  guided:
+    - do: bash healthcheck.sh
+      why: Confirm the symptom directly and capture its exact failure output before you start digging through history.
+    - do: git log --oneline -- healthcheck.sh
+      why: Restrict history to only the commits that touched this specific file — most commits in a real repo are noise for this investigation.
+    - do: git log -p -- healthcheck.sh
+      why: Read the actual diffs for just those commits, in order, looking for the one that changed behavior rather than wording or formatting.
+    - do: git bisect start && git bisect bad && git bisect old-known-good-commit
+      why: If reading diffs doesn't make the culprit obvious, let git bisect binary-search the commit range for you by testing healthcheck.sh at each midpoint.
+    - do: git show <suspect-sha>
+      why: Once you have a candidate, look at exactly what it changed — distinguish a real logic change (flipped exit code, lowered threshold) from an unrelated docs or formatting commit with a similar-sounding message.
+    - do: git revert --no-edit <suspect-sha>
+      why: Revert specifically that commit rather than resetting or force-pushing — this undoes only the breaking change and keeps the commit history (and anyone else's pulled copy of it) intact.
+  practice:
+    task: >
+      Before touching the real incident below, think through why the method
+      matters here, then reveal the answer.
+    questions:
+      - prompt: "git log -p -- healthcheck.sh shows commits in NOTES.md interleaved with commits to healthcheck.sh. Why does restricting to -- healthcheck.sh matter?"
+        answer: Because in a run of several commits, most are usually unrelated busywork (notes, README tweaks) — restricting the log to the one file under suspicion removes that noise and leaves only the commits that could plausibly be the cause.
+      - prompt: Why is git revert preferred over git reset --hard to the last good commit here?
+        answer: git reset --hard would discard every commit after the bad one, including any unrelated, legitimate work in them, and rewrites history that others may have already pulled. git revert adds a new commit that undoes just the one breaking change, leaving everything else intact.
+      - prompt: A commit message says "Tighten healthcheck strictness" but its diff only changes a comment. Is that commit still a good bisect candidate?
+        answer: No — always verify by reading the actual diff (git show), not the commit message. Messages can be misleading or generic; the diff is the ground truth for what actually changed behavior.
+environment:
+  dockerfile: Dockerfile
+  ports: []
+check:
+  script: check.sh
+  run_in: container
+hints:
+  - git log -p -- healthcheck.sh shows only the commits that touched the file.
+  - git revert keeps history intact; git reset would throw away the commits after it.
+variants:
+  - id: strictness-exit
+    script: variants/strictness-exit.sh
+    weight: 1
+    hints:
+      - One commit's message mentions "strictness." Look at what it actually changed.
+  - id: bad-threshold
+    script: variants/bad-threshold.sh
+    weight: 1
+    hints:
+      - One commit mentions adjusting the healthcheck threshold. Check the new value.

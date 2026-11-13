@@ -29,6 +29,35 @@ docker exec -it breaklab-web-down bash   # go fix it
 ./breaklab serve                         # dashboard at http://127.0.0.1:8787
 ```
 
+## Run with Docker Compose
+
+Runs BreakLab itself in a container instead of building a local Go/Node
+toolchain. Its `docker` CLI still drives your host's Docker daemon
+(via the mounted socket), so lab containers land next to this one, not
+nested inside it.
+
+```bash
+export DOCKER_GID=0                                       # Docker Desktop (macOS/Windows)
+# export DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)   # native Linux Docker Engine
+
+docker compose up -d
+```
+
+`DOCKER_GID` has to be exported in whatever shell you run `docker
+compose` from — it can't be hardcoded into `docker-compose.yml` because
+it depends on how your Docker is set up, not just the machine:
+Docker Desktop's VM always presents the mounted socket as owned by
+`root:root` inside the container (verified against Docker Desktop
+29.8.0 on macOS), so `0` is correct there regardless of what `stat`
+reports on the host side. Native Linux Docker Engine passes the host
+socket's real group through, which is why that case still needs
+`stat`. Open `http://localhost:8787`
+(or `http://<your-ip>:8787` for teammates on the same network — see
+[`docs/deploy-share-from-laptop.md`](docs/deploy-share-from-laptop.md)).
+
+`docker compose down` stops it; `progress/` and `postmortems/` are
+bind-mounted so that data survives.
+
 ## Documentation
 
 Pick the doc for the hat you're wearing — each assumes you've read none of

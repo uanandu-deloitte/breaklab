@@ -1,0 +1,20 @@
+services:
+  breaklab:
+    build: .
+    image: breaklab
+    ports:
+      - "8787:8787"
+    volumes:
+      # Lets this container's docker CLI drive the host's Docker daemon,
+      # so lab containers land as siblings next to this one rather than
+      # nested inside it (same reasoning as the Dockerfile's own comment
+      # on ENTRYPOINT). The right group_add value depends on how your
+      # Docker is set up (Docker Desktop vs. native Linux Engine), not
+      # just the machine, so it can't be baked into this file — see
+      # README.md's "Run with Docker Compose" section.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./progress:/app/progress
+      - ./postmortems:/app/postmortems
+    group_add:
+      - "${DOCKER_GID}"
+    restart: unless-stopped

@@ -34,11 +34,9 @@ const (
 
 // Attempt is one entry in progress.json.
 type Attempt struct {
-	// ID stably identifies this attempt across machines, so
-	// `breaklab sync` can tell whether it has already pushed/pulled a
-	// given attempt without relying on its (local-only, non-portable)
-	// position in Attempts. Empty for attempts recorded before sync
-	// existed; BackfillAttemptIDs assigns one lazily on first sync.
+	// ID stably identifies this attempt, independent of its (local-only,
+	// non-portable) position in Attempts. Empty for attempts recorded
+	// before this field existed.
 	ID           string     `json:"id,omitempty"`
 	Lab          string     `json:"lab"`
 	Variant      string     `json:"variant"`

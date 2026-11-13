@@ -71,7 +71,7 @@ Repo layout:
 ```text
 breaklab/
   cmd/breaklab/           CLI entry, subcommand wiring (list, lab, status,
-                          postmortem, serve, publish, login, sync)
+                          postmortem, serve, publish)
   internal/
     catalog/              load and validate lab.yaml, roadmap.yaml
     docker/                build, run, exec, remove via the docker CLI
@@ -81,11 +81,10 @@ breaklab/
     postmortem/            create and validate postmortems
     site/                  builds site/ with html/template (public, publish-triggered)
     web/                   breaklab serve: local HTTP server, JSON API, reads live files
-                          (includes the opt-in --db account/sync layer, see §4)
     audit/                 security-audit checks (CI workflows, dependencies, gitignore)
   labs/<lab-id>/           one folder per lab: lab.yaml, TICKET.md, Dockerfile,
                           check.sh, variants/, solutions/ — data, not code
-  frontend/                Astro + Astryx local app and hosted-account pages;
+  frontend/                Astro + Astryx local app;
                           builds to frontend/dist/, served by internal/web
   templates/
     web/                   vendored static assets only (fonts, cytoscape.min.js) —
@@ -108,11 +107,22 @@ Why the shape is this way:
   of panicking deep in `runner`.
 - **`internal/docker` only shells out with argument slices.** No shell
   string is ever built from a lab ID, container name, or port — this is a
-  security boundary, not a style preference (see §6).
-- **`internal/web` has two layers that must not blur together**: the
-  always-on, unauthenticated local dashboard (`serve`, no flags) and the
-  opt-in `--db` hosted-account layer (signup/login/sync). They share an
-  HTTP server but not a trust model — see §4.
+  security boundary, not a style preference (see §5).
+- **`internal/web` is intentionally unauthenticated.** BreakLab is a
+  single-user tool deployed one instance per learner (see
+  `docs/devops-guide-azure.md`); access control happens at the
+  network/VM layer, not in the app. There is no account, session, or
+  login system to keep in sync with that boundary.
+- **`progress/progress.json` writes are locked two ways.** An in-process
+  `sync.Mutex` (`internal/progress/ops.go`) serializes concurrent
+  requests inside one `breaklab serve`, and a sibling
+  `progress.json.lock` file (gitignored) serializes across *processes*
+  — e.g. `breaklab serve` left running alongside a separate `breaklab
+  start`/`check` invocation in another terminal. Without the file lock,
+  two processes could each load the file, mutate their own in-memory
+  copy, and save — silently dropping whichever write loses the race.
+  The lock self-heals: a lock file older than 10s is treated as left
+  behind by a crashed process and broken rather than deadlocking.
 
 ## 3. CLI reference
 
@@ -127,35 +137,15 @@ Why the shape is this way:
 | `breaklab status` | Show per-stage progress, the active lab, and your streak |
 | `breaklab postmortem` | Write up or validate a postmortem for a solved lab |
 | `breaklab publish` | Rebuild `site/` from progress, labs, and published postmortems |
-| `breaklab serve [--host] [--port] [--frontend] [--db]` | Serve the local dashboard, phases view, and challenge browser |
-| `breaklab login [--server] [--token]` | Link this machine to a hosted `--db` account (writes `.breaklab/account.json`) |
-| `breaklab sync` | Push/pull `progress/progress.json` attempts against a linked hosted account |
+| `breaklab serve [--host] [--port] [--frontend]` | Serve the local dashboard, phases view, and challenge browser |
 
 Every command has `--help`. `serve` binds to `127.0.0.1` by default;
 `--host 0.0.0.0` is opt-in and prints a one-time warning — the dashboard
-has no authentication by design unless `--db` is set.
+has no authentication, by design, in either case. BreakLab is meant to
+run one instance per learner (see `docs/devops-guide-azure.md`);
+isolation is a network/VM boundary, never an app-level login.
 
-`login`/`sync` only ever exchange `progress.json` attempt records with a
-hosted server — lab execution (building images, running containers)
-always stays local. There is no server-side Docker in this codebase.
-
-## 4. Two trust models in `internal/web`
-
-| | `breaklab serve` | `breaklab serve --db <path>` |
-|---|---|---|
-| Auth | None | Real accounts: passwords, sessions, API tokens |
-| MFA | N/A | None implemented — do not treat as hardened |
-| Intended exposure | Loopback or trusted LAN only | Behind TLS, with real exposure planning |
-| What it serves | Dashboard, phases view, challenge browser, lab/postmortem viewer | Above, plus signup/login, `sync` API, opt-in public profile (`/u/<name>`) |
-
-Never add `--db` to a deployment as a way to "add a login screen" to an
-otherwise-exposed instance — it adds credential storage, which raises the
-bar for what hosting that instance responsibly requires. See
-`docs/devops-guide-azure.md` for how multi-learner deployments are
-expected to get isolation (one instance per learner) instead of reaching
-for `--db`.
-
-## 5. Lab format and script contracts
+## 4. Lab format and script contracts
 
 ```text
 labs/web-down/
@@ -193,7 +183,7 @@ truth for stage order across the CLI, web UI, and public site — see
 `AGENTS.md` for the current phase/stage list (it changes more often than
 this doc).
 
-## 6. Security posture
+## 5. Security posture
 
 This is a product constraint, not an afterthought, enforced at the code
 level:
@@ -222,11 +212,11 @@ level:
   not the workflow level, so unrelated jobs in the same file don't
   inherit privilege they don't use.
 - The runtime Docker image (`Dockerfile`) runs as a fixed non-root UID
-  (`breaklab`, 10001), never root — see §7.
+  (`breaklab`, 10001), never root — see §6.
 - `internal/audit` runs these checks (CI workflow shape, dependency
   freshness, `.gitignore` coverage) and is itself tested.
 
-## 7. Build, test, and CI
+## 6. Build, test, and CI
 
 ```bash
 gofmt -l .           # formatting
@@ -271,7 +261,7 @@ container with `--group-add $(stat -c '%g' /var/run/docker.sock)` (or
 the Kubernetes equivalent, `securityContext.supplementalGroups`). See
 the comment above `ENTRYPOINT` in `Dockerfile` for the exact flag.
 
-## 8. Frontend
+## 7. Frontend
 
 `frontend/` is an [Astro](https://astro.build) +
 [Astryx](https://astryx.atmeta.com) project that builds to static
@@ -282,16 +272,16 @@ whenever anything under `frontend/src/` changes; `breaklab serve` always
 reads it from disk, live.
 
 For frontend development, run Astro's dev server and the Go backend side
-by side — `npm run dev` (in `frontend/`) proxies `/api/*`, `/sync/*`,
-`/signup`, `/login`, etc. to `breaklab serve` on `:8787`, so a browser
-pointed at the Astro dev origin (typically `:4321`) gets live-reloading
-frontend changes against a real backend.
+by side — `npm run dev` (in `frontend/`) proxies `/api/*` to `breaklab
+serve` on `:8787`, so a browser pointed at the Astro dev origin
+(typically `:4321`) gets live-reloading frontend changes against a real
+backend.
 
 Design system (palette, type, contrast rules) is recorded in `DESIGN.md`
 with its `.impeccable/design.json` sidecar — don't hand-roll new color
 values; pull from the existing tokens in `templates/web/style.css`.
 
-## 9. Where to go next
+## 8. Where to go next
 
 - Deploying one instance for yourself: `docs/deploy-raspberry-pi.md`.
 - Provisioning many isolated instances for a cohort of learners:

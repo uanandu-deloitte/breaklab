@@ -39,3 +39,22 @@ variable "releases_resource_group" {
   type        = string
   default     = "rg-breaklab-releases"
 }
+
+# Pure cost control — shutting a VM down never touches a learner's
+# containers or progress/postmortems files, which live on the OS disk,
+# not in memory (docs/devops-guide-azure.md §7). Off by default; turn
+# on once a cohort runs on a predictable schedule rather than
+# speculatively.
+variable "auto_shutdown" {
+  description = "Nightly auto-shutdown schedule for every learner VM."
+  type = object({
+    enabled  = bool
+    time     = string # "HHmm", 24h, in the VM's own local time
+    timezone = string # Azure's accepted tz name, e.g. "UTC" or "Pacific Standard Time"
+  })
+  default = {
+    enabled  = false
+    time     = "1900"
+    timezone = "UTC"
+  }
+}

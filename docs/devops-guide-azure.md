@@ -165,8 +165,8 @@ repo — don't retype it, read it there:
   (`azurerm ~> 4.0`, Terraform ≥ 1.9).
 - [`variables.tf`](../deploy/terraform/azure/variables.tf) — `learners`
   (name → allowed IP CIDR), `location`, `vm_size`, `admin_username`,
-  `ssh_public_key`, plus the shared releases storage account's name and
-  resource group.
+  `ssh_public_key`, the shared releases storage account's name and
+  resource group, and `auto_shutdown` (off by default — see §7).
 - [`main.tf`](../deploy/terraform/azure/main.tf) — one resource group,
   VNet, subnet, NSG, public IP, NIC, and Linux VM per entry in
   `var.learners` (via `for_each`), a system-assigned managed identity on
@@ -253,9 +253,18 @@ to your team before you build it, since it changes the Terraform module
   to build and run one lab's container at a time, which is all a single
   learner ever has active. Bump it only if a specific lab's image is
   unusually heavy.
-- **Auto-shutdown:** add an `azurerm_dev_test_global_vm_shutdown_schedule`
-  resource per VM if the cohort runs on a schedule (e.g. shut down
-  19:00–08:00 daily) — pure cost control, learners' containers and
+- **Auto-shutdown:** off by default; set `auto_shutdown` in
+  `terraform.tfvars` (see `terraform.tfvars.example`) if the cohort
+  runs on a predictable schedule:
+  ```hcl
+  auto_shutdown = {
+    enabled  = true
+    time     = "1900" # HH24mm, in timezone below
+    timezone = "UTC"
+  }
+  ```
+  This wires an `azurerm_dev_test_global_vm_shutdown_schedule` onto
+  every learner VM — pure cost control, learners' containers and
   progress files on disk aren't affected by a VM being powered off.
 - **Teardown at the end of a cohort:**
   ```bash

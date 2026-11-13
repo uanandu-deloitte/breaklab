@@ -133,16 +133,6 @@ func writeActionLab(t *testing.T, cfg Config, id string) {
 	}
 }
 
-// hostedActionTestConfig is actionTestConfig with a fresh AccountStore
-// attached, so action routes require a logged-in session instead of
-// running unauthenticated.
-func hostedActionTestConfig(t *testing.T, fd *fakeActionDocker) Config {
-	t.Helper()
-	cfg := actionTestConfig(t, fd)
-	cfg.AccountStore = newTestAccountStore(t)
-	return cfg
-}
-
 // apiErrorPayload mirrors webcore's unexported type of the same name —
 // the one JSON error shape every API response uses — so these
 // black-box tests can decode it without needing webcore to export it.
@@ -345,25 +335,5 @@ func TestLabStartBlockedByOtherLabRequiresConfirmAPI(t *testing.T) {
 	session, _ = runner.LoadSession(cfg.SessionPath)
 	if session.Lab != "beta" {
 		t.Errorf("session after confirmed start = %q, want beta", session.Lab)
-	}
-}
-
-func TestLabActionsRequireLoginWhenHosted(t *testing.T) {
-	fd := &fakeActionDocker{checkOut: []byte("PASS: fine\n")}
-	cfg := hostedActionTestConfig(t, fd)
-	mux := Routes(cfg)
-
-	for _, path := range []string{"/api/labs/alpha/start", "/api/labs/alpha/check", "/api/labs/alpha/hint", "/api/labs/alpha/hypothesis", "/api/labs/alpha/stop"} {
-		req := httptest.NewRequest("POST", path, nil)
-		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
-
-		if rec.Code != http.StatusUnauthorized {
-			t.Errorf("%s with no session: status = %d, want 401 (body: %s)", path, rec.Code, rec.Body)
-			continue
-		}
-		if got := decodeJSONError(t, rec).Error; !strings.Contains(got, "not logged in") {
-			t.Errorf("%s: error = %q, want it to mention not being logged in", path, got)
-		}
 	}
 }

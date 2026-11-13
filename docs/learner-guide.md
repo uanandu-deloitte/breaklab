@@ -96,10 +96,6 @@ you want to see the bar.
 - `.breaklab/session.json` (which lab is active) is local scratch state,
   gitignored — losing it just means `breaklab status` forgets what's
   active, not that you lose progress.
-- If your sandbox has a hosted account layer enabled (`breaklab login` /
-  `breaklab sync`), that syncs your `progress.json` attempts to a server
-  so you can pick up on another machine — it does not run labs for you;
-  Docker still runs locally in your sandbox either way.
 
 ## 7. When you're stuck for real
 

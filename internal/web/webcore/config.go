@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"breaklab/internal/account"
 	"breaklab/internal/runner"
 )
 
@@ -78,13 +77,6 @@ type Config struct {
 	// Out receives the one-time non-loopback warning; defaults to
 	// os.Stderr when nil.
 	Out io.Writer
-
-	// AccountStore backs the optional hosted-account layer (signup,
-	// login, sync, public profile). Nil — the default, and every
-	// Config that existed before this field — means none of it runs:
-	// every account-aware route or branch is mounted or taken only
-	// when this is non-nil, so local-only usage is unaffected.
-	AccountStore account.Store
 }
 
 // Writer returns where the server should print warnings — cfg.Out, or

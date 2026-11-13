@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"breaklab/internal/web/account"
 	"breaklab/internal/web/actions"
 	"breaklab/internal/web/capstone"
 	"breaklab/internal/web/challenges"
@@ -37,9 +36,6 @@ func Routes(cfg Config) http.Handler {
 		chaos.RegisterRoutes(mux, cfg)
 		capstone.RegisterRoutes(mux, cfg)
 	}
-	if cfg.FrontendDir != "" && cfg.AccountStore != nil {
-		account.RegisterRoutes(mux, cfg)
-	}
 	mux.HandleFunc("GET /fonts/JetBrainsMono-Regular.woff2", staticAssetHandler(cfg, "fonts/JetBrainsMono-Regular.woff2", "font/woff2"))
 	mux.HandleFunc("GET /fonts/JetBrainsMono-Medium.woff2", staticAssetHandler(cfg, "fonts/JetBrainsMono-Medium.woff2", "font/woff2"))
 	mux.HandleFunc("GET /fonts/Geist-Regular.woff2", staticAssetHandler(cfg, "fonts/Geist-Regular.woff2", "font/woff2"))
@@ -67,18 +63,6 @@ func Routes(cfg Config) http.Handler {
 	// is no html/template fallback — breaklab serve requires frontend/dist
 	// to exist (see --frontend's default and docs/deploy-raspberry-pi.md).
 	mux.HandleFunc("GET /{$}", frontendShellHandler(cfg, filepath.Join("dashboard", "index.html"))) // exact root only; unknown paths 404
-
-	// Hosted-account routes only exist when a Store was configured
-	// (`breaklab serve --db`); with no AccountStore, none of this is
-	// even registered, so local-only usage is completely unaffected.
-	// The GET pages are static Astro shells (frontend capability), same
-	// as every other page registered above.
-	if cfg.AccountStore != nil {
-		mux.HandleFunc("GET /signup", frontendShellHandler(cfg, filepath.Join("signup", "index.html")))
-		mux.HandleFunc("GET /login", frontendShellHandler(cfg, filepath.Join("login", "index.html")))
-		mux.HandleFunc("GET /account", frontendShellHandler(cfg, filepath.Join("account", "index.html")))
-		mux.HandleFunc("GET /u/{name}", frontendShellHandler(cfg, filepath.Join("u", "_", "index.html")))
-	}
 	return mux
 }
 
@@ -92,9 +76,9 @@ func Routes(cfg Config) http.Handler {
 const staticCacheControl = "private, max-age=3600"
 
 // healthzHandler is BreakLab's Kubernetes liveness/readiness probe
-// target: unconditional and dependency-free (no Docker, no
-// AccountStore, no frontend build needed), so probes never flap
-// because any of those happen to be unset or slow.
+// target: unconditional and dependency-free (no Docker, no frontend
+// build needed), so probes never flap because either happens to be
+// unset or slow.
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

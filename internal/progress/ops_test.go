@@ -1,8 +1,11 @@
 package progress
 
 import (
+	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestAppendActive(t *testing.T) {
@@ -71,43 +74,6 @@ func TestSkipStageLeavesAttemptedLabsAlone(t *testing.T) {
 	}
 	if pf.Attempts[1].Lab != "lnx-002" || pf.Attempts[1].Status != StatusSkipped {
 		t.Errorf("lnx-002 should get a new skipped attempt, got %+v", pf.Attempts[1])
-	}
-}
-
-func TestBackfillAttemptIDsAssignsOnlyMissingOnes(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "progress.json")
-	if err := Save(path, &ProgressFile{Version: 1, Attempts: []Attempt{
-		{ID: "already-has-one", Lab: "web-down", Status: StatusComplete},
-		{Lab: "stuck-lock", Status: StatusComplete},
-	}}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := BackfillAttemptIDs(path); err != nil {
-		t.Fatal(err)
-	}
-	pf, err := Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if pf.Attempts[0].ID != "already-has-one" {
-		t.Errorf("existing ID should be untouched, got %q", pf.Attempts[0].ID)
-	}
-	backfilled := pf.Attempts[1].ID
-	if backfilled == "" {
-		t.Fatal("stuck-lock attempt should have been assigned an ID")
-	}
-
-	// Re-running once every attempt has an ID must be a true no-op.
-	if err := BackfillAttemptIDs(path); err != nil {
-		t.Fatal(err)
-	}
-	pf2, err := Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if pf2.Attempts[1].ID != backfilled {
-		t.Errorf("re-running backfill changed an already-assigned ID: got %q, want %q", pf2.Attempts[1].ID, backfilled)
 	}
 }
 
@@ -317,5 +283,101 @@ func TestUpdateRejectsOutOfRangeIndex(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "progress.json")
 	if err := MarkSolved(path, 0, 0); err == nil {
 		t.Fatal("expected an error for an out-of-range index on an empty file")
+	}
+}
+
+// withShrunkLockTimings temporarily shrinks the package's lock timing
+// knobs so tests can exercise timeout/staleness behavior in
+// milliseconds instead of waiting out the real multi-second defaults.
+// staleLockAge is kept well above lockTimeout here deliberately — a
+// lock that's merely being contended within one short test timeout
+// must never be mistaken for one abandoned by a crashed process; see
+// TestAcquireFileLockBreaksStaleLock for a test that shrinks
+// staleLockAge itself, on top of this.
+func withShrunkLockTimings(t *testing.T) {
+	t.Helper()
+	oldTimeout, oldRetry, oldStale := lockTimeout, lockRetryInterval, staleLockAge
+	lockTimeout = 100 * time.Millisecond
+	lockRetryInterval = 5 * time.Millisecond
+	staleLockAge = time.Minute
+	t.Cleanup(func() {
+		lockTimeout, lockRetryInterval, staleLockAge = oldTimeout, oldRetry, oldStale
+	})
+}
+
+// TestAcquireFileLockExcludesConcurrentHolder proves the cross-process
+// half of the lock actually excludes: mu (an in-process sync.Mutex)
+// can't do this on its own, since a second OS process has no visibility
+// into this process's memory at all.
+func TestAcquireFileLockExcludesConcurrentHolder(t *testing.T) {
+	withShrunkLockTimings(t)
+	path := filepath.Join(t.TempDir(), "progress.json")
+
+	release, err := acquireFileLock(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	if _, err := acquireFileLock(path); err == nil {
+		t.Error("acquiring an already-held lock should time out, got nil error")
+	}
+}
+
+// TestAcquireFileLockBreaksStaleLock proves a lock file left behind by
+// a crashed process (no clean release) doesn't deadlock every future
+// invocation forever.
+func TestAcquireFileLockBreaksStaleLock(t *testing.T) {
+	withShrunkLockTimings(t)
+	staleLockAge = 50 * time.Millisecond // shorter than withShrunkLockTimings' default, on purpose
+
+	path := filepath.Join(t.TempDir(), "progress.json")
+	lockPath := path + ".lock"
+	if err := os.WriteFile(lockPath, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stale := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(lockPath, stale, stale); err != nil {
+		t.Fatal(err)
+	}
+
+	release, err := acquireFileLock(path)
+	if err != nil {
+		t.Fatalf("should break the stale lock and succeed, got %v", err)
+	}
+	release()
+}
+
+// TestWithLockSerializesConcurrentAppendActive proves withLock actually
+// prevents the lost-update race its doc comment describes: without
+// serialization, concurrent read-modify-write cycles on the same file
+// would silently drop all but the last writer's attempt.
+func TestWithLockSerializesConcurrentAppendActive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "progress.json")
+	const n = 20
+
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := AppendActive(path, "web-down", "config-typo"); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+
+	pf, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pf.Attempts) != n {
+		t.Fatalf("len(Attempts) = %d, want %d (a race would silently drop some)", len(pf.Attempts), n)
 	}
 }

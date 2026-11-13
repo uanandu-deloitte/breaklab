@@ -7,14 +7,12 @@ import (
 )
 
 // TestHealthzReturns200 covers the Kubernetes liveness/readiness probe
-// target: it must answer 200 regardless of whether a frontend build or
-// an AccountStore is configured, since neither is a dependency it
-// needs.
+// target: it must answer 200 regardless of whether a frontend build is
+// configured, since that's not a dependency it needs.
 func TestHealthzReturns200(t *testing.T) {
 	for name, cfg := range map[string]Config{
-		"zero value":                {},
-		"fully populated":           actionTestConfig(t, nil),
-		"hosted (AccountStore set)": hostedActionTestConfig(t, nil),
+		"zero value":      {},
+		"fully populated": actionTestConfig(t, nil),
 	} {
 		t.Run(name, func(t *testing.T) {
 			rec := httptest.NewRecorder()

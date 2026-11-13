@@ -1,32 +1,5 @@
 package progress
 
-// MergeSynced combines pf's attempts with hosted (a hosted account's
-// synced attempts, from account.Store.PullAttempts) by ID: a hosted
-// attempt whose ID already exists locally is dropped — local always
-// wins, since it's at least as fresh as whatever's already been pushed
-// — and a hosted attempt with no local counterpart is added. An
-// attempt with no ID (recorded before sync existed) is never matched
-// against hosted and always passes through unchanged. Returns a new
-// ProgressFile; pf itself is never mutated, and this never writes
-// progress.json — only `breaklab sync` does that.
-func MergeSynced(pf *ProgressFile, hosted []Attempt) *ProgressFile {
-	local := make(map[string]bool, len(pf.Attempts))
-	for _, a := range pf.Attempts {
-		if a.ID != "" {
-			local[a.ID] = true
-		}
-	}
-
-	merged := append([]Attempt(nil), pf.Attempts...)
-	for _, a := range hosted {
-		if a.ID == "" || local[a.ID] {
-			continue
-		}
-		merged = append(merged, a)
-	}
-	return &ProgressFile{Version: pf.Version, Attempts: merged}
-}
-
 // LatestCompleteAttempt returns labID's most recently solved attempt
 // with status "complete", if any.
 func LatestCompleteAttempt(pf *ProgressFile, labID string) (Attempt, bool) {

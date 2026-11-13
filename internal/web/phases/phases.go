@@ -104,8 +104,6 @@ func phaseListAPIHandler(cfg webcore.Config) http.HandlerFunc {
 			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		pf = webcore.ProgressForRequest(cfg, r, pf)
-
 		webcore.WriteJSON(w, BuildPhaseList(cat, pf))
 	}
 }
@@ -123,8 +121,6 @@ func phaseDetailAPIHandler(cfg webcore.Config) http.HandlerFunc {
 			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		pf = webcore.ProgressForRequest(cfg, r, pf)
-
 		view, found := buildPhaseDetail(cat, pf, r.PathValue("id"))
 		if !found {
 			webcore.WriteJSONError(w, http.StatusNotFound, "phase not found")

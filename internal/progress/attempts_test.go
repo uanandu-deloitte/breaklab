@@ -39,47 +39,6 @@ func TestLatestCompleteAttemptsEmptyForEmptyProgress(t *testing.T) {
 	}
 }
 
-func TestMergeSyncedAddsOnlyUnknownHostedAttempts(t *testing.T) {
-	pf := &ProgressFile{Version: 1, Attempts: []Attempt{
-		{ID: "local-1", Lab: "web-down", Status: StatusSolved},
-	}}
-	hosted := []Attempt{
-		{ID: "local-1", Lab: "web-down", Status: StatusComplete}, // already known locally — must not duplicate
-		{ID: "hosted-1", Lab: "stuck-lock", Status: StatusSolved},
-	}
-
-	merged := MergeSynced(pf, hosted)
-	if len(merged.Attempts) != 2 {
-		t.Fatalf("merged attempts = %+v, want exactly 2", merged.Attempts)
-	}
-	if merged.Attempts[0].ID != "local-1" || merged.Attempts[0].Status != StatusSolved {
-		t.Errorf("local attempt should be untouched (local wins), got %+v", merged.Attempts[0])
-	}
-	if merged.Attempts[1].ID != "hosted-1" {
-		t.Errorf("hosted-only attempt should be added, got %+v", merged.Attempts[1])
-	}
-}
-
-func TestMergeSyncedNeverMutatesInput(t *testing.T) {
-	pf := &ProgressFile{Version: 1, Attempts: []Attempt{{ID: "local-1", Lab: "web-down"}}}
-
-	MergeSynced(pf, []Attempt{{ID: "hosted-1", Lab: "stuck-lock"}})
-
-	if len(pf.Attempts) != 1 {
-		t.Errorf("pf.Attempts = %+v, want the original untouched (MergeSynced must not mutate its input)", pf.Attempts)
-	}
-}
-
-func TestMergeSyncedSkipsHostedAttemptsWithNoID(t *testing.T) {
-	pf := &ProgressFile{Version: 1}
-	hosted := []Attempt{{ID: "", Lab: "web-down"}}
-
-	merged := MergeSynced(pf, hosted)
-	if len(merged.Attempts) != 0 {
-		t.Errorf("merged = %+v, want empty: a hosted attempt with no ID can never be matched/trusted", merged.Attempts)
-	}
-}
-
 func TestLatestCompleteAttemptsKeyedByLab(t *testing.T) {
 	early := time.Date(2026, 10, 10, 10, 0, 0, 0, time.UTC)
 	late := time.Date(2026, 10, 17, 10, 0, 0, 0, time.UTC)

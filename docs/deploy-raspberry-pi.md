@@ -97,13 +97,9 @@ internet.
 From your Mac, open `http://<pi-host>.local:8787` (or the Pi's LAN IP)
 in a browser.
 
-This Pi deployment is the unauthenticated, local/LAN trust model —
-fine for a home network, never the internet. `breaklab serve --db
-<path>` is a different, separate deployment shape: it adds real
-accounts (passwords, sessions, API tokens) for `breaklab sync`, and
-anything handling those belongs behind TLS with real exposure
-planning, not just a one-time warning. Don't add `--db` to this
-LAN-only setup without doing that first.
+This Pi deployment is intentionally unauthenticated — fine for a home
+network, never the internet. `breaklab serve` has no login screen;
+anyone who can reach the port can see everything in it.
 
 ## 5. Run it as a systemd service
 

@@ -134,6 +134,24 @@ resource "azurerm_role_assignment" "learner_pull" {
   principal_id         = azurerm_linux_virtual_machine.learner[each.key].identity[0].principal_id
 }
 
+# Off unless var.auto_shutdown.enabled — see its description. Powering
+# a VM off and back on doesn't affect anything on its OS disk; a
+# learner's next breaklab start just runs against a cold Docker daemon
+# until it's warmed back up.
+resource "azurerm_dev_test_global_vm_shutdown_schedule" "learner" {
+  for_each           = var.auto_shutdown.enabled ? var.learners : {}
+  virtual_machine_id = azurerm_linux_virtual_machine.learner[each.key].id
+  location           = var.location
+  enabled            = true
+
+  daily_recurrence_time = var.auto_shutdown.time
+  timezone              = var.auto_shutdown.timezone
+
+  notification_settings {
+    enabled = false
+  }
+}
+
 output "learner_ips" {
   value = { for k, v in azurerm_public_ip.learner : k => v.ip_address }
 }

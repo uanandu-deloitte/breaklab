@@ -364,3 +364,22 @@ check:
 		t.Errorf("lab = %q, want empty (no match)", payload.Lab)
 	}
 }
+
+func TestFormatBytes(t *testing.T) {
+	cases := []struct {
+		n    uint64
+		want string
+	}{
+		{0, "0 B"},
+		{1023, "1023 B"},
+		{1024, "1.00 KiB"},
+		{1536, "1.50 KiB"},
+		{1024 * 1024, "1.00 MiB"},
+		{1024 * 1024 * 1024, "1.00 GiB"},
+	}
+	for _, c := range cases {
+		if got := formatBytes(c.n); got != c.want {
+			t.Errorf("formatBytes(%d) = %q, want %q", c.n, got, c.want)
+		}
+	}
+}

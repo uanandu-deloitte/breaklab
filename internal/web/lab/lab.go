@@ -375,10 +375,6 @@ type postmortemSubmitResponse struct {
 // internal/web/actions, so it's never gated on cfg.Docker.
 func labPostmortemAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
-			return
-		}
-
 		var req postmortemSubmitRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			webcore.WriteJSONError(w, http.StatusBadRequest, "invalid request body")

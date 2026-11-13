@@ -52,17 +52,9 @@ var commands = map[string]command{
 		summary: "Serve the local dashboard, roadmap, and challenge browser",
 		run:     runServe,
 	},
-	"login": {
-		summary: "Link this install to a hosted account for `sync`",
-		run:     runLogin,
-	},
-	"sync": {
-		summary: "Push/pull progress with the linked hosted account",
-		run:     runSync,
-	},
 }
 
-var commandOrder = []string{"list", "start", "check", "hint", "reset", "stop", "status", "postmortem", "publish", "serve", "login", "sync"}
+var commandOrder = []string{"list", "start", "check", "hint", "reset", "stop", "status", "postmortem", "publish", "serve"}
 
 func main() {
 	os.Exit(run(os.Args[1:]))

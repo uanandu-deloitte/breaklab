@@ -297,8 +297,8 @@ func attemptIndexOf(pf *progress.ProgressFile, target progress.Attempt) (int, bo
 }
 
 // dashboardAPIHandler serves the Astro dashboard page's data: the same
-// buildDashboard computation and webcore.ProgressForRequest session-aware
-// merge the old html/template handler used, as JSON.
+// buildDashboard computation the old html/template handler used, as
+// JSON.
 func dashboardAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cat, err := webcore.LoadCatalog(cfg)
@@ -311,7 +311,6 @@ func dashboardAPIHandler(cfg webcore.Config) http.HandlerFunc {
 			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		pf = webcore.ProgressForRequest(cfg, r, pf)
 		session, err := runner.LoadSession(cfg.SessionPath)
 		if err != nil {
 			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())

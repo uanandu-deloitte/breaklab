@@ -7,3 +7,12 @@ learners = {
 }
 
 ssh_public_key = "ssh-ed25519 AAAA... you@laptop"
+
+# Optional — off by default. Uncomment once a cohort runs on a
+# predictable schedule; pure cost control, never touches a learner's
+# containers or files on disk. See docs/devops-guide-azure.md §7.
+# auto_shutdown = {
+#   enabled  = true
+#   time     = "1900"
+#   timezone = "UTC"
+# }

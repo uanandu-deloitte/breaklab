@@ -75,7 +75,7 @@ func TestServeRegisteredAsCommand(t *testing.T) {
 }
 
 func TestServeDefaultsToLoopback(t *testing.T) {
-	fs, host, port, db, frontendDir := serveFlags()
+	fs, host, port, frontendDir := serveFlags()
 	if err := fs.Parse(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -85,14 +85,11 @@ func TestServeDefaultsToLoopback(t *testing.T) {
 	if *port != 8787 {
 		t.Errorf("default --port = %d, want 8787", *port)
 	}
-	if *db != "" {
-		t.Errorf("default --db = %q, want empty (accounts are opt-in)", *db)
-	}
 	if want := filepath.Join("frontend", "dist"); *frontendDir != want {
 		t.Errorf("default --frontend = %q, want %q (migrated pages have no template fallback)", *frontendDir, want)
 	}
 
-	fs, host, _, _, _ = serveFlags()
+	fs, host, _, _ = serveFlags()
 	if err := fs.Parse([]string{"--host", "0.0.0.0"}); err != nil {
 		t.Fatal(err)
 	}

@@ -72,3 +72,29 @@ func TestSplitBlocksEmpty(t *testing.T) {
 		t.Errorf("got %d blocks, want 0: %+v", len(blocks), blocks)
 	}
 }
+
+// IsParagraph/IsCode/IsDiff are only ever called from html/template via
+// reflection (e.g. `{{if .IsParagraph}}`), so a template-free test is
+// the only way this package's own tests exercise them directly.
+func TestBlockKindPredicates(t *testing.T) {
+	cases := []struct {
+		kind                  BlockKind
+		paragraph, code, diff bool
+	}{
+		{BlockParagraph, true, false, false},
+		{BlockCode, false, true, false},
+		{BlockDiff, false, false, true},
+	}
+	for _, c := range cases {
+		b := Block{Kind: c.kind}
+		if got := b.IsParagraph(); got != c.paragraph {
+			t.Errorf("Block{Kind: %v}.IsParagraph() = %v, want %v", c.kind, got, c.paragraph)
+		}
+		if got := b.IsCode(); got != c.code {
+			t.Errorf("Block{Kind: %v}.IsCode() = %v, want %v", c.kind, got, c.code)
+		}
+		if got := b.IsDiff(); got != c.diff {
+			t.Errorf("Block{Kind: %v}.IsDiff() = %v, want %v", c.kind, got, c.diff)
+		}
+	}
+}

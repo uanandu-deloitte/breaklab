@@ -15,3 +15,4 @@ terraform.tfvars
 !terraform.tfvars.example
 /openspec/
 .claude/skills/openspec-*/
+progress/progress.json.lock

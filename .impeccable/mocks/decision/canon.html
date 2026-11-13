@@ -1,0 +1,52 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1440px;height:900px;overflow:hidden;background:#f7f8fa;font-family:'Inter',sans-serif;color:#111827}
+  .shell{display:flex;height:100%}
+  .rail{width:220px;background:#fff;border-right:1px solid #e5e7eb;padding:28px 20px}
+  .brand{font-weight:700;font-size:16px;margin-bottom:24px}
+  .nav a{display:flex;align-items:center;gap:8px;padding:10px 10px;border-radius:8px;color:#4b5563;
+    text-decoration:none;font-size:14px;margin-bottom:2px}
+  .nav a.on{background:#eff4ff;color:#2563eb;font-weight:600}
+  .main{flex:1;padding:32px 40px}
+  h1{font-size:22px;font-weight:700;margin-bottom:20px}
+  .cards{display:flex;gap:16px;margin-bottom:24px}
+  .card{flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px}
+  .card .n{font-size:24px;font-weight:700}
+  .card .l{font-size:12px;color:#6b7280;margin-top:4px}
+  .panel{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:#6b7280;font-weight:600;font-size:12px;padding:12px 16px;border-bottom:1px solid #e5e7eb}
+  td{padding:13px 16px;border-bottom:1px solid #f3f4f6}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px}
+  .wip{background:#fef3c7;color:#92400e}.todo{background:#f3f4f6;color:#6b7280}.ok{background:#dcfce7;color:#166534}
+</style></head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">BreakLab</div>
+      <div class="nav">
+        <a class="on">Dashboard</a><a>Phases</a><a>Challenges</a><a>Chaos</a><a>Capstone</a><a>Postmortems</a><a>Topology</a>
+      </div>
+    </div>
+    <div class="main">
+      <h1>Dashboard</h1>
+      <div class="cards">
+        <div class="card"><div class="n">34 / 150</div><div class="l">Labs completed</div></div>
+        <div class="card"><div class="n">6</div><div class="l">Day streak</div></div>
+        <div class="card"><div class="n">3</div><div class="l">Open incidents</div></div>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Lab</th><th>Stage</th><th>Difficulty</th><th>Status</th></tr>
+          <tr><td>Registry Auth Drift</td><td>Docker</td><td>Medium</td><td><span class="badge wip">In progress</span></td></tr>
+          <tr><td>Compose Network Split</td><td>Docker</td><td>Hard</td><td><span class="badge todo">Not started</span></td></tr>
+          <tr><td>Bad File Perms</td><td>Linux</td><td>Easy</td><td><span class="badge ok">Resolved</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</body></html>

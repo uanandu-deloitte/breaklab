@@ -34,6 +34,14 @@ func TestRenderList(t *testing.T) {
 	}
 }
 
+func TestRenderListWithWrappedItem(t *testing.T) {
+	got := string(Render("- one line\n  that wraps\n- two"))
+	want := "<ul>\n<li>one line that wraps</li>\n<li>two</li>\n</ul>\n"
+	if got != want {
+		t.Errorf("Render = %q, want %q", got, want)
+	}
+}
+
 func TestRenderFencedCode(t *testing.T) {
 	got := string(Render("```bash\necho hi\n```"))
 	want := "<pre><code>echo hi</code></pre>\n"

@@ -14,7 +14,9 @@ import { Icon } from "@astryxdesign/core/Icon";
 import { Markdown } from "@astryxdesign/core/Markdown";
 import { Layout, LayoutHeader, LayoutContent, LayoutPanel } from "@astryxdesign/core/Layout";
 import { LoadingState } from "./LoadingState";
+import { labStatusVariant, DifficultyIcon } from "./LabCard";
 import Shell from "./Shell";
+import styles from "./LabDetail.module.css";
 
 // Mirrors internal/web's LabDetailView (GET /api/labs/{id}).
 interface PortNodeView {
@@ -293,15 +295,23 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
               </HStack>
             </Link>
             <HStack gap={4} vAlign="start" hAlign="between" wrap="wrap">
-              <VStack gap={1}>
-                <HStack gap={2} vAlign="center">
+              <VStack gap={2}>
+                <HStack gap={2} vAlign="center" wrap="wrap">
                   <Heading level={1}>{view.Title}</Heading>
-                  <Badge label={view.Status} />
+                  <Badge label={view.Status} variant={labStatusVariant[view.Status] ?? "neutral"} />
                 </HStack>
-                <Text type="supporting">
-                  {view.StageTitle} · difficulty {view.Difficulty} · ~{view.EstimatedMinutes}m
-                  {view.TicketID && ` · ${view.TicketID}`}
-                </Text>
+                <HStack gap={4} vAlign="center" wrap="wrap">
+                  {view.StageTitle && <Text type="supporting">{view.StageTitle}</Text>}
+                  <HStack gap={1} vAlign="center">
+                    <DifficultyIcon />
+                    <Text type="supporting">Difficulty {view.Difficulty}</Text>
+                  </HStack>
+                  <HStack gap={1} vAlign="center">
+                    <Icon icon="clock" size="sm" />
+                    <Text type="supporting">~{view.EstimatedMinutes} min</Text>
+                  </HStack>
+                  {view.TicketID && <Text type="supporting">{view.TicketID}</Text>}
+                </HStack>
               </VStack>
               <HStack gap={2} wrap="wrap">
                 {!view.Active && view.CanLaunch && (
@@ -377,20 +387,36 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
       }
       content={
         <LayoutContent>
-          <VStack gap={4}>
-            {view.Summary && <Text>{view.Summary}</Text>}
+          <VStack gap={6}>
+            <VStack gap={3}>
+              {view.Summary && <Text>{view.Summary}</Text>}
+              {view.Active && (
+                <VStack gap={2}>
+                  <Heading level={4}>Run this</Heading>
+                  <CodeBlock code={view.Command} language="bash" />
+                </VStack>
+              )}
+              {view.Active && view.ShellCmd && (
+                <VStack gap={2}>
+                  <Heading level={4}>Get a shell</Heading>
+                  <CodeBlock code={view.ShellCmd} language="bash" />
+                </VStack>
+              )}
+            </VStack>
 
-            {view.Active && <CodeBlock code={view.Command} language="bash" />}
-
-            {checkMsg && (
-              <Card variant={checkPassed ? "green" : "red"}>
-                <Text>{checkMsg}</Text>
-              </Card>
-            )}
-            {revealedHint && (
-              <Card variant="yellow">
-                <Text>{revealedHint}</Text>
-              </Card>
+            {(checkMsg || revealedHint) && (
+              <VStack gap={3}>
+                {checkMsg && (
+                  <Card variant={checkPassed ? "green" : "red"}>
+                    <Text>{checkMsg}</Text>
+                  </Card>
+                )}
+                {revealedHint && (
+                  <Card variant="yellow">
+                    <Text>{revealedHint}</Text>
+                  </Card>
+                )}
+              </VStack>
             )}
 
             {view.PostmortemEligible && (
@@ -449,50 +475,52 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
               </Card>
             )}
 
-            {view.Active && view.DiagnosticLog && (
-              <Card variant="gray">
-                <VStack gap={2}>
-                  <Heading level={4}>Container log tail</Heading>
-                  <CodeBlock code={view.DiagnosticLog} language="plaintext" hasLanguageLabel={false} isWrapped />
-                </VStack>
-              </Card>
-            )}
-
-            {view.Active && isIncidentLab && (
-              <Card variant="gray">
-                <VStack gap={2}>
-                  <Heading level={4}>Live log</Heading>
-                  {/* No Astryx component accepts raw HTML children; this is one of
-                      two deliberate exceptions on this page (see Lesson below) —
-                      injecting the SSE stream's already-server-escaped <span>
-                      lines (see the effect above for why that's still safe). */}
-                  <div dangerouslySetInnerHTML={{ __html: liveLogHTML }} />
-                </VStack>
-              </Card>
-            )}
-
-            {view.Active && view.ShellCmd && (
-              <VStack gap={2}>
-                <Heading level={4}>Get a shell</Heading>
-                <CodeBlock code={view.ShellCmd} language="bash" />
+            {view.Active && (view.DiagnosticLog || isIncidentLab) && (
+              <VStack gap={3}>
+                <Heading level={3}>Container activity</Heading>
+                {view.DiagnosticLog && (
+                  <Card variant="gray">
+                    <VStack gap={2}>
+                      <Heading level={4}>Log tail</Heading>
+                      <CodeBlock code={view.DiagnosticLog} language="plaintext" hasLanguageLabel={false} isWrapped />
+                    </VStack>
+                  </Card>
+                )}
+                {isIncidentLab && (
+                  <Card variant="gray">
+                    <VStack gap={2}>
+                      <Heading level={4}>Live log</Heading>
+                      {/* No Astryx component accepts raw HTML children; this is one of
+                          two deliberate exceptions on this page (see Learn below) —
+                          injecting the SSE stream's already-server-escaped <span>
+                          lines (see the effect above for why that's still safe). */}
+                      <div dangerouslySetInnerHTML={{ __html: liveLogHTML }} />
+                    </VStack>
+                  </Card>
+                )}
               </VStack>
             )}
 
-            {view.Lesson && (
+            {(view.Lesson || view.Learn) && (
               <VStack gap={2}>
                 <Heading level={3}>Learn</Heading>
-                {/* Pre-rendered HTML from internal/markdown (lesson.md), not raw
-                    markdown — Astryx's Markdown component takes markdown source,
-                    not HTML, so this is the one other deliberate
-                    dangerouslySetInnerHTML exception alongside the live log tail
-                    above, for the same reason: already-safe, server-rendered markup. */}
-                <div dangerouslySetInnerHTML={{ __html: view.Lesson }} />
-              </VStack>
-            )}
-            {view.Learn && (
-              <VStack gap={2}>
-                <Heading level={3}>Learn</Heading>
-                <Text as="p">{view.Learn}</Text>
+                {view.Lesson && (
+                  /* Pre-rendered HTML from internal/markdown (lesson.md), not raw
+                     markdown — Astryx's Markdown component takes markdown source,
+                     not HTML, so this is the one other deliberate
+                     dangerouslySetInnerHTML exception alongside the live log tail
+                     above, for the same reason: already-safe, server-rendered markup.
+                     styles.lessonBody re-scales its bare h1/h2/h3 and restores
+                     paragraph/list spacing — the app's base reset zeroes margins
+                     and only Astryx components (not raw markdown tags) get the
+                     design system's own spacing and heading-size rules. */
+                  <div className={styles.lessonBody} dangerouslySetInnerHTML={{ __html: view.Lesson }} />
+                )}
+                {view.Learn && (
+                  <Text as="p" style={{ maxWidth: "68ch" }}>
+                    {view.Learn}
+                  </Text>
+                )}
               </VStack>
             )}
 

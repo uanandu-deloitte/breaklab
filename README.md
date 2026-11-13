@@ -40,6 +40,7 @@ the others.
 | A learner working through labs | [`docs/learner-guide.md`](docs/learner-guide.md) | The loop, the phases, how to use hints and postmortems honestly |
 | Provisioning learner sandboxes in the cloud | [`docs/devops-guide-azure.md`](docs/devops-guide-azure.md) | Standing up isolated, disposable instances in Azure (GCP/AWS to follow) |
 | Deploying one instance on your own LAN | [`docs/deploy-raspberry-pi.md`](docs/deploy-raspberry-pi.md) | A single headless instance (e.g. Raspberry Pi 5) for personal use |
+| Sharing a quick demo with your team | [`docs/deploy-share-from-laptop.md`](docs/deploy-share-from-laptop.md) | Running BreakLab from your own laptop so teammates can reach it over the office network |
 | Reviewing the original build spec | [`docs/breaklab-spec.md`](docs/breaklab-spec.md) | The full spec-driven build plan |
 
 ## Project status

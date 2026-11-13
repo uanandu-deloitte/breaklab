@@ -91,7 +91,17 @@ func Render(src string) template.HTML {
 			continue
 		}
 
-		flushList()
+		// A non-blank line that isn't itself a new item continues the
+		// previous one — the same line-wrap folding paragraphs get below,
+		// just appended to list[last] instead of para. Without this, a
+		// list item wrapped across source lines (for readability in the
+		// .md file) splits into a one-line <li> followed by a stray
+		// sibling <p>, breaking the list in two.
+		if len(list) > 0 {
+			list[len(list)-1] += " " + trimmed
+			continue
+		}
+
 		para = append(para, trimmed)
 	}
 	flushPara()

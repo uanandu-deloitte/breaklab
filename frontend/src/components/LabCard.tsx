@@ -14,7 +14,7 @@ export const labStatusVariant: Record<string, "neutral" | "info" | "success" | "
   locked: "neutral",
 };
 
-function DifficultyIcon() {
+export function DifficultyIcon() {
   return (
     <svg
       width="14"

@@ -1,0 +1,90 @@
+/* Scoped styling for the lesson.md HTML injected via dangerouslySetInnerHTML
+   in the Learn section (see LabDetail.tsx). internal/markdown emits plain
+   h1/h2/p/ul/ol/li/blockquote/pre tags with no classes, so the app's design
+   tokens can't reach them the way they reach Astryx's own components —
+   without this, every block sits flush against its neighbor (the app's base
+   reset zeroes default margins) and the lesson's own <h1> renders at the
+   same size as the page title. Reuses the theme's own heading/color tokens,
+   just reassigned to the next size down so lesson content reads as
+   subordinate to the "Learn" heading above it, not a second page title. */
+
+.lessonBody {
+  max-width: 68ch;
+}
+
+.lessonBody > :first-child {
+  margin-top: 0;
+}
+.lessonBody > :last-child {
+  margin-bottom: 0;
+}
+
+.lessonBody h1,
+.lessonBody h2,
+.lessonBody h3 {
+  font-family: var(--font-family-heading);
+  color: var(--color-text-primary);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.lessonBody h1 {
+  font-size: var(--text-heading-4-size);
+  font-weight: var(--text-heading-4-weight);
+  line-height: var(--text-heading-4-leading);
+}
+
+.lessonBody h2 {
+  font-size: var(--text-heading-5-size);
+  font-weight: var(--text-heading-5-weight);
+  line-height: var(--text-heading-5-leading);
+}
+
+.lessonBody h3 {
+  font-size: var(--text-heading-6-size);
+  font-weight: var(--text-heading-6-weight);
+  line-height: var(--text-heading-6-leading);
+}
+
+.lessonBody p {
+  margin: 0 0 0.75rem;
+  line-height: 1.6;
+}
+
+.lessonBody ul,
+.lessonBody ol {
+  margin: 0 0 0.75rem;
+  padding-inline-start: 1.25rem;
+  font-family: var(--font-family-body);
+  font-size: var(--text-body-size);
+  line-height: 1.6;
+}
+
+.lessonBody ul {
+  list-style-type: disc;
+}
+
+.lessonBody ol {
+  list-style-type: decimal;
+}
+
+.lessonBody li {
+  margin: 0 0 0.375rem;
+}
+.lessonBody li:last-child {
+  margin-bottom: 0;
+}
+
+.lessonBody pre {
+  margin: 0 0 0.75rem;
+}
+
+.lessonBody blockquote {
+  margin: 0 0 0.75rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.lessonBody strong {
+  color: var(--color-text-primary);
+}

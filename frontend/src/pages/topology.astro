@@ -13,6 +13,41 @@ import Shell from "../components/Shell";
     <meta charset="utf-8" />
     <title>BreakLab — topology</title>
     <script is:inline src="/js/cytoscape.min.js"></script>
+    <style>
+      #topo-root button {
+        cursor: pointer;
+      }
+      .topo-toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .topo-check-result {
+        font-size: 14px;
+        margin: 0 0 12px;
+      }
+      .topo-port-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .topo-log {
+        background: #161618;
+        color: #d4d4d8;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        padding: 10px;
+        border-radius: 6px;
+        max-height: 160px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .topo-stats {
+        font-size: 13px;
+        color: #868e96;
+      }
+    </style>
   </head>
   <body>
     <Shell client:load>
@@ -21,10 +56,22 @@ import Shell from "../components/Shell";
     </Shell>
     <script type="module">
       const root = document.getElementById("topo-root");
+      const POLL_MS = 4000;
+
+      let cy = null;
+      let currentLabID = null;
+      let containersEl = null;
+      let statusLineEl = null;
+      let checkBtn = null;
+      let checkResultEl = null;
 
       function el(tag, attrs, children) {
         const node = document.createElement(tag);
-        for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+        for (const [k, v] of Object.entries(attrs || {})) {
+          if (k === "text") node.textContent = v;
+          else if (k === "class") node.className = v;
+          else node.setAttribute(k, v);
+        }
         for (const child of children || []) node.appendChild(child);
         return node;
       }
@@ -51,98 +98,265 @@ import Shell from "../components/Shell";
         return btn;
       }
 
-      fetch("/api/topology", { credentials: "include" })
-        .then((res) => res.json())
-        .then((view) => {
-          if (!view.Active) {
-            root.appendChild(el("p", {}, [document.createTextNode("No lab is active.")]));
-            return;
+      // Maps a container node's status (the live Docker state, or a
+      // synthetic "check-passed"/"check-failed" set by runCheck below)
+      // to a border color, so a dead or failing container is visibly
+      // red rather than indistinguishable from a healthy one.
+      function statusColor(status) {
+        if (status === "running" || status === "check-passed") return "#2f9e44";
+        if (status === "check-failed") return "#e03131";
+        if (status && status !== "unknown") return "#e03131"; // any other reported Docker state (exited, dead, ...) reads as broken
+        return "#868e96";
+      }
+
+      function formatBytes(n) {
+        if (!n) return "0 B";
+        const units = ["B", "KB", "MB", "GB"];
+        let v = n;
+        let i = 0;
+        while (v >= 1024 && i < units.length - 1) {
+          v /= 1024;
+          i++;
+        }
+        return `${v.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+      }
+
+      function formatStats(s) {
+        if (!s || (!s.CPUPercent && !s.MemUsedBytes)) return null;
+        return `${s.CPUPercent.toFixed(1)}% CPU · ${formatBytes(s.MemUsedBytes)} / ${formatBytes(s.MemLimitBytes)} mem`;
+      }
+
+      function cyStyle() {
+        return [
+          {
+            selector: "node",
+            style: {
+              shape: "round-rectangle",
+              width: "label",
+              height: "label",
+              padding: "14px",
+              "background-color": "#1f1f23",
+              "border-width": 1.5,
+              "border-color": "#3a3a40",
+              label: "data(label)",
+              "text-wrap": "wrap",
+              "text-valign": "center",
+              "text-halign": "center",
+              "font-size": 14,
+              color: "#f4f4f5",
+            },
+          },
+          { selector: "node[kind='host']", style: { "border-color": "#c14e1f", "border-width": 2 } },
+          {
+            selector: "node[kind='container']",
+            style: {
+              "border-color": (ele) => statusColor(ele.data("status")),
+              "border-width": 3,
+            },
+          },
+          { selector: "node[kind='port']", style: { "border-color": "#2f6b2f", "border-width": 2 } },
+          {
+            selector: "edge",
+            style: {
+              width: 1.5,
+              "line-color": "#6b6b72",
+              "curve-style": "bezier",
+              "target-arrow-shape": "triangle",
+              "target-arrow-color": "#6b6b72",
+              label: "data(label)",
+              "font-size": 13,
+              color: "#b3b3b3",
+            },
+          },
+        ];
+      }
+
+      function buildGraph(elements) {
+        const canvas = el("div", { id: "topo-cy", style: "width: 100%; height: 420px;" }, []);
+        cy = cytoscape({
+          container: canvas,
+          elements,
+          minZoom: 0.4,
+          maxZoom: 2,
+          wheelSensitivity: 0.2,
+          style: cyStyle(),
+          layout: { name: "breadthfirst", directed: true, padding: 40, spacingFactor: 1.4 },
+        });
+        return canvas;
+      }
+
+      // Updates the live cy instance's elements in place (add new ones,
+      // patch existing ones' data so status-driven colors react
+      // immediately, drop stale ones) instead of tearing down and
+      // rebuilding on every poll tick, which would reset the user's
+      // pan/zoom every few seconds.
+      function syncGraph(elements) {
+        if (!cy) return;
+        const seen = new Set();
+        for (const e of elements) {
+          seen.add(e.data.id);
+          const existing = cy.getElementById(e.data.id);
+          if (existing.length) existing.data(e.data);
+          else cy.add({ data: e.data });
+        }
+        cy.elements().forEach((e) => {
+          if (!seen.has(e.id())) cy.remove(e);
+        });
+      }
+
+      function buildToolbar() {
+        return el("div", { class: "topo-toolbar" }, [
+          (() => {
+            const b = el("button", {}, []);
+            b.textContent = "+";
+            b.addEventListener("click", () => cy.zoom(cy.zoom() * 1.2));
+            return b;
+          })(),
+          (() => {
+            const b = el("button", {}, []);
+            b.textContent = "−";
+            b.addEventListener("click", () => cy.zoom(cy.zoom() / 1.2));
+            return b;
+          })(),
+          (() => {
+            const b = el("button", {}, []);
+            b.textContent = "Reset view";
+            b.addEventListener("click", () => cy.fit(undefined, 40));
+            return b;
+          })(),
+        ]);
+      }
+
+      function buildCheckSection() {
+        checkBtn = el("button", {}, []);
+        checkBtn.textContent = "Run check";
+        checkBtn.addEventListener("click", runCheck);
+        checkResultEl = el("p", { class: "topo-check-result" }, []);
+        return el("div", {}, [checkBtn, checkResultEl]);
+      }
+
+      // Runs the active lab's check (the same action the lab-detail page
+      // exposes) and colors the container node red/green immediately —
+      // the next poll's real Docker status will overwrite that color if
+      // the container's actual state disagrees.
+      async function runCheck() {
+        if (!currentLabID) return;
+        checkBtn.disabled = true;
+        checkResultEl.textContent = "Checking…";
+        checkResultEl.style.color = "";
+        try {
+          const res = await fetch(`/api/labs/${encodeURIComponent(currentLabID)}/check`, {
+            method: "POST",
+            credentials: "include",
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(body.error || `server returned ${res.status}`);
+
+          checkResultEl.textContent = body.Message || (body.Passed ? "Check passed" : "Check failed");
+          checkResultEl.style.color = body.Passed ? "#2f9e44" : "#e03131";
+
+          if (cy) {
+            const container = cy.nodes("[kind='container']").first();
+            if (container.length) container.data("status", body.Passed ? "check-passed" : "check-failed");
           }
+        } catch (err) {
+          checkResultEl.textContent = `Couldn't run check: ${err.message || err}`;
+          checkResultEl.style.color = "#e03131";
+        } finally {
+          checkBtn.disabled = false;
+        }
+      }
 
-          root.appendChild(el("p", {}, [document.createTextNode(view.Lab)]));
+      function containerCard(c) {
+        const portsList = el(
+          "div",
+          {},
+          c.Ports.map((p) =>
+            el("div", { class: "topo-port-row" }, [
+              document.createTextNode(`${p.HostPort} → ${p.ContainerPort}`),
+              ...(p.OpenHref
+                ? [
+                    (() => {
+                      const a = el("a", { href: p.OpenHref, target: "_blank", rel: "noopener" }, []);
+                      a.textContent = "Open ↗";
+                      return a;
+                    })(),
+                  ]
+                : []),
+            ]),
+          ),
+        );
 
-          const canvas = el("div", { id: "topo-cy", style: "width: 100%; height: 420px;" }, []);
+        const children = [
+          el("h2", {}, [document.createTextNode(`${c.Name} (${c.Status})`)]),
+          el("p", {}, [document.createTextNode(`Image: ${c.Image}`)]),
+          el("p", {}, [document.createTextNode(`${c.ExecCmd} `), copyButton(c.ExecCmd)]),
+          portsList,
+        ];
+
+        const statsText = formatStats(c.Stats);
+        if (statsText) children.push(el("p", { class: "topo-stats" }, [document.createTextNode(statsText)]));
+
+        if (c.LogTail) {
+          const pre = el("pre", { class: "topo-log" }, []);
+          pre.textContent = c.LogTail;
+          children.push(el("p", {}, [document.createTextNode("Recent logs:")]));
+          children.push(pre);
+        }
+
+        return el("section", {}, children);
+      }
+
+      function renderContainerCards(containers) {
+        containersEl.replaceChildren(...containers.map(containerCard));
+      }
+
+      function renderActive(view) {
+        currentLabID = view.LabID;
+
+        if (!cy) {
+          root.replaceChildren();
+          statusLineEl = el("p", {}, [document.createTextNode(view.Lab)]);
+          root.appendChild(statusLineEl);
+          root.appendChild(buildCheckSection());
+
+          const canvas = buildGraph(view.Elements);
+          root.appendChild(buildToolbar());
           root.appendChild(canvas);
 
-          const cy = cytoscape({
-            container: canvas,
-            elements: view.Elements,
-            minZoom: 0.4,
-            maxZoom: 2,
-            wheelSensitivity: 0.2,
-            style: [
-              {
-                selector: "node",
-                style: {
-                  shape: "round-rectangle",
-                  width: "label",
-                  height: "label",
-                  padding: "14px",
-                  "background-color": "#1f1f23",
-                  "border-width": 1.5,
-                  "border-color": "#3a3a40",
-                  label: "data(label)",
-                  "text-wrap": "wrap",
-                  "text-valign": "center",
-                  "text-halign": "center",
-                  "font-size": 14,
-                  color: "#f4f4f5",
-                },
-              },
-              { selector: "node[kind='host']", style: { "border-color": "#c14e1f", "border-width": 2 } },
-              { selector: "node[kind='container']", style: { "border-color": "#1d5f7a", "border-width": 2 } },
-              { selector: "node[kind='port']", style: { "border-color": "#2f6b2f", "border-width": 2 } },
-              {
-                selector: "edge",
-                style: {
-                  width: 1.5,
-                  "line-color": "#6b6b72",
-                  "curve-style": "bezier",
-                  "target-arrow-shape": "triangle",
-                  "target-arrow-color": "#6b6b72",
-                  label: "data(label)",
-                  "font-size": 13,
-                  color: "#b3b3b3",
-                },
-              },
-            ],
-            layout: { name: "breadthfirst", directed: true, padding: 40, spacingFactor: 1.4 },
-          });
+          containersEl = el("div", {}, []);
+          root.appendChild(containersEl);
+          renderContainerCards(view.Containers);
+        } else {
+          statusLineEl.textContent = view.Lab;
+          syncGraph(view.Elements);
+          renderContainerCards(view.Containers);
+        }
+      }
 
-          const toolbar = el("div", {}, [
-            (() => {
-              const b = el("button", {}, []);
-              b.textContent = "+";
-              b.addEventListener("click", () => cy.zoom(cy.zoom() * 1.2));
-              return b;
-            })(),
-            (() => {
-              const b = el("button", {}, []);
-              b.textContent = "−";
-              b.addEventListener("click", () => cy.zoom(cy.zoom() / 1.2));
-              return b;
-            })(),
-            (() => {
-              const b = el("button", {}, []);
-              b.textContent = "Reset view";
-              b.addEventListener("click", () => cy.fit(undefined, 40));
-              return b;
-            })(),
-          ]);
-          root.insertBefore(toolbar, canvas);
+      function renderInactive() {
+        if (cy) {
+          cy.destroy();
+          cy = null;
+        }
+        currentLabID = null;
+        root.replaceChildren(el("p", {}, [document.createTextNode("No lab is active.")]));
+      }
 
-          for (const c of view.Containers) {
-            const section = el("section", {}, [
-              el("h2", {}, [document.createTextNode(`${c.Name} (${c.Status})`)]),
-              el("p", {}, [document.createTextNode(`Image: ${c.Image}`)]),
-              el("p", {}, [document.createTextNode(`${c.ExecCmd} `), copyButton(c.ExecCmd)]),
-            ]);
-            root.appendChild(section);
-          }
-        })
-        .catch((err) => {
-          root.appendChild(el("p", {}, [document.createTextNode(`Couldn't load topology: ${err}`)]));
-        });
+      async function poll() {
+        try {
+          const res = await fetch("/api/topology", { credentials: "include" });
+          const view = await res.json();
+          if (view.Active) renderActive(view);
+          else renderInactive();
+        } catch (err) {
+          root.replaceChildren(el("p", {}, [document.createTextNode(`Couldn't load topology: ${err}`)]));
+        } finally {
+          setTimeout(poll, POLL_MS);
+        }
+      }
+
+      poll();
     </script>
   </body>
 </html>

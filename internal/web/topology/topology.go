@@ -19,12 +19,28 @@ type ContainerNodeView struct {
 	Status  string // Docker's running state, or "unknown" when it couldn't be read
 	ExecCmd string
 	Ports   []webcore.PortNodeView
+
+	// LogTail is the container's last few log lines, same best-effort
+	// contract as Status: empty when logs is nil or the lookup fails,
+	// never a page failure (design.md Decision 4).
+	LogTail string
+
+	// Stats is the container's live CPU/memory snapshot, zero-valued
+	// under the same best-effort contract as LogTail.
+	Stats webcore.Stats
 }
 
 // TopologyView is the Astro topology page's data (GET /api/topology).
 type TopologyView struct {
-	Active     bool
-	Lab        string
+	Active bool
+	Lab    string
+
+	// LabID is the catalog id (not Lab's display title) the topology
+	// page needs to call the existing POST /api/labs/{id}/check route
+	// for the "run check" action — runner.Check ignores the path's id
+	// and always checks the active session's own lab, but the route
+	// still expects a path segment, so this is that segment.
+	LabID      string
 	Containers []ContainerNodeView
 
 	// Elements is Containers (plus the implicit host node) as a
@@ -86,8 +102,10 @@ func cytoscapeElements(containers []ContainerNodeView) []cytoElement {
 // surface covers Docker-backed routes" requirement) — and is expected to
 // already carry whatever timeout the caller wants; a lookup error or a
 // nil status func degrades the container's Status to "unknown" rather
-// than failing the page (design.md Decision 4).
-func buildTopology(ctx context.Context, cat *catalog.Catalog, session *runner.Session, status webcore.StatusFunc) TopologyView {
+// than failing the page (design.md Decision 4). logs and stats follow
+// the same nil-degrades-gracefully contract, each leaving its field
+// zero-valued rather than failing the page.
+func buildTopology(ctx context.Context, cat *catalog.Catalog, session *runner.Session, status webcore.StatusFunc, logs webcore.LogsFunc, stats webcore.StatsFunc) TopologyView {
 	if session == nil {
 		return TopologyView{}
 	}
@@ -102,6 +120,20 @@ func buildTopology(ctx context.Context, cat *catalog.Catalog, session *runner.Se
 	if status != nil {
 		if s, img, err := status(ctx, session.Container); err == nil && s != "" {
 			state, image = s, img
+		}
+	}
+
+	var logTail string
+	if logs != nil {
+		if out, err := logs(ctx, session.Container, 20); err == nil {
+			logTail = strings.TrimSpace(string(out))
+		}
+	}
+
+	var liveStats webcore.Stats
+	if stats != nil {
+		if s, err := stats(ctx, session.Container); err == nil {
+			liveStats = s
 		}
 	}
 
@@ -121,11 +153,14 @@ func buildTopology(ctx context.Context, cat *catalog.Catalog, session *runner.Se
 		Status:  state,
 		ExecCmd: "docker exec -it " + session.Container + " bash",
 		Ports:   ports,
+		LogTail: logTail,
+		Stats:   liveStats,
 	}}
 
 	return TopologyView{
 		Active:     true,
 		Lab:        lab.Title,
+		LabID:      lab.ID,
 		Containers: containers,
 		Elements:   cytoscapeElements(containers),
 	}
@@ -150,7 +185,7 @@ func topologyAPIHandler(cfg webcore.Config) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), webcore.DockerStatusTimeout)
 		defer cancel()
 
-		view := buildTopology(ctx, cat, session, cfg.DockerStatus)
+		view := buildTopology(ctx, cat, session, cfg.DockerStatus, cfg.ContainerLogs, cfg.ContainerStats)
 		webcore.WriteJSON(w, view)
 	}
 }

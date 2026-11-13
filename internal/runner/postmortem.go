@@ -222,6 +222,101 @@ func (r *Runner) rootCauseWarning(pf *progress.ProgressFile, path, body string) 
 	return fmt.Sprintf("Root cause doesn't mention any of: %s — double check it describes what actually broke.", strings.Join(expected, ", "))
 }
 
+// SubmitPostmortem is the web postmortem editor's write path: the same
+// outcome as `breaklab postmortem` followed by `breaklab postmortem
+// --validate`, minus the $EDITOR round-trip, for a caller (the web UI)
+// that collects finished section content directly instead of handing
+// the learner a file to edit by hand. sections is keyed by
+// postmortem.DisplaySections name ("Hypothesis", "Summary",
+// "Detection", "Root cause", "Fix", "Prevention"); a missing key is
+// treated as empty.
+//
+// It operates on labID's own latest attempt (unlike Postmortem, which
+// picks whichever lab was solved most recently across the whole
+// catalog) — the web lab-detail page already knows which lab it's on.
+// Writing is idempotent: resubmitting the same lab's form overwrites
+// the same file in place rather than creating a new one, and an
+// existing file's own front matter (e.g. a hand-edited `publish: true`)
+// is preserved rather than reset.
+func (r *Runner) SubmitPostmortem(ctx context.Context, labID string, sections map[string]string) (ValidationResult, error) {
+	pf, err := progress.Load(r.ProgressPath)
+	if err != nil {
+		return ValidationResult{}, err
+	}
+
+	index, ok := progress.LatestAttemptIndex(pf, labID)
+	if !ok {
+		return ValidationResult{}, errors.New("solve this lab first")
+	}
+	attempt := pf.Attempts[index]
+	if attempt.Status != progress.StatusSolved && attempt.Status != progress.StatusComplete {
+		return ValidationResult{}, errors.New("solve this lab first")
+	}
+
+	lab, err := r.findLab(attempt.Lab)
+	if err != nil {
+		return ValidationResult{}, err
+	}
+
+	fm := postmortem.FrontMatter{
+		Lab:       attempt.Lab,
+		Variant:   attempt.Variant,
+		Stage:     lab.Stage,
+		HintsUsed: attempt.HintsUsed,
+	}
+	if attempt.SolvedAt != nil {
+		fm.Date = attempt.SolvedAt.Local().Format("2006-01-02")
+		fm.MinutesToFix = int(attempt.SolvedAt.Sub(attempt.StartedAt).Minutes())
+	}
+
+	path := attempt.Postmortem
+	if path == "" {
+		path, err = r.newPostmortemPath(fm.Date, attempt.Lab, attempt.Variant)
+		if err != nil {
+			return ValidationResult{}, err
+		}
+	} else if data, err := os.ReadFile(path); err == nil {
+		// A file already exists (created by this same form earlier, or by
+		// `breaklab postmortem` from the CLI) — keep its own front matter
+		// (notably `publish`, which only a human sets) instead of
+		// resetting it on every resubmit.
+		if raw, _, err := postmortem.SplitFrontMatter(string(data)); err == nil {
+			if existing, err := postmortem.ParseFrontMatter(raw); err == nil {
+				fm.Publish = existing.Publish
+			}
+		}
+	}
+
+	full := postmortem.RenderSections(fm, lab.Title, sections)
+	if err := os.MkdirAll(r.PostmortemsDir, 0o755); err != nil {
+		return ValidationResult{}, fmt.Errorf("creating %s: %w", r.PostmortemsDir, err)
+	}
+	if err := os.WriteFile(path, []byte(full), 0o644); err != nil {
+		return ValidationResult{}, err
+	}
+	if attempt.Postmortem == "" {
+		if err := progress.SetPostmortem(r.ProgressPath, index, path); err != nil {
+			return ValidationResult{}, err
+		}
+	}
+
+	_, body, err := postmortem.SplitFrontMatter(full)
+	if err != nil {
+		return ValidationResult{}, err
+	}
+
+	result := ValidationResult{RootCauseWarning: r.rootCauseWarning(pf, path, body)}
+	if failing := postmortem.ValidateSections(body); len(failing) > 0 {
+		result.Failing = failing
+		return result, nil
+	}
+	result.Valid = true
+	if err := progress.MarkComplete(r.ProgressPath, index); err != nil {
+		return ValidationResult{}, err
+	}
+	return result, nil
+}
+
 // newPostmortemPath returns postmortems/<date>-<lab>-<variant>.md (or
 // postmortems/<date>-<lab>.md for a lab with no variant), adding a -2,
 // -3, ... suffix if that name is already taken (design.md Decision 8).

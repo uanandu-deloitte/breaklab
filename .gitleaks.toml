@@ -1,0 +1,27 @@
+# Baselined against this repo's real history — see docs/developer-guide.md §6.
+# BreakLab's entire catalog is lab content that teaches secrets/auth
+# incidents, so it legitimately contains fake, secret-shaped strings. Each
+# entry below was checked by hand to confirm it's a fixture, not a real
+# leaked credential, before being added here.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Lab directories whose entire purpose is simulated secrets/auth content"
+paths = [
+  '''labs/leaked-secret/.*''',   # the lab IS "find the fake key in git history"
+  '''labs/cicd-004/.*''',        # deploy script compares against its own literal token
+  '''labs/net-006/.*''',         # curl Authorization header exercise
+  '''labs/k8ss-003/.*''',        # ConfigMap-vs-Secret exercise, fixture token
+]
+
+# labs/azure-002/Dockerfile's published, public Azurite emulator default key
+# (devstoreaccount1, documented by Microsoft) and the fixture tokens
+# internal/runner/integration_test.go uses to exercise labs/cicd-004 and
+# labs/k8ss-003 — none of these are real credentials.
+regexes = [
+  '''Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==''',
+  '''brk-ci-7f2a9d41c8b3''',
+  '''test-token-fixture''',
+  '''tok_live_8f3ac2b9e1''',
+]

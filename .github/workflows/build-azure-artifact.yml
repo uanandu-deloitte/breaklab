@@ -1,0 +1,59 @@
+name: build-azure-artifact
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # OIDC login to Azure — no stored service principal secret
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/breaklab ./cmd/breaklab
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - run: |
+          mkdir -p artifact/frontend
+          cp dist/breaklab artifact/
+          cp -r frontend/dist artifact/frontend/dist
+          cp -r labs templates roadmap.yaml artifact/
+          tar czf "breaklab-${{ github.sha }}.tar.gz" -C artifact .
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - run: |
+          az storage blob upload \
+            --account-name breaklabreleases \
+            --container-name breaklab-releases \
+            --name "breaklab-${{ github.sha }}.tar.gz" \
+            --file "breaklab-${{ github.sha }}.tar.gz" \
+            --auth-mode login
+          az storage blob upload \
+            --account-name breaklabreleases \
+            --container-name breaklab-releases \
+            --name "breaklab-latest.tar.gz" \
+            --file "breaklab-${{ github.sha }}.tar.gz" \
+            --auth-mode login \
+            --overwrite

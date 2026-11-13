@@ -27,13 +27,14 @@ func runList(args []string) int {
 		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
 	}
 
-	for _, group := range cat.RegularStages() {
-		if len(group.Labs) == 0 {
+	for _, entry := range catalog.GroupByTrack(cat.RegularStages()) {
+		if entry.Stage != nil {
+			printStageLabs(*entry.Stage, "")
 			continue
 		}
-		fmt.Printf("%s\n", group.Stage.Title)
-		for _, lab := range group.Labs {
-			fmt.Printf("  %-20s %-40s difficulty=%d  %s\n", lab.ID, lab.Title, lab.Difficulty, lab.Status)
+		fmt.Printf("%s — pick one track:\n", entry.Track)
+		for _, group := range entry.Stages {
+			printStageLabs(group, "  ")
 		}
 	}
 
@@ -50,4 +51,18 @@ func runList(args []string) int {
 	}
 
 	return 0
+}
+
+// printStageLabs prints one stage's title and labs, each line prefixed
+// by indent (used to nest a track group's member stages under its
+// shared "pick one track" header). Mirrors runList's old inline loop,
+// skipping a stage with no labs rather than printing an empty heading.
+func printStageLabs(group catalog.StageGroup, indent string) {
+	if len(group.Labs) == 0 {
+		return
+	}
+	fmt.Printf("%s%s\n", indent, group.Stage.Title)
+	for _, lab := range group.Labs {
+		fmt.Printf("%s  %-20s %-40s difficulty=%d  %s\n", indent, lab.ID, lab.Title, lab.Difficulty, lab.Status)
+	}
 }

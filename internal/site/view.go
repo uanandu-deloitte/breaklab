@@ -31,6 +31,14 @@ type StageView struct {
 	Total     int
 	Percent   int
 	Labs      []CompletedLabView
+
+	// TrackHeader is set only on the first stage of a set of
+	// alternatives (catalog.Stage.Track) — e.g. "Kubernetes
+	// specialization" above the developer/admin/security stages — so
+	// the template can print one shared heading before the group
+	// instead of three unrelated-looking stages in a row. Empty for an
+	// ordinary stage and for every member after the group's first.
+	TrackHeader string
 }
 
 // Totals is the summary shown at the bottom of the site.
@@ -85,8 +93,18 @@ func BuildIndex(cat *catalog.Catalog, pf *progress.ProgressFile, published map[s
 	regular := cat.RegularStages()
 	stages := make([]StageView, 0, len(regular)+1)
 
-	for _, group := range regular {
-		stages = append(stages, buildStageView(group, latest, published))
+	for _, entry := range catalog.GroupByTrack(regular) {
+		if entry.Stage != nil {
+			stages = append(stages, buildStageView(*entry.Stage, latest, published))
+			continue
+		}
+		for i, group := range entry.Stages {
+			sv := buildStageView(group, latest, published)
+			if i == 0 {
+				sv.TrackHeader = entry.Track
+			}
+			stages = append(stages, sv)
+		}
 	}
 
 	// The capstone is a surprise, earned finale: it stays off the public

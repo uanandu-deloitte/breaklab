@@ -5,6 +5,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Badge } from "@astryxdesign/core/Badge";
 import { List, ListItem } from "@astryxdesign/core/List";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/web's ChaosView (GET /api/chaos).
@@ -47,7 +48,7 @@ function ChaosContent() {
   }, []);
 
   if (error) return <Text color="accent">Couldn't load chaos labs: {error}</Text>;
-  if (!view) return <Text type="supporting">Loading…</Text>;
+  if (!view) return <LoadingState label="Loading chaos…" rows={3} />;
 
   return (
     <VStack gap={6}>

@@ -13,6 +13,7 @@ import { Link } from "@astryxdesign/core/Link";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Markdown } from "@astryxdesign/core/Markdown";
 import { Layout, LayoutHeader, LayoutContent, LayoutPanel } from "@astryxdesign/core/Layout";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/web's LabDetailView (GET /api/labs/{id}).
@@ -60,6 +61,27 @@ interface LabDetailView {
   Hypothesis: string;
   LockedOnTitles: string[] | null;
   ChallengeMode: boolean;
+
+  // PostmortemEligible is true once this lab's latest attempt is
+  // solved or complete — the editor only renders then. PostmortemFields
+  // pre-fills it from an existing draft file, keyed by section name
+  // ("Summary", "Detection", "Root cause", "Fix", "Prevention").
+  PostmortemEligible: boolean;
+  PostmortemComplete: boolean;
+  PostmortemSections: Record<string, string> | null;
+}
+
+const POSTMORTEM_SECTIONS = ["Summary", "Detection", "Root cause", "Fix", "Prevention"] as const;
+const POSTMORTEM_MIN_WORDS = 20;
+
+interface PostmortemResult {
+  valid: boolean;
+  failing?: string[];
+  rootCauseWarning?: string;
+}
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function labIDFromPath(): string {
@@ -77,11 +99,24 @@ function challengeModeFromQuery(): boolean {
   return new URLSearchParams(window.location.search).get("mode") === "challenge";
 }
 
+// Where "back" goes depends on how the lab was reached — a phase's stage
+// panel (LabCard's backHref/backLabel) or the challenge browser (the
+// default). Carried as query params rather than inferred from
+// document.referrer, which is unset for direct loads/new tabs.
+function backLinkFromQuery(): { href: string; label: string } {
+  if (typeof window === "undefined") return { href: "/challenges", label: "Back to challenges" };
+  const params = new URLSearchParams(window.location.search);
+  const back = params.get("back");
+  if (!back) return { href: "/challenges", label: "Back to challenges" };
+  return { href: back, label: params.get("backLabel") ?? "Back" };
+}
+
 // LabDetailContent renders one lab's detail + actions. fixedLabID, when
 // set, skips the path-derived id entirely — the capstone page's own
 // lab isn't at /labs/{id}, so it passes its id directly (Capstone.tsx).
 function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
   const [labID, setLabID] = useState(fixedLabID ?? "");
+  const [backLink, setBackLink] = useState({ href: "/challenges", label: "Back to challenges" });
   const [view, setView] = useState<LabDetailView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -92,9 +127,13 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [liveLogHTML, setLiveLogHTML] = useState("");
   const [pendingAction, setPendingAction] = useState<"start" | "check" | "hint" | "stop" | null>(null);
+  const [postmortemFields, setPostmortemFields] = useState<Record<string, string>>({});
+  const [postmortemResult, setPostmortemResult] = useState<PostmortemResult | null>(null);
+  const [postmortemSaving, setPostmortemSaving] = useState(false);
 
   useEffect(() => {
     if (!fixedLabID) setLabID(labIDFromPath());
+    setBackLink(backLinkFromQuery());
   }, [fixedLabID]);
 
   // Diagnostic log stream (web-ui spec): a live-updating view of the
@@ -144,6 +183,37 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
   }
 
   useEffect(load, [labID]);
+
+  // Seeds once from the loaded draft (if any) and never again — a guard
+  // on already-having-keys, so a later load() (triggered by Check/Start)
+  // can't clobber text the learner is actively editing.
+  useEffect(() => {
+    if (!view || Object.keys(postmortemFields).length > 0) return;
+    const seed: Record<string, string> = {};
+    for (const name of POSTMORTEM_SECTIONS) seed[name] = view.PostmortemSections?.[name] ?? "";
+    setPostmortemFields(seed);
+  }, [view]);
+
+  async function handleSubmitPostmortem() {
+    setPostmortemSaving(true);
+    try {
+      const res = await fetch(`/api/labs/${labID}/postmortem`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections: postmortemFields }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionError(data?.error ?? "Couldn't save the postmortem");
+        return;
+      }
+      setPostmortemResult(data);
+      if (data.valid) load();
+    } finally {
+      setPostmortemSaving(false);
+    }
+  }
 
   async function postAction(path: string, body?: unknown) {
     setActionError(null);
@@ -208,7 +278,7 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
 
   if (notFound) return <Text color="accent">Lab not found.</Text>;
   if (error) return <Text color="accent">Couldn't load this lab: {error}</Text>;
-  if (!view) return <Text type="supporting">Loading…</Text>;
+  if (!view) return <LoadingState label="Loading lab…" rows={2} />;
 
   return (
     <Layout
@@ -216,10 +286,10 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
       header={
         <LayoutHeader hasDivider>
           <VStack gap={3}>
-            <Link href="/challenges" type="supporting" color="secondary">
+            <Link href={backLink.href} type="supporting" color="secondary">
               <HStack as="span" gap={1} vAlign="center">
                 <Icon icon="chevronLeft" size="sm" />
-                Back to challenges
+                {backLink.label}
               </HStack>
             </Link>
             <HStack gap={4} vAlign="start" hAlign="between" wrap="wrap">
@@ -320,6 +390,62 @@ function LabDetailContent({ fixedLabID }: { fixedLabID?: string }) {
             {revealedHint && (
               <Card variant="yellow">
                 <Text>{revealedHint}</Text>
+              </Card>
+            )}
+
+            {view.PostmortemEligible && (
+              <Card>
+                <VStack gap={4}>
+                  <HStack justify="between" vAlign="center">
+                    <Heading level={3}>Postmortem</Heading>
+                    <Badge
+                      label={view.PostmortemComplete ? "Complete" : "Needed"}
+                      variant={view.PostmortemComplete ? "success" : "warning"}
+                    />
+                  </HStack>
+                  <Text type="supporting">
+                    Write up what broke, how you found it, and how to stop it happening again. Each section needs at
+                    least {POSTMORTEM_MIN_WORDS} words.
+                  </Text>
+                  {POSTMORTEM_SECTIONS.map((name) => {
+                    const value = postmortemFields[name] ?? "";
+                    const count = wordCount(value);
+                    return (
+                      <VStack key={name} gap={1}>
+                        <TextArea
+                          label={name}
+                          value={value}
+                          onChange={(v) => setPostmortemFields((prev) => ({ ...prev, [name]: v }))}
+                          rows={3}
+                        />
+                        <Text type="supporting">
+                          {count}/{POSTMORTEM_MIN_WORDS} words
+                        </Text>
+                      </VStack>
+                    );
+                  })}
+                  {postmortemResult?.rootCauseWarning && (
+                    <Card variant="yellow">
+                      <Text>{postmortemResult.rootCauseWarning}</Text>
+                    </Card>
+                  )}
+                  {postmortemResult && !postmortemResult.valid && (
+                    <Card variant="red">
+                      <Text>Needs more detail in: {postmortemResult.failing?.join(", ")}</Text>
+                    </Card>
+                  )}
+                  {postmortemResult?.valid && (
+                    <Card variant="green">
+                      <Text>Postmortem complete.</Text>
+                    </Card>
+                  )}
+                  <Button
+                    label="Save postmortem"
+                    variant="primary"
+                    isLoading={postmortemSaving}
+                    clickAction={handleSubmitPostmortem}
+                  />
+                </VStack>
               </Card>
             )}
 

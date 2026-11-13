@@ -243,7 +243,7 @@ func TestBuildChallengesNoActiveIncident(t *testing.T) {
 
 func TestChallengesRandomRedirectsToAMatchingLab(t *testing.T) {
 	dir := t.TempDir()
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: git\n    title: Git\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: git\n    phase: phase-1\n    title: Git\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "git-lab", "lab.yaml"), `id: git-lab
 title: Git lab
 stage: git
@@ -281,7 +281,7 @@ check:
 
 func TestChallengesRandomHonorsFormBodyFilters(t *testing.T) {
 	dir := t.TempDir()
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: git\n    title: Git\n  - id: linux\n    title: Linux\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: git\n    phase: phase-1\n    title: Git\n  - id: linux\n    phase: phase-1\n    title: Linux\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "git-lab", "lab.yaml"), `id: git-lab
 title: Git lab
 stage: git
@@ -329,7 +329,7 @@ check:
 
 func TestChallengesRandomAPINoMatchReturnsEmptyLab(t *testing.T) {
 	dir := t.TempDir()
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: git\n    title: Git\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: git\n    phase: phase-1\n    title: Git\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "git-lab", "lab.yaml"), `id: git-lab
 title: Git lab
 stage: git

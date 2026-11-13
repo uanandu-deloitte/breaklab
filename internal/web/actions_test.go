@@ -38,7 +38,7 @@ func (f *fakeActionDocker) Remove(context.Context, string) error               {
 func (f *fakeActionDocker) VolumeRemove(context.Context, string) error         { return nil }
 func (f *fakeActionDocker) VolumeCreate(context.Context, string) error         { return nil }
 
-const actionRoadmapYAML = "stages:\n  - id: linux\n    title: Linux fundamentals\n"
+const actionRoadmapYAML = "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n"
 
 func actionLabYAML(id string) string {
 	return "id: " + id + `

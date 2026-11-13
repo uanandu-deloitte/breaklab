@@ -8,10 +8,15 @@ import (
 )
 
 const testRoadmap = `
+phases:
+  - id: phase-1
+    title: Phase 1
 stages:
   - id: linux
+    phase: phase-1
     title: Linux fundamentals
   - id: git
+    phase: phase-1
     title: Git
 `
 
@@ -325,6 +330,103 @@ func TestValidateLab(t *testing.T) {
 	})
 }
 
+// add-curriculum-phases task 1.3: a stage naming an unknown phase id
+// fails catalog load with a clear error.
+func TestLoadRoadmapRejectsUnknownPhase(t *testing.T) {
+	dir := t.TempDir()
+	roadmapPath := filepath.Join(dir, "roadmap.yaml")
+	writeFile(t, roadmapPath, `
+phases:
+  - id: phase-1
+    title: Phase 1
+stages:
+  - id: linux
+    phase: phase-nope
+    title: Linux fundamentals
+`)
+	labsDir := filepath.Join(dir, "labs")
+	if err := os.MkdirAll(labsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadCatalog(labsDir, roadmapPath)
+	if err == nil {
+		t.Fatal("expected an error for a stage referencing an unknown phase")
+	}
+	if !strings.Contains(err.Error(), "linux") || !strings.Contains(err.Error(), "phase-nope") {
+		t.Fatalf("expected error to name the stage and unknown phase id, got: %v", err)
+	}
+}
+
+// add-curriculum-phases task 1.4: a phase with no stages still appears in
+// Catalog.Phases, in roadmap order, rather than being omitted.
+func TestLoadCatalogPhasesIncludesEmptyPhase(t *testing.T) {
+	dir := t.TempDir()
+	roadmapPath := filepath.Join(dir, "roadmap.yaml")
+	writeFile(t, roadmapPath, `
+phases:
+  - id: phase-1
+    title: Phase 1
+  - id: phase-2
+    title: Phase 2 — Cloud
+    blurb: Coming soon.
+stages:
+  - id: linux
+    phase: phase-1
+    title: Linux fundamentals
+  - id: git
+    phase: phase-1
+    title: Git
+`)
+	labsDir := filepath.Join(dir, "labs")
+	writeFile(t, filepath.Join(labsDir, "web-down", "lab.yaml"), validLabYAML)
+
+	cat, err := LoadCatalog(labsDir, roadmapPath)
+	if err != nil {
+		t.Fatalf("LoadCatalog: %v", err)
+	}
+	if len(cat.Phases) != 2 {
+		t.Fatalf("expected 2 phases, got %d: %+v", len(cat.Phases), cat.Phases)
+	}
+	if cat.Phases[0].Phase.ID != "phase-1" || len(cat.Phases[0].Stages) != 2 {
+		t.Fatalf("expected phase-1 with 2 stages, got %+v", cat.Phases[0])
+	}
+	if cat.Phases[1].Phase.ID != "phase-2" || cat.Phases[1].Stages != nil {
+		t.Fatalf("expected phase-2 with zero stages, got %+v", cat.Phases[1])
+	}
+
+	group, ok := cat.FindPhase("phase-2")
+	if !ok || len(group.Stages) != 0 {
+		t.Fatalf("expected FindPhase(phase-2) to return an empty, present phase")
+	}
+}
+
+// add-curriculum-phases task 1.5: removing the cloud stage from
+// roadmap.yaml renumbers the remaining stages for free — k8s-fundamentals
+// (previously stage 8) is now stage 7 — since RegularStages()'s index is
+// always computed positionally, never stored.
+func TestRealRoadmapRenumbersAfterCloudStageRemoval(t *testing.T) {
+	cat, err := LoadCatalog(filepath.Join("..", "..", "labs"), filepath.Join("..", "..", "roadmap.yaml"))
+	if err != nil {
+		t.Fatalf("LoadCatalog: %v", err)
+	}
+	if len(cat.Stages) != 12 {
+		t.Fatalf("expected 12 stages total (cloud removed), got %d", len(cat.Stages))
+	}
+	regular := cat.RegularStages()
+	if len(regular) != 11 {
+		t.Fatalf("expected 11 regular stages (cloud removed, capstone excluded), got %d", len(regular))
+	}
+	for i, g := range regular {
+		if g.Stage.ID == "cloud" {
+			t.Fatalf("cloud stage should have been removed from roadmap.yaml, found at index %d", i)
+		}
+		if g.Stage.ID == "k8s-fundamentals" && i+1 != 7 {
+			t.Fatalf("expected k8s-fundamentals to be stage 7, got stage %d", i+1)
+		}
+	}
+}
+
 // Task 3.3: one invalid lab produces a warning without blocking the rest.
 func TestLoadCatalogInvalidLabScenario(t *testing.T) {
 	dir := t.TempDir()
@@ -456,8 +558,14 @@ func TestWebDownVariantScriptsExistOnDisk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCatalog: %v", err)
 	}
-	if len(cat.Warnings) != 0 {
-		t.Fatalf("expected no warnings, got %v", cat.Warnings)
+	// azure-001/azure-002 are expected warnings: they're tagged `stage:
+	// cloud`, a stage intentionally absent from roadmap.yaml's active
+	// Phase 1 list (add-curriculum-phases design.md Decision 2) until
+	// Phase 2 gains real stages. Any other warning is a real regression.
+	for _, w := range cat.Warnings {
+		if !strings.Contains(w, `stage "cloud" not found`) {
+			t.Fatalf("unexpected warning: %s", w)
+		}
 	}
 
 	var lab Lab

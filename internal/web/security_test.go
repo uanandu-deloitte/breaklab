@@ -43,7 +43,7 @@ func TestPostmortemOutsideDirIsNotServedOrLinked(t *testing.T) {
 	} else if strings.Contains(rec.Body.String(), "OUTSIDE_FILE_MARKER") {
 		t.Error("out-of-dir postmortem content was served")
 	}
-	for _, page := range []string{"/", "/roadmap", "/postmortems"} {
+	for _, page := range []string{"/", "/phases", "/postmortems"} {
 		rec := get(page)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s status = %d", page, rec.Code)
@@ -59,7 +59,7 @@ func TestPostmortemOutsideDirIsNotServedOrLinked(t *testing.T) {
 func TestRouteTableIsReadOnlyAndBounded(t *testing.T) {
 	cfg := fullFixtureConfig(t)
 	slug := "2026-10-17-web-down-config-typo"
-	served := []string{"/", "/roadmap", "/challenges", "/labs/web-down", "/postmortems", "/postmortems/" + slug, "/js/cytoscape.min.js", "/topology"}
+	served := []string{"/", "/phases", "/phases/phase-1", "/challenges", "/labs/web-down", "/postmortems", "/postmortems/" + slug, "/js/cytoscape.min.js", "/topology"}
 
 	passwd, _ := os.ReadFile("/etc/passwd")
 	marker := ""

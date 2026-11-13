@@ -1,0 +1,35 @@
+#cloud-config
+package_update: true
+packages:
+  - docker.io
+  - azure-cli
+
+runcmd:
+  - usermod -aG docker ${admin_username}
+  - az login --identity
+  - mkdir -p /opt/breaklab
+  - az storage blob download --account-name breaklabreleases \
+      --container-name breaklab-releases --name breaklab-latest.tar.gz \
+      --file /opt/breaklab/release.tar.gz --auth-mode login
+  - tar xzf /opt/breaklab/release.tar.gz -C /opt/breaklab
+  - chmod +x /opt/breaklab/breaklab
+  - |
+    cat > /etc/systemd/system/breaklab.service <<'EOF'
+    [Unit]
+    Description=BreakLab local web UI
+    After=docker.service
+    Requires=docker.service
+
+    [Service]
+    Type=simple
+    User=${admin_username}
+    WorkingDirectory=/opt/breaklab
+    ExecStart=/opt/breaklab/breaklab serve --host 0.0.0.0 --port 8787
+    Restart=on-failure
+    RestartSec=5
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+  - systemctl daemon-reload
+  - systemctl enable --now breaklab.service

@@ -20,12 +20,23 @@ without me.
   Authelia is the single front door. See the Security & Code Audit artifact.
 - No cloud VMs or Kubernetes labs yet (Docker only; `kind`-based Kubernetes labs are
   future curriculum, not infra this repo runs itself).
+- CI runs a full-history secret scan (`gitleaks`, `.github/workflows/ci.yml`'s
+  `secret-scan` job). Labs that teach secrets/auth incidents legitimately contain
+  fake, secret-shaped strings (see `labs/leaked-secret/`, `labs/cicd-004/`,
+  `labs/k8ss-003/`, `labs/net-006/`, `labs/azure-002/`) — a new lab like this must
+  add its fixture to `.gitleaks.toml`'s allowlist (by path if the whole lab is
+  fixture content, by exact value if only one string is) in the same change, with
+  a one-line reason. Never disable a gitleaks rule to work around a finding.
 
-## Curriculum (stages, from `roadmap.yaml`)
-Linux fundamentals · Networking & Web · Git · Docker · CI/CD ·
-Infrastructure as code · Cloud fundamentals (Azure) · Kubernetes fundamentals ·
-Kubernetes for developers · Kubernetes administration · Kubernetes security ·
-Monitoring and logging · Capstone
+## Curriculum (phases and stages, from `roadmap.yaml`)
+Stages are grouped under phases. Phase 1 (active): Linux fundamentals ·
+Networking & Web · Git · Docker · CI/CD · Infrastructure as code ·
+Kubernetes fundamentals · Kubernetes for developers · Kubernetes
+administration · Kubernetes security · Monitoring and logging · Capstone.
+Phase 2 — Cloud: no stages yet (the former "Cloud fundamentals (Azure)"
+stage was pulled out of the active roadmap to make room for a full cloud
+track later; its labs, e.g. `azure-001`, stay on disk but are inert —
+not matched to any declared stage — until Phase 2 gets real stages).
 
 Each stage holds many `lab_id`s (see `labs/*/lab.yaml`, e.g. `web-down`, `docker-001`,
 `lnx-014`). A new lab is added to a stage, never a new stage, unless the learner

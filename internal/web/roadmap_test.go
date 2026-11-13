@@ -11,11 +11,29 @@ import (
 
 func solvedAt(t time.Time) *time.Time { return &t }
 
+// add-curriculum-phases task 6.2: the flat roadmap page is superseded
+// by per-phase pages; its old URL redirects rather than 404ing.
+func TestRoadmapPageRedirectsToPhases(t *testing.T) {
+	cfg := actionTestConfig(t, nil)
+	cfg.FrontendDir = t.TempDir()
+
+	req := httptest.NewRequest("GET", "/roadmap", nil)
+	rec := httptest.NewRecorder()
+	Routes(cfg).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/phases" {
+		t.Fatalf("Location = %q, want /phases", loc)
+	}
+}
+
 func TestStageSkipAPIHandler(t *testing.T) {
 	cfg := actionTestConfig(t, nil)
 	cfg.FrontendDir = t.TempDir()
 
-	req := httptest.NewRequest("POST", "/api/roadmap/stages/linux/skip", nil)
+	req := httptest.NewRequest("POST", "/api/phases/stages/linux/skip", nil)
 	rec := httptest.NewRecorder()
 	Routes(cfg).ServeHTTP(rec, req)
 
@@ -44,7 +62,7 @@ func TestStageSkipAPIHandlerLeavesExistingAttemptsAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := httptest.NewRequest("POST", "/api/roadmap/stages/linux/skip", nil)
+	req := httptest.NewRequest("POST", "/api/phases/stages/linux/skip", nil)
 	rec := httptest.NewRecorder()
 	Routes(cfg).ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {

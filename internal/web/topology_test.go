@@ -88,7 +88,7 @@ func topologyFixtureConfig(t *testing.T, active bool) Config {
 	t.Helper()
 	dir := t.TempDir()
 
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: linux\n    title: Linux fundamentals\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "web-down", "lab.yaml"), `id: web-down
 title: The website returns nothing
 stage: linux

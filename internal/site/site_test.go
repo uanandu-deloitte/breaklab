@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const roadmapYAML = "stages:\n  - id: linux\n    title: Linux fundamentals\n"
+const roadmapYAML = "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n"
 
 const labYAML = `id: web-down
 title: The website returns nothing

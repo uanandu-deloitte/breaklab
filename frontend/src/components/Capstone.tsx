@@ -5,6 +5,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import Shell from "./Shell";
 import { LabDetailContent } from "./LabDetail";
+import { LoadingState } from "./LoadingState";
 
 // Mirrors internal/web's CapstoneView (GET /api/capstone).
 interface StageStatus {
@@ -78,7 +79,7 @@ export default function Capstone() {
   if (!view)
     return (
       <Shell>
-        <Text type="supporting">Loading…</Text>
+        <LoadingState label="Loading capstone…" rows={2} />
       </Shell>
     );
 

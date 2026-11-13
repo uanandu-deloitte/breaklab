@@ -3,6 +3,7 @@ package lab
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html"
 	"html/template"
@@ -13,6 +14,7 @@ import (
 
 	"breaklab/internal/catalog"
 	"breaklab/internal/markdown"
+	"breaklab/internal/postmortem"
 	"breaklab/internal/progress"
 	"breaklab/internal/runner"
 	"breaklab/internal/web/webcore"
@@ -94,6 +96,24 @@ type LabDetailView struct {
 	// false and the Launch section explains what to finish first
 	// instead of offering to start.
 	LockedOnTitles []string
+
+	// PostmortemEligible is true once this lab's latest attempt is
+	// "solved" or "complete" — the point at which the postmortem editor
+	// has something to write up. False for a lab never solved, or whose
+	// latest attempt is still "active" or "abandoned".
+	PostmortemEligible bool
+
+	// PostmortemComplete mirrors the latest attempt's Status ==
+	// "complete" (a previously validated postmortem). The editor still
+	// opens for further edits either way; this just lets the page show
+	// it's already done.
+	PostmortemComplete bool
+
+	// PostmortemSections pre-fills the web editor from an existing
+	// draft file, keyed by postmortem.RequiredSections name, with any
+	// unfilled-placeholder HTML comment stripped. Empty for a lab with
+	// no postmortem file yet (the editor then starts blank).
+	PostmortemSections map[string]string
 }
 
 // GuidedStepView is one step of the lab's guided walkthrough.
@@ -165,8 +185,24 @@ func BuildDetail(ctx context.Context, cat *catalog.Catalog, pf *progress.Progres
 	// from the latest attempt the same way whether or not this lab is
 	// the active session.
 	hypothesis := ""
+	postmortemEligible, postmortemComplete := false, false
+	var postmortemSections map[string]string
 	if attempt, ok := progress.LatestAttempt(pf, lab.ID); ok {
 		hypothesis = attempt.Hypothesis
+
+		postmortemEligible = attempt.Status == progress.StatusSolved || attempt.Status == progress.StatusComplete
+		postmortemComplete = attempt.Status == progress.StatusComplete
+		if attempt.Postmortem != "" {
+			if data, err := os.ReadFile(attempt.Postmortem); err == nil {
+				if _, body, err := postmortem.SplitFrontMatter(string(data)); err == nil {
+					parsed := postmortem.SplitIntoSections(body)
+					postmortemSections = make(map[string]string, len(postmortem.RequiredSections))
+					for _, name := range postmortem.RequiredSections {
+						postmortemSections[name] = strings.TrimSpace(postmortem.StripComments(parsed[name]))
+					}
+				}
+			}
+		}
 	}
 
 	if active {
@@ -235,6 +271,10 @@ func BuildDetail(ctx context.Context, cat *catalog.Catalog, pf *progress.Progres
 		Objectives:       lab.Objectives,
 		Lesson:           lesson,
 		LockedOnTitles:   lockedOnTitles,
+
+		PostmortemEligible: postmortemEligible,
+		PostmortemComplete: postmortemComplete,
+		PostmortemSections: postmortemSections,
 	}
 	for _, step := range lab.Loop.Guided {
 		view.Guided = append(view.Guided, GuidedStepView{Do: step.Do, Why: step.Why})
@@ -312,6 +352,58 @@ func labDetailAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	}
 }
 
+// postmortemSubmitRequest is the web postmortem editor's request body:
+// the five required sections, keyed by postmortem.RequiredSections name
+// (e.g. "Root cause"). A missing key is treated as an empty section.
+type postmortemSubmitRequest struct {
+	Sections map[string]string `json:"sections"`
+}
+
+// postmortemSubmitResponse mirrors runner.ValidationResult as JSON.
+type postmortemSubmitResponse struct {
+	Valid            bool     `json:"valid"`
+	Failing          []string `json:"failing,omitempty"`
+	RootCauseWarning string   `json:"rootCauseWarning,omitempty"`
+}
+
+// labPostmortemAPIHandler is the web postmortem editor's write path:
+// runner.SubmitPostmortem does the same work `breaklab postmortem` +
+// `breaklab postmortem --validate` do together, minus the $EDITOR
+// round-trip, for a deployment where a user only ever has the web UI
+// and Docker — never a shell to run the breaklab binary directly.
+// Needs no Docker client, unlike the Start/Check/Hint/Stop routes in
+// internal/web/actions, so it's never gated on cfg.Docker.
+func labPostmortemAPIHandler(cfg webcore.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := webcore.RequireActionUser(cfg, w, r); !ok {
+			return
+		}
+
+		var req postmortemSubmitRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			webcore.WriteJSONError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		rn := runner.New(cfg.Docker)
+		rn.LabsDir = cfg.LabsDir
+		rn.RoadmapPath = cfg.RoadmapPath
+		rn.ProgressPath = cfg.ProgressPath
+		rn.PostmortemsDir = cfg.PostmortemsDir
+
+		result, err := rn.SubmitPostmortem(r.Context(), r.PathValue("id"), req.Sections)
+		if err != nil {
+			webcore.WriteJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		webcore.WriteJSON(w, postmortemSubmitResponse{
+			Valid:            result.Valid,
+			Failing:          result.Failing,
+			RootCauseWarning: result.RootCauseWarning,
+		})
+	}
+}
+
 // labLogsStreamHandler streams the active session's own container log
 // output as Server-Sent Events, for the lab detail page's live tail.
 // It 404s unless the request's {id} matches the active session's lab —
@@ -381,5 +473,6 @@ func labLogsStreamHandler(cfg webcore.Config) http.HandlerFunc {
 // RegisterRoutes mounts the lab-detail JSON API routes on mux.
 func RegisterRoutes(mux *http.ServeMux, cfg webcore.Config) {
 	mux.HandleFunc("GET /api/labs/{id}", labDetailAPIHandler(cfg))
+	mux.HandleFunc("POST /api/labs/{id}/postmortem", labPostmortemAPIHandler(cfg))
 	mux.HandleFunc("GET /labs/{id}/logs/stream", labLogsStreamHandler(cfg))
 }

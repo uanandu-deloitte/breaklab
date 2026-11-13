@@ -20,8 +20,12 @@ func TestListWarnsOnBrokenLabWithoutBlockingOthers(t *testing.T) {
 
 	workdir := t.TempDir()
 	writeFile(t, filepath.Join(workdir, "roadmap.yaml"), `
+phases:
+  - id: phase-1
+    title: Phase 1
 stages:
   - id: linux
+    phase: phase-1
     title: Linux fundamentals
 `)
 	writeFile(t, filepath.Join(workdir, "labs", "web-down", "lab.yaml"), `
@@ -82,8 +86,12 @@ func TestListShowsAccurateStatusFromProgress(t *testing.T) {
 
 	workdir := t.TempDir()
 	writeFile(t, filepath.Join(workdir, "roadmap.yaml"), `
+phases:
+  - id: phase-1
+    title: Phase 1
 stages:
   - id: linux
+    phase: phase-1
     title: Linux fundamentals
 `)
 	writeFile(t, filepath.Join(workdir, "labs", "web-down", "lab.yaml"), `

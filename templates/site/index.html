@@ -16,6 +16,7 @@
 </section>
 
 {{range .Stages}}
+{{if .TrackHeader}}<h2 class="track-header">{{.TrackHeader}} &mdash; pick one track</h2>{{end}}
 <section class="stage">
   <h2>{{.Title}}</h2>
   <div class="bar"><div class="bar-fill" style="width: {{.Percent}}%;"></div></div>

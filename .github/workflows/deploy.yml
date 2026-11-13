@@ -3,14 +3,21 @@ on:
   push:
     branches: [main]
     paths-ignore: ["deploy/helm/breaklab/values-*.yaml"]
+# Least privilege: nothing in this workflow writes to the repo today, so
+# contents stays read-only at the top level. The future bump-dev job (see
+# the comment below) declares its own contents: write at the job level when
+# it's added, instead of the whole workflow carrying that privilege now.
 permissions:
-  contents: write
-  packages: write
+  contents: read
 jobs:
   build-push:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:

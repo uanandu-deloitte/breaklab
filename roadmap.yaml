@@ -1,41 +1,61 @@
+phases:
+  - id: phase-1
+    title: Phase 1
+    blurb: Linux through the capstone — Docker and Kubernetes fundamentals.
+  - id: phase-2
+    title: Phase 2 — Cloud
+    blurb: Cloud fundamentals and beyond. Coming soon.
+
 stages:
   - id: linux
+    phase: phase-1
     title: Linux fundamentals
     blurb: Everything else in here runs on Linux — know the shell first.
   - id: networking
+    phase: phase-1
     title: Networking & Web
     blurb: Every service you'll debug talks over a network — know how before you need to.
   - id: git
+    phase: phase-1
     title: Git
     blurb: Lost work and bad history are routine; recovery is a core skill.
   - id: docker
+    phase: phase-1
     title: Docker
     blurb: Every lab from here down runs in a container you must understand.
   - id: cicd
+    phase: phase-1
     title: CI/CD
     blurb: Automate the deploy, then learn how the automation lies to you.
   - id: iac
+    phase: phase-1
     title: Infrastructure as code
     blurb: Declared config drifts from reality; catch it before prod does.
-  - id: cloud
-    title: Cloud fundamentals (Azure)
-    blurb: Infrastructure as code has to target something real — learn the platform before the cluster that runs on it.
   - id: k8s-fundamentals
+    phase: phase-1
     title: Kubernetes fundamentals
     blurb: Your app is a Pod now — learn the objects and commands before anything breaks.
   - id: k8s-developer
+    phase: phase-1
+    track: Kubernetes specialization
     title: Kubernetes for developers
     blurb: Config, storage, and dependencies the way an app team actually deploys them.
   - id: k8s-admin
+    phase: phase-1
+    track: Kubernetes specialization
     title: Kubernetes administration
     blurb: Capacity, quotas, and scheduling — the cluster operator's side of the fence.
   - id: k8s-security
+    phase: phase-1
+    track: Kubernetes specialization
     title: Kubernetes security
     blurb: A cluster is a bigger attack surface than any one container ever was.
   - id: observability
+    phase: phase-1
     title: Monitoring and logging
     blurb: If you can't see it break, you can't fix it fast.
   - id: capstone
+    phase: phase-1
     title: Capstone
     blurb: Everything you've learned, one incident, no safety net.
     capstone: true

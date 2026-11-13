@@ -6,6 +6,8 @@ package postmortem
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -44,4 +46,24 @@ func Render(templatePath string, fm FrontMatter, title, hypothesis string) (stri
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// RenderSections builds a complete postmortem file from fm, the lab's
+// title, and real content already written for each of DisplaySections
+// (keyed by section name; a missing key renders as an empty section).
+// Unlike Render, this writes the learner's actual words straight in —
+// no HTML-comment placeholder prompts — for a caller (the web
+// postmortem editor) that collects finished content directly rather
+// than handing the learner a file to fill in by hand. fm's string
+// fields are catalog-validated ids or values this package already
+// trusts (lab/variant/stage ids, an RFC3339 date), so they're written
+// as unquoted YAML scalars the same way templates/postmortem.md does.
+func RenderSections(fm FrontMatter, title string, sections map[string]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "---\nlab: %s\nvariant: %s\nstage: %s\ndate: %s\nminutes_to_fix: %d\nhints_used: %d\npublish: %t\n---\n\n# %s\n",
+		fm.Lab, fm.Variant, fm.Stage, fm.Date, fm.MinutesToFix, fm.HintsUsed, fm.Publish, title)
+	for _, name := range DisplaySections {
+		fmt.Fprintf(&b, "\n## %s\n%s\n", name, strings.TrimSpace(sections[name]))
+	}
+	return b.String()
 }

@@ -14,7 +14,7 @@ import (
 
 func TestLabDetailAPIReturns404ForUnknownLab(t *testing.T) {
 	dir := t.TempDir()
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: linux\n    title: Linux\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "web-down", "lab.yaml"), `id: web-down
 title: The website returns nothing
 stage: linux

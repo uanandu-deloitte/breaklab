@@ -60,7 +60,7 @@ func (f *fakeDocker) VolumeCreate(_ context.Context, n string) error {
 	return f.rec("volume-create " + n)
 }
 
-const roadmapYAML = "stages:\n  - id: linux\n    title: Linux fundamentals\n"
+const roadmapYAML = "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n"
 
 func labYAML(id, runIn string) string {
 	return "id: " + id + `
@@ -257,7 +257,7 @@ func TestStartResolvesVolumes(t *testing.T) {
 // Docker call (no half-started container on a locked attempt).
 func TestStartRefusesLockedCapstone(t *testing.T) {
 	root := t.TempDir()
-	roadmap := "stages:\n  - id: linux\n    title: Linux fundamentals\n  - id: capstone\n    title: Capstone\n    capstone: true\n"
+	roadmap := "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n  - id: capstone\n    phase: phase-1\n    title: Capstone\n    capstone: true\n"
 	if err := os.WriteFile(filepath.Join(root, "roadmap.yaml"), []byte(roadmap), 0o644); err != nil {
 		t.Fatal(err)
 	}

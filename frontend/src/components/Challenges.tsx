@@ -8,8 +8,9 @@ import { Button } from "@astryxdesign/core/Button";
 import { Link } from "@astryxdesign/core/Link";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Selector } from "@astryxdesign/core/Selector";
-import { List, ListItem } from "@astryxdesign/core/List";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
+import { LabCard } from "./LabCard";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/web's ChallengeView (GET /api/challenges).
@@ -36,13 +37,6 @@ interface ChallengeView {
   Tags: string[] | null;
   ActiveIncident: ActiveIncidentView | null;
 }
-
-const statusVariant: Record<string, "neutral" | "info" | "success" | "warning"> = {
-  available: "info",
-  "in-progress": "warning",
-  complete: "success",
-  locked: "neutral",
-};
 
 function ChallengesContent() {
   const [view, setView] = useState<ChallengeView | null>(null);
@@ -80,7 +74,7 @@ function ChallengesContent() {
   }
 
   if (error) return <Text color="accent">Couldn't load challenges: {error}</Text>;
-  if (!view) return <Text type="supporting">Loading…</Text>;
+  if (!view) return <LoadingState label="Loading challenges…" rows={4} />;
 
   return (
     <VStack gap={4}>
@@ -130,24 +124,11 @@ function ChallengesContent() {
       </HStack>
 
       {view.Rows && view.Rows.length > 0 ? (
-        <List hasDividers edge="outset">
+        <VStack gap={3}>
           {view.Rows.map((lab) => (
-            <ListItem
-              key={lab.ID}
-              label={lab.Title}
-              description={lab.Summary}
-              href={`/labs/${lab.ID}`}
-              endContent={
-                <HStack gap={2}>
-                  <Badge label={lab.Status} variant={statusVariant[lab.Status] ?? "neutral"} />
-                  <Badge label={`difficulty ${lab.Difficulty}`} />
-                  <Badge label={`${lab.EstimatedMinutes}m`} />
-                  {lab.ReviewDue && <Badge label="Review due" variant="warning" />}
-                </HStack>
-              }
-            />
+            <LabCard key={lab.ID} lab={lab} stageLabel={lab.StageTitle} />
           ))}
-        </List>
+        </VStack>
       ) : (
         <EmptyState
           title="No challenges match these filters"

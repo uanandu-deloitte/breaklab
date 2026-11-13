@@ -113,7 +113,16 @@ func LoadCatalog(labsDir, roadmapPath string) (*Catalog, error) {
 		groups = append(groups, StageGroup{Stage: stage, Labs: labs})
 	}
 
-	return &Catalog{Stages: groups, Warnings: warnings}, nil
+	stagesByPhase := make(map[string][]StageGroup, len(roadmap.Phases))
+	for _, g := range groups {
+		stagesByPhase[g.Stage.Phase] = append(stagesByPhase[g.Stage.Phase], g)
+	}
+	phaseGroups := make([]PhaseGroup, 0, len(roadmap.Phases))
+	for _, phase := range roadmap.Phases {
+		phaseGroups = append(phaseGroups, PhaseGroup{Phase: phase, Stages: stagesByPhase[phase.ID]})
+	}
+
+	return &Catalog{Stages: groups, Phases: phaseGroups, Warnings: warnings}, nil
 }
 
 // computeStatus returns the status shown for a lab in `breaklab list`.
@@ -136,10 +145,21 @@ func loadRoadmap(path string) (Roadmap, error) {
 		return Roadmap{}, fmt.Errorf("parsing roadmap.yaml: %w", err)
 	}
 
+	phases := make(map[string]bool, len(rm.Phases))
+	for _, p := range rm.Phases {
+		if !ValidID(p.ID) {
+			return Roadmap{}, fmt.Errorf("roadmap.yaml: invalid phase id %q", p.ID)
+		}
+		phases[p.ID] = true
+	}
+
 	capstones := 0
 	for _, s := range rm.Stages {
 		if !ValidID(s.ID) {
 			return Roadmap{}, fmt.Errorf("roadmap.yaml: invalid stage id %q", s.ID)
+		}
+		if !phases[s.Phase] {
+			return Roadmap{}, fmt.Errorf("roadmap.yaml: stage %q references unknown phase %q", s.ID, s.Phase)
 		}
 		if s.Capstone {
 			capstones++

@@ -9,6 +9,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Switch } from "@astryxdesign/core/Switch";
 import { Banner } from "@astryxdesign/core/Banner";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/account's User (GET /api/account).
@@ -80,7 +81,7 @@ function AccountContent() {
   }
 
   if (error) return <Text color="accent">Couldn't load your account: {error}</Text>;
-  if (!user) return <Text type="supporting">Loading…</Text>;
+  if (!user) return <LoadingState label="Loading account…" rows={2} />;
 
   return (
     <VStack gap={6}>
@@ -111,7 +112,7 @@ function AccountContent() {
 
       <Switch
         label="Public profile"
-        description={`Show your roadmap progress at /u/${user.Username}`}
+        description={`Show your phase progress at /u/${user.Username}`}
         value={user.PublicProfile}
         changeAction={handleTogglePublicProfile}
       />

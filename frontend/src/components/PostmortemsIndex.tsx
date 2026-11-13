@@ -8,6 +8,7 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { List, ListItem } from "@astryxdesign/core/List";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Button } from "@astryxdesign/core/Button";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/web's PostmortemsIndexView (GET /api/postmortems).
@@ -47,7 +48,7 @@ function PostmortemsIndexContent() {
   }, [stage, difficulty, status]);
 
   if (error) return <Text color="accent">Couldn't load postmortems: {error}</Text>;
-  if (!view) return <Text type="supporting">Loading…</Text>;
+  if (!view) return <LoadingState label="Loading postmortems…" rows={4} />;
 
   return (
     <VStack gap={4}>

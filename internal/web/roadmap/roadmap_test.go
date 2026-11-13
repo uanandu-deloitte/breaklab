@@ -11,6 +11,17 @@ import (
 
 func solvedAt(t time.Time) *time.Time { return &t }
 
+// buildStages mirrors the convenience wrapper buildRoadmap used to be —
+// the status-apply + two lookup maps BuildStageViews needs — so these
+// tests can keep exercising that computation directly without the now-
+// removed RoadmapView/GET-/api/roadmap wrapper around it.
+func buildStages(cat *catalog.Catalog, pf *progress.ProgressFile) []RoadmapStageView {
+	progress.ApplyStatus(cat, pf)
+	latest := progress.LatestCompleteAttempts(pf)
+	reviewDue := progress.ReviewDue(pf)
+	return BuildStageViews(cat.RegularStages(), pf, latest, reviewDue)
+}
+
 func fixtureCatalogForRoadmap() *catalog.Catalog {
 	return &catalog.Catalog{Stages: []catalog.StageGroup{
 		{
@@ -31,12 +42,12 @@ func fixtureCatalogForRoadmap() *catalog.Catalog {
 }
 
 func TestBuildRoadmapStageChain(t *testing.T) {
-	view := buildRoadmap(fixtureCatalogForRoadmap(), &progress.ProgressFile{})
+	stages := buildStages(fixtureCatalogForRoadmap(), &progress.ProgressFile{})
 
-	if len(view.Stages) != 2 {
-		t.Fatalf("len(Stages) = %d, want 2", len(view.Stages))
+	if len(stages) != 2 {
+		t.Fatalf("len(Stages) = %d, want 2", len(stages))
 	}
-	linux, git := view.Stages[0], view.Stages[1]
+	linux, git := stages[0], stages[1]
 
 	if linux.Index != 1 || git.Index != 2 {
 		t.Errorf("Index = %d, %d, want 1, 2", linux.Index, git.Index)
@@ -62,12 +73,12 @@ func TestBuildRoadmapAllThreeStatuses(t *testing.T) {
 		{Lab: "active-lab", Status: progress.StatusActive},
 	}}
 
-	view := buildRoadmap(cat, pf)
-	if len(view.Stages) != 2 || view.Stages[0].ID != "linux" || view.Stages[1].ID != "git" {
-		t.Fatalf("stages out of roadmap order: %+v", view.Stages)
+	stages := buildStages(cat, pf)
+	if len(stages) != 2 || stages[0].ID != "linux" || stages[1].ID != "git" {
+		t.Fatalf("stages out of roadmap order: %+v", stages)
 	}
 
-	linux := view.Stages[0]
+	linux := stages[0]
 	byID := map[string]webcore.LabRowView{}
 	for _, row := range linux.Labs {
 		byID[row.ID] = row
@@ -108,10 +119,10 @@ func TestBuildRoadmapExactlyOneLabIsUpNext(t *testing.T) {
 		{Lab: "active-lab", Status: progress.StatusActive},
 	}}
 
-	view := buildRoadmap(cat, pf)
+	stages := buildStages(cat, pf)
 
 	var upNext []string
-	for _, stage := range view.Stages {
+	for _, stage := range stages {
 		for _, row := range stage.Labs {
 			if row.IsUpNext {
 				upNext = append(upNext, row.ID)
@@ -131,10 +142,10 @@ func TestBuildRoadmapUpNextSkipsLockedLab(t *testing.T) {
 		}},
 	}}
 
-	view := buildRoadmap(cat, &progress.ProgressFile{})
+	stages := buildStages(cat, &progress.ProgressFile{})
 
 	byID := map[string]webcore.LabRowView{}
-	for _, row := range view.Stages[0].Labs {
+	for _, row := range stages[0].Labs {
 		byID[row.ID] = row
 	}
 	if byID["lnx-002"].Status != progress.LabStatusLocked {
@@ -162,9 +173,9 @@ func TestBuildRoadmapReviewDueOnlyForLabPastInterval(t *testing.T) {
 		{Lab: "fresh-lab", Status: progress.StatusComplete, SolvedAt: solvedAt(recent)},
 	}}
 
-	view := buildRoadmap(cat, pf)
+	stages := buildStages(cat, pf)
 	byID := map[string]webcore.LabRowView{}
-	for _, row := range view.Stages[0].Labs {
+	for _, row := range stages[0].Labs {
 		byID[row.ID] = row
 	}
 	if !byID["due-lab"].ReviewDue {
@@ -183,8 +194,8 @@ func TestBuildRoadmapCompleteLabWithoutPostmortemHasNoLink(t *testing.T) {
 		{Lab: "web-down", Status: progress.StatusComplete, SolvedAt: solvedAt(time.Now())},
 	}}
 
-	view := buildRoadmap(cat, pf)
-	row := view.Stages[0].Labs[0]
+	stages := buildStages(cat, pf)
+	row := stages[0].Labs[0]
 	if row.Status != progress.LabStatusComplete {
 		t.Errorf("status = %q, want complete", row.Status)
 	}
@@ -200,16 +211,16 @@ func TestBuildRoadmapShowSkip(t *testing.T) {
 		{Lab: "active-lab", Status: progress.StatusActive},
 	}}
 
-	view := buildRoadmap(cat, pf)
-	if !view.Stages[0].ShowSkip {
+	stages := buildStages(cat, pf)
+	if !stages[0].ShowSkip {
 		t.Error("linux stage has an available and an in-progress lab, so ShowSkip should be true")
 	}
 
 	allComplete := &progress.ProgressFile{Attempts: []progress.Attempt{
 		{Lab: "git-lab", Status: progress.StatusComplete, SolvedAt: solvedAt(time.Now())},
 	}}
-	view = buildRoadmap(cat, allComplete)
-	for _, stage := range view.Stages {
+	stages = buildStages(cat, allComplete)
+	for _, stage := range stages {
 		if stage.ID == "git" && stage.ShowSkip {
 			t.Error("git stage is fully complete, so ShowSkip should be false")
 		}

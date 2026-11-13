@@ -2,12 +2,24 @@ package catalog
 
 // Roadmap is the parsed shape of roadmap.yaml.
 type Roadmap struct {
+	Phases []Phase `yaml:"phases"`
 	Stages []Stage `yaml:"stages"`
+}
+
+// Phase is one entry in roadmap.yaml's phases list — a grouping of
+// stages above the stage level. A phase may have zero stages currently
+// assigned to it (e.g. an upcoming track with no curriculum yet); it is
+// still a real, declared phase, not an inferred one.
+type Phase struct {
+	ID    string `yaml:"id"`
+	Title string `yaml:"title"`
+	Blurb string `yaml:"blurb"`
 }
 
 // Stage is one entry in roadmap.yaml.
 type Stage struct {
 	ID    string `yaml:"id"`
+	Phase string `yaml:"phase"`
 	Title string `yaml:"title"`
 
 	// Blurb is one short line on why this stage comes next; shown next
@@ -20,6 +32,18 @@ type Stage struct {
 	// At most one stage should set this — Catalog.CapstoneStage finds
 	// the first and RegularStages excludes every stage that sets it.
 	Capstone bool `yaml:"capstone"`
+
+	// Track groups this stage with every other stage carrying the same
+	// non-empty value into one set of alternatives: a learner follows
+	// one member stage, not all of them, before the roadmap continues
+	// past the group (e.g. "Kubernetes specialization" on the
+	// developer/admin/security stages after Kubernetes fundamentals).
+	// Empty for every stage outside a branch — the ordinary case, where
+	// stages run in a single sequence. Member stages must be adjacent in
+	// roadmap.yaml; TrackGroups (see catalog/track.go) groups them by
+	// scanning for runs of equal Track, not by matching the value
+	// globally.
+	Track string `yaml:"track"`
 }
 
 // Lab is the parsed shape of a labs/<id>/lab.yaml file.
@@ -197,9 +221,18 @@ type StageGroup struct {
 	Labs  []Lab
 }
 
+// PhaseGroup is every stage under one roadmap phase, in roadmap order.
+// A phase with no stages currently assigned to it still appears, with a
+// nil Stages slice, rather than being omitted.
+type PhaseGroup struct {
+	Phase  Phase
+	Stages []StageGroup
+}
+
 // Catalog is the result of loading and validating the roadmap and every lab.
 type Catalog struct {
 	Stages []StageGroup
+	Phases []PhaseGroup
 
 	// Warnings holds one message per lab that failed to load or validate;
 	// the rest of the catalog still loads around them.
@@ -228,6 +261,29 @@ func (c *Catalog) CapstoneStage() *StageGroup {
 		}
 	}
 	return nil
+}
+
+// FindPhase returns the phase group matching phaseID, if any.
+func (c *Catalog) FindPhase(phaseID string) (*PhaseGroup, bool) {
+	for i := range c.Phases {
+		if c.Phases[i].Phase.ID == phaseID {
+			return &c.Phases[i], true
+		}
+	}
+	return nil, false
+}
+
+// RegularStages returns every stage group in this phase except the
+// capstone, in roadmap order — the same exclusion Catalog.RegularStages
+// applies, scoped to one phase.
+func (p PhaseGroup) RegularStages() []StageGroup {
+	out := make([]StageGroup, 0, len(p.Stages))
+	for _, g := range p.Stages {
+		if !g.Stage.Capstone {
+			out = append(out, g)
+		}
+	}
+	return out
 }
 
 // FindLab returns the lab matching labID, across every stage, and its

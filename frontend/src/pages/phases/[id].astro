@@ -1,0 +1,22 @@
+---
+import "@astryxdesign/core/reset.css";
+import "@astryxdesign/core/astryx.css";
+import PhaseDetail from "../../components/PhaseDetail";
+
+// One physical shell file, built from a single placeholder id — Go
+// serves this same file for any real /phases/{id} request
+// (frontendShellHandler) and the client resolves the real id from
+// window.location.pathname, the same pattern labs/[id].astro uses.
+export function getStaticPaths() {
+  return [{ params: { id: "_" } }];
+}
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BreakLab — phase</title>
+  </head>
+  <body>
+    <PhaseDetail client:load />
+  </body>
+</html>

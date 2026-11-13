@@ -2,43 +2,11 @@ package roadmap
 
 import (
 	"net/http"
-	"runtime/debug"
 
 	"breaklab/internal/catalog"
 	"breaklab/internal/progress"
 	"breaklab/internal/web/webcore"
 )
-
-// buildRevision returns the short VCS revision Go embeds automatically
-// when the binary was built from a git checkout (`go build`, not `go
-// run`), for the roadmap footer's real build-identity line. Empty when
-// unavailable — never a fabricated placeholder.
-func buildRevision() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return ""
-	}
-	var revision string
-	var modified bool
-	for _, s := range info.Settings {
-		switch s.Key {
-		case "vcs.revision":
-			revision = s.Value
-		case "vcs.modified":
-			modified = s.Value == "true"
-		}
-	}
-	if revision == "" {
-		return ""
-	}
-	if len(revision) > 7 {
-		revision = revision[:7]
-	}
-	if modified {
-		revision += "-dirty"
-	}
-	return revision
-}
 
 // RoadmapStageView is one roadmap stage and its labs, in lab.yaml order.
 type RoadmapStageView struct {
@@ -47,6 +15,12 @@ type RoadmapStageView struct {
 	Blurb string // this stage's own "why it's next" line, shown before it
 	Index int    // 1-based position in roadmap.yaml order, for the "stage N" ribbon
 	Labs  []webcore.LabRowView
+
+	// Track is catalog.Stage.Track, carried through unchanged: non-empty
+	// only when this stage is one of a set of alternatives a learner
+	// picks between (see catalog.GroupByTrack). Empty for every ordinary
+	// stage.
+	Track string
 
 	// ShowSkip is true while at least one lab in this stage isn't yet
 	// LabStatusComplete — the condition for showing the "I already know
@@ -60,27 +34,21 @@ type RoadmapStageView struct {
 	IsLast         bool
 }
 
-// RoadmapView is the Astro roadmap page's data (GET /api/roadmap).
-type RoadmapView struct {
-	Stages        []RoadmapStageView
-	BuildRevision string // real VCS revision Go embeds at build time; "" when unavailable (e.g. `go run`)
-}
-
-// buildRoadmap renders every stage from roadmap.yaml in order, each with
-// its labs in lab.yaml order.
-func buildRoadmap(cat *catalog.Catalog, pf *progress.ProgressFile) RoadmapView {
-	progress.ApplyStatus(cat, pf)
-	latest := progress.LatestCompleteAttempts(pf)
-	reviewDue := progress.ReviewDue(pf)
-
-	regular := cat.RegularStages()
-	stages := make([]RoadmapStageView, 0, len(regular))
-	for i, group := range regular {
+// BuildStageViews renders groups (already stage-status-applied via
+// progress.ApplyStatus) into RoadmapStageViews: 1-based Index, connector
+// blurbs, and the single "up next" cursor are all scoped to just this
+// slice, so a caller can reuse it for either the full roadmap or one
+// phase's stages. Exported for reuse by internal/web/phases and
+// internal/web/dashboard.
+func BuildStageViews(groups []catalog.StageGroup, pf *progress.ProgressFile, latest map[string]progress.Attempt, reviewDue map[string]bool) []RoadmapStageView {
+	stages := make([]RoadmapStageView, 0, len(groups))
+	for i, group := range groups {
 		sv := RoadmapStageView{
 			ID:    group.Stage.ID,
 			Title: group.Stage.Title,
 			Blurb: group.Stage.Blurb,
 			Index: i + 1,
+			Track: group.Stage.Track,
 		}
 		for _, lab := range group.Labs {
 			row := webcore.LabRow(group, lab, latest, pf, reviewDue)
@@ -99,7 +67,7 @@ func buildRoadmap(cat *catalog.Catalog, pf *progress.ProgressFile) RoadmapView {
 		stages[i].ConnectorBlurb = stages[i+1].Blurb
 	}
 	markUpNext(stages)
-	return RoadmapView{Stages: stages, BuildRevision: buildRevision()}
+	return stages
 }
 
 // markUpNext sets IsUpNext on the single lab, across every stage in
@@ -153,30 +121,9 @@ func stageSkipAPIHandler(cfg webcore.Config) http.HandlerFunc {
 	}
 }
 
-// roadmapAPIHandler serves the Astro roadmap page's data: the same
-// buildRoadmap computation and webcore.ProgressForRequest session-aware
-// merge the old html/template handler used, as JSON.
-func roadmapAPIHandler(cfg webcore.Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cat, err := webcore.LoadCatalog(cfg)
-		if err != nil {
-			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		pf, err := webcore.LoadProgress(cfg)
-		if err != nil {
-			webcore.WriteJSONError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		pf = webcore.ProgressForRequest(cfg, r, pf)
-
-		view := buildRoadmap(cat, pf)
-		webcore.WriteJSON(w, view)
-	}
-}
-
-// RegisterRoutes mounts the roadmap JSON API routes on mux.
+// RegisterRoutes mounts the stage-skip JSON API route on mux, under the
+// /api/phases namespace — the only UI surface left that calls it is
+// PhaseDetail.tsx.
 func RegisterRoutes(mux *http.ServeMux, cfg webcore.Config) {
-	mux.HandleFunc("GET /api/roadmap", roadmapAPIHandler(cfg))
-	mux.HandleFunc("POST /api/roadmap/stages/{id}/skip", stageSkipAPIHandler(cfg))
+	mux.HandleFunc("POST /api/phases/stages/{id}/skip", stageSkipAPIHandler(cfg))
 }

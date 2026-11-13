@@ -12,7 +12,7 @@ import (
 	"breaklab/internal/progress"
 	"breaklab/internal/web/challenges"
 	"breaklab/internal/web/dashboard"
-	"breaklab/internal/web/roadmap"
+	"breaklab/internal/web/phases"
 	"breaklab/internal/web/webtest"
 )
 
@@ -61,7 +61,7 @@ func fullFixtureConfig(t *testing.T) Config {
 	t.Helper()
 	dir := t.TempDir()
 
-	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "stages:\n  - id: linux\n    title: Linux fundamentals\n")
+	webtest.MustWriteFile(t, filepath.Join(dir, "roadmap.yaml"), "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n")
 	webtest.MustWriteFile(t, filepath.Join(dir, "labs", "web-down", "lab.yaml"), `id: web-down
 title: The website returns nothing
 stage: linux
@@ -106,13 +106,15 @@ variants:
 		t.Fatal(err)
 	}
 
-	// "/" and "/roadmap" have no html/template fallback anymore (the
-	// `frontend` capability's Astro pages) — a minimal, script-free
-	// static shell is enough for these tests, which care about every
-	// *other* page's real template output, not those pages'.
+	// "/", "/phases", and "/phases/{id}" have no html/template fallback
+	// anymore (the `frontend` capability's Astro pages) — a minimal,
+	// script-free static shell is enough for these tests, which care
+	// about every *other* page's real template output, not those pages'.
+	// "/roadmap" itself is now a redirect to "/phases", not a shell.
 	frontendDir := filepath.Join(dir, "frontend-dist")
 	webtest.MustWriteFile(t, filepath.Join(frontendDir, "dashboard", "index.html"), "<html><body>dashboard</body></html>")
-	webtest.MustWriteFile(t, filepath.Join(frontendDir, "roadmap", "index.html"), "<html><body>roadmap</body></html>")
+	webtest.MustWriteFile(t, filepath.Join(frontendDir, "phases", "index.html"), "<html><body>phases</body></html>")
+	webtest.MustWriteFile(t, filepath.Join(frontendDir, "phases", "_", "index.html"), "<html><body>phase</body></html>")
 	webtest.MustWriteFile(t, filepath.Join(frontendDir, "challenges", "index.html"), "<html><body>challenges</body></html>")
 	webtest.MustWriteFile(t, filepath.Join(frontendDir, "labs", "_", "index.html"), "<html><body>lab</body></html>")
 	webtest.MustWriteFile(t, filepath.Join(frontendDir, "topology", "index.html"), "<html><body>topology</body></html>")
@@ -252,11 +254,10 @@ func TestRealChallengesAPIReportsReviewDue(t *testing.T) {
 	}
 }
 
-// TestRealRoadmapAPIReportsReviewDue is TestRealChallengesRendersReviewDueBadge's
-// counterpart for the roadmap, which moved to the `frontend` capability's
-// JSON API ("/roadmap" itself is a static Astro shell with no embedded
-// data now).
-func TestRealRoadmapAPIReportsReviewDue(t *testing.T) {
+// TestRealPhaseDetailAPIReportsReviewDue is
+// TestRealChallengesRendersReviewDueBadge's counterpart for the phase
+// detail page, which moved to the `frontend` capability's JSON API.
+func TestRealPhaseDetailAPIReportsReviewDue(t *testing.T) {
 	cfg := fullFixtureConfig(t)
 	old := time.Now().Add(-(progress.ReviewInterval + time.Hour)).UTC().Format(time.RFC3339)
 	webtest.MustWriteFile(t, cfg.ProgressPath, fmt.Sprintf(`{
@@ -273,13 +274,13 @@ func TestRealRoadmapAPIReportsReviewDue(t *testing.T) {
   ]
 }`, old, old))
 
-	req := httptest.NewRequest("GET", "/api/roadmap", nil)
+	req := httptest.NewRequest("GET", "/api/phases/phase-1", nil)
 	rec := httptest.NewRecorder()
 	Routes(cfg).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	var view roadmap.RoadmapView
+	var view phases.PhaseDetailView
 	if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
 		t.Fatal(err)
 	}

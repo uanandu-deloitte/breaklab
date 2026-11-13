@@ -13,10 +13,15 @@ import (
 	"breaklab/internal/web/webtest"
 )
 
-const capstoneRoadmapYAML = `stages:
+const capstoneRoadmapYAML = `phases:
+  - id: phase-1
+    title: Phase 1
+stages:
   - id: linux
+    phase: phase-1
     title: Linux fundamentals
   - id: finale
+    phase: phase-1
     title: Capstone
     capstone: true
 `
@@ -119,7 +124,7 @@ func TestCapstoneAPIUnlockedServesTheLab(t *testing.T) {
 
 func TestCapstoneAPINotFoundWithNoCapstoneStage(t *testing.T) {
 	cfg := capstoneFixtureConfig(t)
-	webtest.MustWriteFile(t, cfg.RoadmapPath, "stages:\n  - id: linux\n    title: Linux fundamentals\n")
+	webtest.MustWriteFile(t, cfg.RoadmapPath, "phases:\n  - id: phase-1\n    title: Phase 1\nstages:\n  - id: linux\n    phase: phase-1\n    title: Linux fundamentals\n")
 
 	rec := httptest.NewRecorder()
 	Routes(cfg).ServeHTTP(rec, httptest.NewRequest("GET", "/api/capstone", nil))

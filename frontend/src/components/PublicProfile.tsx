@@ -7,6 +7,7 @@ import { Center } from "@astryxdesign/core/Center";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { List, ListItem } from "@astryxdesign/core/List";
 import { themes, defaultThemeSlug } from "../astryx-themes";
+import { LoadingState } from "./LoadingState";
 
 // Mirrors internal/web's publicProfileView (GET /api/u/{name}).
 interface CompletedLab {
@@ -74,7 +75,7 @@ function PublicProfileContent() {
   if (!view)
     return (
       <Center axis="horizontal" padding={6}>
-        <Text type="supporting">Loading…</Text>
+        <LoadingState label="Loading profile…" rows={2} />
       </Center>
     );
 

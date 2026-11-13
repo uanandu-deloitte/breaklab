@@ -3,6 +3,7 @@ import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { CodeBlock } from "@astryxdesign/core/CodeBlock";
+import { LoadingState } from "./LoadingState";
 import Shell from "./Shell";
 
 // Mirrors internal/web's PostmortemPageView (GET /api/postmortems/{slug})
@@ -70,7 +71,7 @@ function PostmortemDetailContent() {
 
   if (notFound) return <Text color="accent">Postmortem not found.</Text>;
   if (error) return <Text color="accent">Couldn't load this postmortem: {error}</Text>;
-  if (!view) return <Text type="supporting">Loading…</Text>;
+  if (!view) return <LoadingState label="Loading postmortem…" rows={2} />;
 
   return (
     <VStack gap={4}>

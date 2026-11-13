@@ -11,6 +11,7 @@ import (
 	"breaklab/internal/web/chaos"
 	"breaklab/internal/web/dashboard"
 	"breaklab/internal/web/lab"
+	"breaklab/internal/web/phases"
 	"breaklab/internal/web/postmortems"
 	"breaklab/internal/web/roadmap"
 	"breaklab/internal/web/topology"
@@ -27,6 +28,7 @@ func Routes(cfg Config) http.Handler {
 		mux.Handle("GET /_astro/", frontendAssetHandler(cfg))
 		dashboard.RegisterRoutes(mux, cfg)
 		roadmap.RegisterRoutes(mux, cfg)
+		phases.RegisterRoutes(mux, cfg)
 		challenges.RegisterRoutes(mux, cfg)
 		lab.RegisterRoutes(mux, cfg)
 		actions.RegisterRoutes(mux, cfg)
@@ -44,13 +46,18 @@ func Routes(cfg Config) http.Handler {
 	mux.HandleFunc("GET /fonts/Geist-SemiBold.woff2", staticAssetHandler(cfg, "fonts/Geist-SemiBold.woff2", "font/woff2"))
 	mux.HandleFunc("GET /fonts/Geist-Bold.woff2", staticAssetHandler(cfg, "fonts/Geist-Bold.woff2", "font/woff2"))
 	mux.HandleFunc("GET /js/cytoscape.min.js", staticAssetHandler(cfg, "js/cytoscape.min.js", "text/javascript; charset=utf-8"))
-	// Migrated to the `frontend` capability (Astro); no html/template
-	// fallback — same as "/" (see the comment on that route below).
-	mux.HandleFunc("GET /roadmap", frontendShellHandler(cfg, filepath.Join("roadmap", "index.html")))
+	// The flat all-stages roadmap page is superseded by per-phase pages
+	// (add-curriculum-phases); redirect rather than 404 for anyone with
+	// the old URL bookmarked.
+	mux.HandleFunc("GET /roadmap", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/phases", http.StatusFound)
+	})
 	mux.HandleFunc("GET /chaos", frontendShellHandler(cfg, filepath.Join("chaos", "index.html")))
 	mux.HandleFunc("GET /capstone", frontendShellHandler(cfg, filepath.Join("capstone", "index.html")))
 	mux.HandleFunc("GET /challenges", frontendShellHandler(cfg, filepath.Join("challenges", "index.html")))
 	mux.HandleFunc("GET /labs/{id}", frontendShellHandler(cfg, filepath.Join("labs", "_", "index.html")))
+	mux.HandleFunc("GET /phases", frontendShellHandler(cfg, filepath.Join("phases", "index.html")))
+	mux.HandleFunc("GET /phases/{id}", frontendShellHandler(cfg, filepath.Join("phases", "_", "index.html")))
 	// Migrated to the `frontend` capability (Astro); no html/template
 	// fallback.
 	mux.HandleFunc("GET /topology", frontendShellHandler(cfg, filepath.Join("topology", "index.html")))

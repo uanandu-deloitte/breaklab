@@ -10,6 +10,7 @@ import (
 	"breaklab/internal/catalog"
 	"breaklab/internal/progress"
 	"breaklab/internal/runner"
+	"breaklab/internal/web/phases"
 	"breaklab/internal/web/webcore"
 )
 
@@ -40,6 +41,24 @@ type RecentPostmortemView struct {
 	Href     string
 }
 
+// StageCardView is one stage's card in the dashboard's stage-card grid
+// (add-curriculum-phases): a stage's title and aggregate progress, the
+// same per-stage completion buildRoadmap already derives, reused rather
+// than recomputed a different way.
+type StageCardView struct {
+	ID            string
+	Title         string
+	PhaseID       string
+	LabsCompleted int
+	LabsTotal     int
+
+	// Complete is true once every lab in this stage has a complete
+	// attempt; false for a stage with no labs yet attempted, same as
+	// one with some but not all complete — both read as "in progress"
+	// for the dashboard's In Progress / Completed tab split.
+	Complete bool
+}
+
 // DashboardView is the Astro dashboard page's data (GET /api/dashboard).
 type DashboardView struct {
 	Streak        int
@@ -47,6 +66,27 @@ type DashboardView struct {
 	VariantsSeen  int
 	Active        *ActiveLabView // nil when no lab is running
 	Recent        []RecentPostmortemView
+
+	// Stages is one card per regular (non-capstone) stage, for the
+	// dashboard's In Progress / Completed stage-card grid.
+	Stages []StageCardView
+
+	// Phases is every phase's aggregate progress (including an empty
+	// phase, e.g. Phase 2 before it has any stages), for the dashboard's
+	// phase-level summary/banner — built by the same function the phase
+	// list page uses.
+	Phases []phases.PhaseSummaryView
+
+	// MonthlyEngagement counts attempts (started or solved) per day,
+	// keyed "2006-01-02", for the current calendar month. A day with no
+	// activity is simply absent from the map, not an error — the whole
+	// map is empty for a month with no activity at all, rather than nil
+	// and omitted.
+	MonthlyEngagement map[string]int
+
+	// MostEngagedDay is the "2006-01-02" key with the highest count in
+	// MonthlyEngagement, or nil when the month has no activity.
+	MostEngagedDay *string
 
 	// DockerVersion and Uptime are real telemetry, degrading to "" when
 	// Docker is slow/unreachable or the server just started — never a
@@ -60,6 +100,73 @@ type DashboardView struct {
 	// Patterns lists topic tags needing consistently more hints than
 	// average (progress.Patterns); empty when none qualify.
 	Patterns []progress.Pattern
+}
+
+// buildStageCards renders one card per regular (non-capstone) stage,
+// using the same "does this lab have a complete attempt" definition
+// buildDashboard already computes for LabsCompleted.
+func buildStageCards(cat *catalog.Catalog, latest map[string]progress.Attempt) []StageCardView {
+	regular := cat.RegularStages()
+	cards := make([]StageCardView, 0, len(regular))
+	for _, group := range regular {
+		card := StageCardView{ID: group.Stage.ID, Title: group.Stage.Title, PhaseID: group.Stage.Phase}
+		for _, lab := range group.Labs {
+			card.LabsTotal++
+			if _, ok := latest[lab.ID]; ok {
+				card.LabsCompleted++
+			}
+		}
+		card.Complete = card.LabsTotal > 0 && card.LabsCompleted == card.LabsTotal
+		cards = append(cards, card)
+	}
+	return cards
+}
+
+// monthlyEngagementDayFormat is the map key format for MonthlyEngagement
+// and MostEngagedDay — year-month-day, unambiguous and sortable as a
+// string.
+const monthlyEngagementDayFormat = "2006-01-02"
+
+// buildMonthlyEngagement counts attempts (by StartedAt, falling back to
+// SolvedAt for an attempt with no StartedAt) that fall in now's calendar
+// month, one count per day. Returns a non-nil, possibly-empty map (never
+// nil) so a month with no activity still renders as "every day empty"
+// rather than an omitted field.
+func buildMonthlyEngagement(attempts []progress.Attempt, now time.Time) (map[string]int, *string) {
+	counts := make(map[string]int)
+	year, month, _ := now.Date()
+
+	for _, a := range attempts {
+		day := a.StartedAt
+		if day.IsZero() && a.SolvedAt != nil {
+			day = *a.SolvedAt
+		}
+		if day.IsZero() {
+			continue
+		}
+		dy, dm, _ := day.Local().Date()
+		if dy != year || dm != month {
+			continue
+		}
+		counts[day.Local().Format(monthlyEngagementDayFormat)]++
+	}
+
+	days := make([]string, 0, len(counts))
+	for day := range counts {
+		days = append(days, day)
+	}
+	sort.Strings(days)
+
+	var mostEngagedDay *string
+	best := 0
+	for _, day := range days {
+		if counts[day] > best {
+			best = counts[day]
+			d := day
+			mostEngagedDay = &d
+		}
+	}
+	return counts, mostEngagedDay
 }
 
 // buildDashboard assembles DashboardView. LabsCompleted/VariantsSeen use
@@ -80,11 +187,16 @@ func buildDashboard(ctx context.Context, cat *catalog.Catalog, pf *progress.Prog
 	}
 
 	drafts, published := progress.PostmortemCounts(pf.Attempts)
+	monthlyEngagement, mostEngagedDay := buildMonthlyEngagement(pf.Attempts, time.Now())
 
 	view := DashboardView{
 		Streak:              progress.Streak(pf, time.Now()),
 		LabsCompleted:       len(latest),
 		VariantsSeen:        len(seenVariants),
+		Stages:              buildStageCards(cat, latest),
+		Phases:              phases.BuildPhaseList(cat, pf).Phases,
+		MonthlyEngagement:   monthlyEngagement,
+		MostEngagedDay:      mostEngagedDay,
 		AvgResolutionTime:   progress.FormatDuration(progress.AvgResolutionTime(pf.Attempts)),
 		PostmortemDrafts:    drafts,
 		PostmortemPublished: published,

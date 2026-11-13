@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1440px;height:900px;overflow:hidden;background:#0c0c0e;font-family:'JetBrains Mono',monospace;color:#f2f2ec}
+  .shell{display:flex;height:100%}
+  .rail{width:200px;background:#161616;padding:30px 20px;display:flex;flex-direction:column;gap:2px;border-right:1px solid #2c2c2c}
+  .brand{font-family:'Archivo Black';font-size:15px;letter-spacing:.04em;margin-bottom:18px}
+  .nav a{display:block;padding:9px 0;color:#8a8a84;text-decoration:none;font-size:13px;letter-spacing:.04em}
+  .nav a.on{color:#ffcf5c;font-weight:700}
+  .main{flex:1;padding:36px 44px}
+  h1{font-family:'Archivo Black';font-size:26px;letter-spacing:.02em;margin-bottom:22px}
+  .board{border:2px solid #2c2c2c}
+  .hdr{display:grid;grid-template-columns:90px 1fr 140px 150px;background:#161616;padding:10px 16px;
+    font-size:11px;letter-spacing:.1em;color:#8a8a84}
+  .row{display:grid;grid-template-columns:90px 1fr 140px 150px;padding:14px 16px;border-top:1px solid #222;align-items:center}
+  .flap{display:inline-block;background:#1c1c1c;border:1px solid #333;padding:2px 4px;margin-right:1px;
+    font-size:15px;letter-spacing:.03em}
+  .amber{color:#ffcf5c}.dim{color:#8a4848}.green{color:#78c48a}
+  .stats{display:flex;gap:18px;margin-bottom:24px}
+  .stat{flex:1;border:1px solid #2c2c2c;padding:14px 16px}
+  .stat .n{font-family:'Archivo Black';font-size:26px}
+  .stat .l{font-size:10px;letter-spacing:.1em;color:#8a8a84;margin-top:4px}
+</style></head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">BREAKLAB</div>
+      <div class="nav">
+        <a class="on">Dashboard</a><a>Phases</a><a>Challenges</a><a>Chaos</a><a>Capstone</a><a>Postmortems</a><a>Topology</a>
+      </div>
+    </div>
+    <div class="main">
+      <h1>INCIDENT BOARD</h1>
+      <div class="stats">
+        <div class="stat"><div class="n">34/150</div><div class="l">RESOLVED</div></div>
+        <div class="stat"><div class="n">06</div><div class="l">DAY STREAK</div></div>
+        <div class="stat"><div class="n">03</div><div class="l">OPEN</div></div>
+      </div>
+      <div class="board">
+        <div class="hdr"><div>STAGE</div><div>LAB</div><div>DIFFICULTY</div><div>STATUS</div></div>
+        <div class="row"><div><span class="flap">D</span><span class="flap">O</span><span class="flap">C</span><span class="flap">K</span></div><div>Registry Auth Drift</div><div>MEDIUM</div><div class="amber">IN PROGRESS</div></div>
+        <div class="row"><div><span class="flap">D</span><span class="flap">O</span><span class="flap">C</span><span class="flap">K</span></div><div>Compose Network Split</div><div>HARD</div><div class="dim">CANCELLED&nbsp;· RETRY</div></div>
+        <div class="row"><div><span class="flap">L</span><span class="flap">N</span><span class="flap">U</span><span class="flap">X</span></div><div>Bad File Perms</div><div>EASY</div><div class="green">RESOLVED</div></div>
+      </div>
+    </div>
+  </div>
+</body></html>

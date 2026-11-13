@@ -1,0 +1,82 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1440px;height:900px;overflow:hidden;background:#13316b;
+    background-image:
+      linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);
+    background-size:28px 28px;
+    font-family:'Archivo Narrow',sans-serif;color:#eaf1ff}
+  .frame{position:absolute;inset:18px;border:2px solid rgba(255,255,255,.55)}
+  .ticks span{position:absolute;width:10px;height:10px;border:2px solid #eaf1ff}
+  .tl{top:-2px;left:-2px;border-right:none;border-bottom:none}
+  .tr{top:-2px;right:-2px;border-left:none;border-bottom:none}
+  .bl{bottom:-2px;left:-2px;border-right:none;border-top:none}
+  .br{bottom:-2px;right:-2px;border-left:none;border-top:none}
+  .shell{position:absolute;inset:40px;display:flex;gap:28px}
+  .rail{width:200px;display:flex;flex-direction:column;gap:4px}
+  .brand{font-family:'JetBrains Mono';font-weight:600;font-size:15px;letter-spacing:.08em;
+    border-bottom:2px solid rgba(255,255,255,.5);padding-bottom:14px;margin-bottom:10px}
+  .nav a{display:block;padding:10px 10px;color:#c9d8f5;text-decoration:none;font-size:14px;
+    letter-spacing:.03em;border-left:3px solid transparent}
+  .nav a.on{color:#fff;border-left-color:#f4a627;background:rgba(255,255,255,.06);font-weight:700}
+  .main{flex:1;display:flex;flex-direction:column;gap:20px}
+  .titleblock{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px solid #eaf1ff;padding-bottom:14px}
+  .titleblock h1{font-size:30px;font-weight:700;letter-spacing:.02em}
+  .meta{font-family:'JetBrains Mono';font-size:12px;text-align:right;color:#aebfe0;line-height:1.5}
+  .meta b{color:#fff}
+  .stamp{position:absolute;top:36px;right:40px;border:2px solid #f4a627;color:#f4a627;
+    font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;padding:5px 10px;
+    transform:rotate(3deg)}
+  .stats{display:flex;gap:16px}
+  .stat{flex:1;border:1px solid rgba(255,255,255,.4);padding:14px 16px}
+  .stat .n{font-family:'JetBrains Mono';font-size:28px;font-weight:600}
+  .stat .l{font-size:11px;color:#aebfe0;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-family:'JetBrains Mono';font-size:11px;color:#aebfe0;
+    text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border-bottom:2px solid rgba(255,255,255,.4)}
+  td{padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.18)}
+  .plot{font-family:'JetBrains Mono';font-size:11px;color:#f4a627;border:1px solid #f4a627;
+    padding:1px 5px;margin-right:8px}
+  .st{font-family:'JetBrains Mono';font-size:11px;letter-spacing:.05em;padding:2px 7px;border:1px solid currentColor}
+  .ok{color:#6fd98f}.wip{color:#f4a627}.todo{color:#9fb0d6}
+</style></head>
+<body>
+  <div class="frame"><span class="ticks tl"></span><span class="ticks tr"></span><span class="ticks bl"></span><span class="ticks br"></span></div>
+  <div class="stamp">REV 07 · SCALE 1:1</div>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">BREAKLAB // SURVEY</div>
+      <div class="nav">
+        <a class="on">Dashboard</a>
+        <a>Phases</a>
+        <a>Challenges</a>
+        <a>Chaos</a>
+        <a>Capstone</a>
+        <a>Postmortems</a>
+        <a>Topology</a>
+      </div>
+    </div>
+    <div class="main">
+      <div class="titleblock">
+        <h1>Site Survey — Docker Stage</h1>
+        <div class="meta"><b>ENGINEER</b> local-instance<br><b>DATE</b> 2026-11-12</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">34 / 150</div><div class="l">Plots Resolved</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">Day Streak</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">Open Incidents</div></div>
+      </div>
+      <table>
+        <tr><th>Plot</th><th>Lab</th><th>Stage</th><th>Status</th></tr>
+        <tr><td><span class="plot">P-114</span></td><td>Registry Auth Drift</td><td>Docker</td><td><span class="st wip">IN PROGRESS</span></td></tr>
+        <tr><td><span class="plot">P-115</span></td><td>Compose Network Split</td><td>Docker</td><td><span class="st todo">NOT STARTED</span></td></tr>
+        <tr><td><span class="plot">P-113</span></td><td>Bad File Perms</td><td>Linux</td><td><span class="st ok">RESOLVED</span></td></tr>
+      </table>
+    </div>
+  </div>
+</body></html>

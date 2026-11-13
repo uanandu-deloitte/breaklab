@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1440px;height:900px;overflow:hidden;background:#0f1b3d;font-family:'Archivo',sans-serif;color:#eef2ff}
+  .shell{display:flex;height:100%}
+  .rail{width:200px;padding:30px 20px;border-right:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;gap:2px}
+  .brand{font-size:16px;font-weight:700;margin-bottom:18px}
+  .nav a{display:block;padding:9px 0;color:#9fb0e0;text-decoration:none;font-size:14px;border-left:3px solid transparent;padding-left:10px}
+  .nav a.on{color:#fff;font-weight:700;border-left-color:#e0434f}
+  .main{flex:1;padding:34px 44px}
+  h1{font-size:26px;font-weight:700;margin-bottom:18px}
+  .line{display:flex;align-items:center;margin-bottom:28px;position:relative;height:60px}
+  .line .track{position:absolute;left:0;right:0;top:28px;height:5px;background:#2a3a6e;border-radius:3px}
+  .line .fill{position:absolute;left:0;top:28px;height:5px;width:46%;background:#e0434f;border-radius:3px}
+  .stop{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:16.6%;font-size:11px;color:#9fb0e0}
+  .stop .dot{width:16px;height:16px;border-radius:50%;background:#0f1b3d;border:4px solid #2a3a6e;margin-bottom:8px}
+  .stop.done .dot{border-color:#e0434f;background:#e0434f}
+  .stop.now .dot{border-color:#ffb547;background:#0f1b3d}
+  .stop.now{color:#ffb547;font-weight:700}
+  .stats{display:flex;gap:16px;margin-bottom:24px}
+  .stat{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:14px 16px;border-radius:6px}
+  .stat .n{font-family:'JetBrains Mono';font-size:24px;font-weight:600}
+  .stat .l{font-size:11px;color:#9fb0e0;margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;color:#9fb0e0;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.2)}
+  td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .tag{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+  .r{background:#e0434f}.g{background:#4caf6b}.a{background:#ffb547}
+</style></head>
+<body>
+  <div class="shell">
+    <div class="rail">
+      <div class="brand">BREAKLAB</div>
+      <div class="nav">
+        <a class="on">Dashboard</a><a>Phases</a><a>Challenges</a><a>Chaos</a><a>Capstone</a><a>Postmortems</a><a>Topology</a>
+      </div>
+    </div>
+    <div class="main">
+      <h1>Your Line — Docker Stage</h1>
+      <div class="line">
+        <div class="track"></div><div class="fill"></div>
+        <div class="stop done"><div class="dot"></div>Linux</div>
+        <div class="stop done"><div class="dot"></div>Network</div>
+        <div class="stop done"><div class="dot"></div>Git</div>
+        <div class="stop now"><div class="dot"></div>Docker</div>
+        <div class="stop"><div class="dot"></div>CI/CD</div>
+        <div class="stop"><div class="dot"></div>Cloud</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">34/150</div><div class="l">Stations cleared</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">Day streak</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">Open incidents</div></div>
+      </div>
+      <table>
+        <tr><th>Line</th><th>Lab</th><th>Difficulty</th><th>Status</th></tr>
+        <tr><td><span class="tag a"></span>Docker</td><td>Registry Auth Drift</td><td>Medium</td><td>In progress</td></tr>
+        <tr><td><span class="tag a"></span>Docker</td><td>Compose Network Split</td><td>Hard</td><td>Not started</td></tr>
+        <tr><td><span class="tag g"></span>Linux</td><td>Bad File Perms</td><td>Easy</td><td>Resolved</td></tr>
+      </table>
+    </div>
+  </div>
+</body></html>
